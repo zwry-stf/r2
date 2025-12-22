@@ -1,0 +1,75 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ext">
+      <UniqueIdentifier>{7670880B-E279-887C-6BF5-9E7CD7FD937C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\r2">
+      <UniqueIdentifier>{BC45B8DA-A8FD-F927-1105-D383FDDB9418}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\r2\font">
+      <UniqueIdentifier>{6290C1FB-CE1B-2FC0-D72C-B2B443378BC0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\font">
+      <UniqueIdentifier>{730430CF-5FD1-8ADA-88EA-78827416C068}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ext\stb_truetype.h">
+      <Filter>ext</Filter>
+    </ClInclude>
+    <ClInclude Include="include\r2\error.h">
+      <Filter>include\r2</Filter>
+    </ClInclude>
+    <ClInclude Include="include\r2\font\font.h">
+      <Filter>include\r2\font</Filter>
+    </ClInclude>
+    <ClInclude Include="include\r2\font\font.inline.inl">
+      <Filter>include\r2\font</Filter>
+    </ClInclude>
+    <ClInclude Include="include\r2\font\unicode.h">
+      <Filter>include\r2\font</Filter>
+    </ClInclude>
+    <ClInclude Include="include\r2\renderer.h">
+      <Filter>include\r2</Filter>
+    </ClInclude>
+    <ClInclude Include="include\r2\renderer.inline.inl">
+      <Filter>include\r2</Filter>
+    </ClInclude>
+    <ClInclude Include="include\r2\renderer_definitions.h">
+      <Filter>include\r2</Filter>
+    </ClInclude>
+    <ClInclude Include="src\font\font_atlas.h">
+      <Filter>src\font</Filter>
+    </ClInclude>
+    <ClInclude Include="src\internal.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render_data.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\shader.h">
+      <Filter>src</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\drawlist.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\font\font.cpp">
+      <Filter>src\font</Filter>
+    </ClCompile>
+    <ClCompile Include="src\font\font_atlas.cpp">
+      <Filter>src\font</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

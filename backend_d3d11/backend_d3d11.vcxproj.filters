@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\backend">
+      <UniqueIdentifier>{60C76F9D-CC52-DD61-D563-6056416E3962}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\backend\d3d11">
+      <UniqueIdentifier>{8C7E918C-F8EA-4C87-C1DE-E4E42D0A6FEF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\backend\d3d11\blendstate.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\buffer.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\compiled_shader.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\context.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\context.inline.inl">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\d3d_pointer.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\depthstencilstate.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\framebuffer.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\inputlayout.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\object.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\pixelshader.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\rasterizerstate.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\sampler.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\shaderprogram.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\texture2d.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\textureview.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\d3d11\vertexshader.h">
+      <Filter>include\backend\d3d11</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\blendstate.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\buffer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\compiled_shader.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\context.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\depthstencilstate.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\framebuffer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\inputlayout.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\pixelshader.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rasterizerstate.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sampler.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\shaderprogram.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\texture2d.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\textureview.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vertexshader.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

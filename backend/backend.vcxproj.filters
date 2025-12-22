@@ -1,0 +1,75 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\backend">
+      <UniqueIdentifier>{60C76F9D-CC52-DD61-D563-6056416E3962}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\backend\blendstate.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\buffer.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\compiled_shader.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\context.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\context.inline.inl">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\def.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\depthstencilstate.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\framebuffer.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\inputlayout.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\object.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\pixelshader.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\rasterizerstate.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\sampler.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\shaderprogram.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\texture2d.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\textureview.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\util.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\vertexshader.h">
+      <Filter>include\backend</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\context.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
