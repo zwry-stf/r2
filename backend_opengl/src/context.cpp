@@ -245,6 +245,11 @@ void gl_context::set_index_buffer(buffer* ib)
 
     gl_call(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf));
 
+    if (ib == nullptr) {
+        current_index_type_ = static_cast<GLenum>(-1);
+        return;
+    }
+
     current_index_type_ = (ib->desc().ib_type == index_buffer_type::u16) ? 
         GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
 }

@@ -1,5 +1,6 @@
 #include <backend/opengl/inputlayout.h>
 #include <backend/opengl/context.h>
+#include <backend/opengl/buffer.h>
 #include <assert.h>
 #include <utility>
 
@@ -62,12 +63,36 @@ gl_attr_info gl_inputlayout::to_gl_attr_info(vertex_attribute_format fmt) noexce
     }
 }
 
+GLuint gl_inputlayout::type_size(GLenum t) noexcept
+{
+    switch (t)
+    {
+    case GL_BYTE:
+    case GL_UNSIGNED_BYTE:
+        return 1u;
+    case GL_SHORT:
+    case GL_UNSIGNED_SHORT:
+        return 2u;
+    case GL_INT:
+    case GL_UNSIGNED_INT:
+    case GL_FLOAT:
+        return 4u;
+    case GL_HALF_FLOAT:
+        return 2u;
+    default:
+        assert(false);
+        return {};
+    }
+}
+
 gl_inputlayout::gl_inputlayout(gl_context* ctx, const vertex_attribute_desc* desc, std::uint32_t count,
                                const std::uint8_t* vs_data, std::size_t vs_data_size)
     : r2::inputlayout(),
       gl_object(ctx)
 {
     assert(desc != nullptr && count > 0u);
+
+    desc_.assign(desc, desc + count);
 
     (void)vs_data;
     (void)vs_data_size;
@@ -112,56 +137,6 @@ gl_inputlayout::gl_inputlayout(gl_context* ctx, const vertex_attribute_desc* des
             }
         }
     }
-    else {
-        auto type_size = [](GLenum t) -> GLuint
-            {
-                switch (t)
-                {
-                case GL_BYTE:
-                case GL_UNSIGNED_BYTE:
-                    return 1u;
-                case GL_SHORT:
-                case GL_UNSIGNED_SHORT:
-                    return 2u;
-                case GL_INT:
-                case GL_UNSIGNED_INT:
-                case GL_FLOAT:
-                    return 4u;
-                case GL_HALF_FLOAT:
-                    return 2u;
-                default:
-                    return 4u;
-                }
-            };
-
-        GLuint stride = 0u;
-        for (std::uint32_t i = 0u; i < count; ++i) {
-            const auto& a = desc[i];
-            const gl_attr_info info = to_gl_attr_info(a.format);
-            GLuint bytes = info.size * type_size(info.type);
-            stride = (stride > (a.aligned_byte_offset + bytes)) ? stride : (a.aligned_byte_offset + bytes);
-        }
-
-        for (std::uint32_t i = 0u; i < count; ++i) {
-            const auto& a = desc[i];
-            const GLuint attrib_index = i;
-            const gl_attr_info info = to_gl_attr_info(a.format);
-            const GLvoid* pointer = reinterpret_cast<const GLvoid*>(static_cast<uintptr_t>(a.aligned_byte_offset));
-
-            glEnableVertexAttribArray(attrib_index);
-
-            if (info.integer && !info.normalized) {
-                glVertexAttribIPointer(attrib_index, info.size, info.type, stride, pointer);
-            }
-            else {
-                glVertexAttribPointer(attrib_index, info.size, info.type, info.normalized, stride, pointer);
-            }
-
-            if (a.per_instance) {
-                glVertexAttribDivisor(attrib_index, a.instance_data_step_rate);
-            }
-        }
-    }
 
     GLenum gl_err = drain_gl_errors();
 
@@ -186,6 +161,54 @@ gl_inputlayout::~gl_inputlayout()
 void gl_inputlayout::bind() const
 {
     gl_call(glBindVertexArray(vao_));
+}
+
+void gl_inputlayout::link(buffer* buffer)
+{
+    assert(buffer->desc().usage == buffer_usage::vertex);
+
+    if (context()->has_version(4, 3)) {
+    }
+    else {
+        context()->set_vertex_buffer(buffer);
+
+        clear_gl_errors();
+
+        glBindVertexArray(vao_);
+
+        GLuint stride = static_cast<GLuint>(buffer->desc().vb_stride);
+
+        for (std::size_t i = 0u; i < desc_.size(); ++i) {
+            const auto& a = desc_[i];
+            const GLuint attrib_index = static_cast<GLuint>(i);
+            const gl_attr_info info = to_gl_attr_info(a.format);
+            const GLvoid* pointer = reinterpret_cast<const GLvoid*>(static_cast<uintptr_t>(a.aligned_byte_offset));
+
+            glEnableVertexAttribArray(attrib_index);
+
+            if (info.integer && !info.normalized) {
+                glVertexAttribIPointer(attrib_index, info.size, info.type, stride, pointer);
+            }
+            else {
+                glVertexAttribPointer(attrib_index, info.size, info.type, info.normalized, stride, pointer);
+            }
+
+            if (a.per_instance) {
+                glVertexAttribDivisor(attrib_index, a.instance_data_step_rate);
+            }
+        }
+
+        GLenum gl_err = drain_gl_errors();
+
+        glBindVertexArray(0);
+
+        if (gl_err != GL_NO_ERROR) {
+            set_error(
+                std::to_underlying(gl_inputlayout_error::link_inputlayout),
+                static_cast<std::int32_t>(gl_err)
+            );
+        }
+    }
 }
 
 r2_end_

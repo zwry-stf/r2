@@ -168,7 +168,7 @@ bool create_window(const std::string& title)
 #if defined(R2_BACKEND_D3D11)
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 #elif defined(R2_BACKEND_OPENGL)
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 

@@ -560,6 +560,10 @@ void renderer2d::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_ve
 
         render_data_->vertex_buffer = context_->create_buffer(d);
         assert(!render_data_->vertex_buffer->has_error());
+
+        render_data_->input_layout->link(render_data_->vertex_buffer.get());
+        assert(!render_data_->input_layout->has_error());
+        render_data_->input_layout->bind();
     }
 }
 
