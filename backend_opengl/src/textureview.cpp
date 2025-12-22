@@ -39,9 +39,13 @@ gl_textureview::gl_textureview(gl_context* ctx, gl_texture2d* tex, const texture
       gl_object(ctx),
       resource_(tex)
 {
-    if (tex == nullptr &&
+    assert(tex != nullptr);
+
+    if (tex->is_backbuffer_handle() &&
         desc.usage == view_usage::render_target)
-        return; // render target to backbuffer (0) allowed
+        return;
+
+    assert(!tex->is_backbuffer_handle());
 
     assert(resource_ != nullptr);
 

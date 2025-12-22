@@ -264,18 +264,13 @@ bool initialize_backend()
 
 bool create_render_target()
 {
-#if defined(R2_BACKEND_D3D11)
-	// render target
-	d3d_pointer<ID3D11Texture2D> back_buffer;
-	HRESULT res = g_data.render_data.swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&back_buffer);
-	if (FAILED(res))
+	auto b = g_renderer.context()->acquire_backbuffer();
+	if (!b.has_value())
 		return false;
 
-	g_data.render_data.back_buffer = r2::d3d11_texture2d::from_existing(
-		reinterpret_cast<r2::d3d11_context*>(g_renderer.context()), back_buffer.get());
+	g_data.render_data.back_buffer = std::move(b.value());
 	if (g_data.render_data.back_buffer->has_error())
 		return false;
-#endif
 
 	r2::textureview_desc rdesc{};
 	rdesc.usage = r2::view_usage::render_target;

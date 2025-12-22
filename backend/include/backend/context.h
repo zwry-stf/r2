@@ -1,6 +1,7 @@
 #pragma once
 #include <backend/object.h>
 #include <memory>
+#include <optional>
 
 // 
 #include <backend/blendstate.h>
@@ -52,6 +53,7 @@ public:
 	virtual std::unique_ptr<inputlayout> create_inputlayout(const vertex_attribute_desc* desc, std::uint32_t count,
 		                                                    const void* vs_data, std::size_t vs_data_size) = 0;
 	virtual std::unique_ptr<texture2d> create_texture2d(const texture_desc& desc, const void* initial_data = nullptr) = 0;
+	virtual std::optional<std::unique_ptr<texture2d>> acquire_backbuffer() = 0;
 	virtual std::unique_ptr<textureview> create_textureview(texture2d* tex, const textureview_desc& desc) = 0;
 	virtual std::unique_ptr<framebuffer> create_framebuffer(const framebuffer_desc& desc) = 0;
 

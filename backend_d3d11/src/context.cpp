@@ -182,6 +182,16 @@ std::unique_ptr<texture2d> d3d11_context::create_texture2d(const texture_desc& d
     return std::make_unique<d3d11_texture2d>(this, desc, initial_data);
 }
 
+std::optional<std::unique_ptr<texture2d>> d3d11_context::acquire_backbuffer()
+{
+    d3d_pointer<ID3D11Texture2D> back_buffer;
+    HRESULT res = sc_->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&back_buffer);
+    if (FAILED(res))
+        return std::nullopt;
+
+    return d3d11_texture2d::from_existing(this, back_buffer.get());
+}
+
 std::unique_ptr<textureview> d3d11_context::create_textureview(texture2d* tex, const textureview_desc& desc)
 {
     return std::make_unique<d3d11_textureview>(this, to_native(tex), desc);

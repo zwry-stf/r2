@@ -70,7 +70,8 @@ std::uint32_t bytes_per_pixel(texture_format fmt) noexcept
 
 gl_texture2d::gl_texture2d(gl_context* ctx, const texture_desc& desc, const void* data)
     : r2::texture2d(desc),
-      gl_object(ctx)
+      gl_object(ctx),
+      backbuffer_handle_(false)
 {
     assert(desc.width > 0 && desc.height > 0);
 
@@ -146,6 +147,13 @@ gl_texture2d::gl_texture2d(gl_context* ctx, const texture_desc& desc, const void
     }
 }
 
+gl_texture2d::gl_texture2d(gl_context* ctx, std::nullptr_t)
+    : r2::texture2d(texture_desc{}),
+      gl_object(ctx),
+      backbuffer_handle_(true)
+{
+}
+
 gl_texture2d::~gl_texture2d()
 {
     if (texture_ != 0u) {
@@ -156,6 +164,7 @@ gl_texture2d::~gl_texture2d()
 
 void gl_texture2d::update(const void* data, std::uint32_t row_pitch)
 {
+    assert(!is_backbuffer_handle());
     const auto& desc = desc_;
 
     assert(texture_ != 0u);
