@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <cmath>
 #include <vector>
+#include <algorithm>
 
 
 r2_begin_
@@ -267,9 +268,38 @@ struct cmd_header {
 	texture_handle texture;
 };
 
+namespace math
+{
+    inline constexpr float g_pi        = 3.14159265358979323846f;
+    inline constexpr float g_2_pi      = g_pi * 2.f;
+    inline constexpr float g_pi_div_2  = g_pi / 2.f;
+    inline constexpr float g_1_div_2pi = 1.f / g_2_pi;
+}
+
 struct shared_data {
 	vec2 uv_white_px;
 	std::vector<vec2> temp_buffer;
+
+	// circles
+	inline static constexpr int kArcFastTableSize = 48;
+	vec2 arc_fast_vtx[kArcFastTableSize];
+	inline static constexpr int kNumCircleSegmentCounts = 48;
+	float circle_segment_max_error;
+	std::uint8_t circle_segment_counts[kNumCircleSegmentCounts];
+
+public:
+	shared_data();
+
+	static int calc_circle_auto_segment(float radius, float max_error) {
+		const int v = (int)std::ceilf(math::g_pi /
+			std::acos(1.f - (std::min)((max_error), radius) / radius));
+		return std::clamp(
+			((v + 1) / 2) * 2,
+			0,
+			2048
+		);
+	}
+	void set_circle_tessellation_max_error(float max_error);
 };
 
 struct font_cfg {
@@ -288,7 +318,7 @@ struct renderer_flags {
 	std::int8_t anti_aliased_fill  : 1 { 1 };
 };
 
-enum e_rounding_flags : std::uint8_t {
+enum class e_rounding_flags : std::uint8_t {
 	rounding_none        = 0u,
 	rounding_topleft     = (1u << 0u),
 	rounding_topright    = (1u << 1u),
@@ -302,13 +332,14 @@ enum e_rounding_flags : std::uint8_t {
 				   rounding_bottomleft | rounding_bottomright
 };
 
+v_always_inline e_rounding_flags operator|(const e_rounding_flags& a, const e_rounding_flags& b) {
+	return static_cast<e_rounding_flags>(
+		std::to_underlying(a) | std::to_underlying(b)
+		);
+}
 
-namespace math
-{
-    inline constexpr float g_pi        = 3.14159265358979323846f;
-    inline constexpr float g_2_pi      = g_pi * 2.f;
-    inline constexpr float g_pi_div_2  = g_pi / 2.f;
-    inline constexpr float g_1_div_2pi = 1.f / g_2_pi;
+v_always_inline bool operator&(const e_rounding_flags& a, const e_rounding_flags& b) {
+	return (std::to_underlying(a) & std::to_underlying(b)) != 0u;
 }
 
 r2_end_

@@ -232,6 +232,8 @@ void renderer2d::reset_render_data()
     push_texture_id(
         render_data_->font_view.get()
     );
+
+    shared_data_.set_circle_tessellation_max_error(0.3f);
 }
 
 void renderer2d::render()
@@ -289,6 +291,15 @@ void renderer2d::render()
         20.f
     );
 
+    add_rect(
+        vec2(600.f, 700.f),
+        vec2(900.f, 900.f),
+        color::white().interp(color::black(), 0.5f),
+        2.f,
+        20.f,
+        e_rounding_flags::rounding_top | e_rounding_flags::rounding_bottomright
+    );
+
     if (false) {
         indices_.push_back(vertex_ptr_ + 0u);
         indices_.push_back(vertex_ptr_ + 1u);
@@ -331,23 +342,6 @@ void renderer2d::render()
         vec2(300.f, 300.f),
         color::blue().interp(color::white(), 0.4f).interp(color::green(), 0.3f),
         std::u8string_view(u8"Ä*+**''Ä")
-    );
-
-    // line test
-    constexpr vec2 lines[] = {
-        vec2(100.f, 100.f),
-        vec2(110.f, 500.f),
-        vec2(125.f, 80.f),
-        vec2(400.f, 300.f),
-        vec2(300.f, 600.f)
-    };
-
-    add_lines(
-        &lines[0],
-        _countof(lines),
-        color::white().alpha(0.5f),
-        20.f,
-        true
     );
 
     // update buffers

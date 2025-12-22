@@ -98,8 +98,12 @@ public:
 	void pop_font();
 
 	/// render
+	void add_rect(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding = 0.f,
+		          e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
+	void add_rect_inner(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding = 0.f,
+		                e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
 	void add_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding = 0.f,
-		                 e_rounding_flags flags = rounding_all, float corner_step = 2.f);
+		                 e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
 	void add_quad_filled(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, color_u32 col);
 	void add_line(const vec2& start, const vec2& end, color_u32 col, float line_width);
 	void add_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col);
@@ -134,6 +138,10 @@ public:
 	/// path
 	void path_clear();
 	void path_add_point(const vec2& p);
+	template <int a_min_of_12, int a_max_of_12>
+	void path_arc_to_fast(const vec2& center, float radius, float step);
+	void path_rect(const vec2& min, const vec2& max, float rounding,
+		           e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
 	void path_fill_convex(color_u32 col);
 	void path_stroke(color_u32 col, float line_width, bool closed = false);
 
@@ -148,6 +156,8 @@ private:
 	void on_changed_header(const O& new_value, O draw_cmd::* field);
 
 	void aa_side(const vec2& start, const vec2& end, std::uint32_t vtx_start, std::uint32_t vtx_end, color_u32 col);
+
+	int calc_circle_auto_segment_count(float radius);
 
 public:
 	[[nodiscard]] auto* context() const noexcept {

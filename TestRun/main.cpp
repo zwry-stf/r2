@@ -203,13 +203,13 @@ bool initialize_backend()
 	sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM;
 	sd.BufferDesc.RefreshRate.Numerator   = 60;
 	sd.BufferDesc.RefreshRate.Denominator = 1;
-	sd.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	sd.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 	sd.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT;
 	sd.OutputWindow                       = glfwGetWin32Window(g_data.window_data.window);
 	sd.SampleDesc.Count                   = 1;
 	sd.SampleDesc.Quality                 = 0;
 	sd.Windowed                           = TRUE;
-	sd.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
+	sd.SwapEffect                         = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
 	UINT create_device_flags = 0;
 #ifdef _DEBUG
@@ -339,7 +339,7 @@ bool resize(int width, int height)
 		static_cast<UINT>(width),
 		static_cast<UINT>(height),
 		DXGI_FORMAT_UNKNOWN,
-		0u
+		DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
 	);
 	if (FAILED(hr))
 		return false;
@@ -460,7 +460,7 @@ void render_thread()
 
 		// present
 #if defined(R2_BACKEND_D3D11)
-		g_data.render_data.swapchain->Present(0u, 0u);
+		g_data.render_data.swapchain->Present(0u, DXGI_PRESENT_ALLOW_TEARING);
 #elif defined(R2_BACKEND_OPENGL)
 		glfwSwapBuffers(g_data.window_data.window);
 #endif

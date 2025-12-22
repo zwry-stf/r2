@@ -160,6 +160,15 @@ inline void renderer2d::aa_side(const vec2& start, const vec2& end, std::uint32_
 	}
 }
 
+inline int renderer2d::calc_circle_auto_segment_count(float radius)
+{
+	const int radius_idx = static_cast<int>(std::ceil(radius));
+	if (radius_idx < shared_data::kNumCircleSegmentCounts)
+		return shared_data_.circle_segment_counts[radius_idx];
+	else
+		return shared_data::calc_circle_auto_segment(radius, shared_data_.circle_segment_max_error);
+}
+
 inline void renderer2d::add_line(const vec2& start, const vec2& end, color_u32 col, float line_width)
 {
 	const vec2 d = (end - start);
@@ -196,11 +205,28 @@ inline void renderer2d::add_line(const vec2& start, const vec2& end, color_u32 c
 	aa_side(end - n, start - n, backup + 3u, backup + 0u, col_no_alpha);
 }
 
-inline void renderer2d::add_rect_filled(const vec2& min, const vec2& max, color_u32 col, 
+inline void renderer2d::add_rect(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding, e_rounding_flags flags, float corner_step)
+{
+	const bool odd = (static_cast<int>(std::round(line_width)) & 1) != 0;
+	const vec2 offset = vec2(odd ? 0.5f : 0.f);
+
+	path_rect(min + offset, max - offset, rounding, flags, corner_step);
+	path_stroke(col, line_width, true);
+}
+
+inline void renderer2d::add_rect_inner(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding, e_rounding_flags flags, float corner_step)
+{
+	const vec2 offset = vec2(line_width * 0.5f);
+
+	path_rect(min + offset, max - offset, rounding, flags, corner_step);
+	path_stroke(col, line_width, true);
+}
+
+inline void renderer2d::add_rect_filled(const vec2& min, const vec2& max, color_u32 col,
 	                                    float rounding, e_rounding_flags flags, float corner_step)
 {
 	if (rounding < 0.5f ||
-		flags == rounding_none) {
+		flags == e_rounding_flags::rounding_none) {
 		indices_.push_back(vertex_ptr_ + 0u);
 		indices_.push_back(vertex_ptr_ + 1u);
 		indices_.push_back(vertex_ptr_ + 2u);
@@ -216,69 +242,7 @@ inline void renderer2d::add_rect_filled(const vec2& min, const vec2& max, color_
 		vertices_.emplace_back(vec2(max.x, min.y), shared_data_.uv_white_px, col);
 	}
 	else {
-		assert(path_.empty());
-
-		const float rounding_tl = flags & e_rounding_flags::rounding_topleft ? rounding : 0.f;
-		const float rounding_tr = flags & e_rounding_flags::rounding_topright ? rounding : 0.f;
-		const float rounding_bl = flags & e_rounding_flags::rounding_bottomleft ? rounding : 0.f;
-		const float rounding_br = flags & e_rounding_flags::rounding_bottomright ? rounding : 0.f;
-
-		const float corner_size = rounding * math::g_pi_div_2;
-		const float step = corner_step / corner_size * 2.f;
-
-		// top left
-		if (rounding_tl > 0.5f) {
-			for (float i = 0.f; i < math::g_pi_div_2; i += step) {
-				path_.emplace_back(
-					min.x + rounding_tl + std::sin(i - math::g_pi) * rounding_tl,
-					min.y + rounding_tl + std::cos(i - math::g_pi) * rounding_tl
-				);
-			}
-		}
-		else {
-			path_.emplace_back(min.x, min.y);
-		}
-
-		// bottom left
-		if (rounding_bl > 0.5f) {
-			for (float i = 0.f; i < math::g_pi_div_2; i += step) {
-				path_.emplace_back(
-					min.x + rounding_bl + std::sin(i - math::g_pi_div_2) * rounding_bl,
-					max.y - rounding_bl + std::cos(i - math::g_pi_div_2) * rounding_bl
-				);
-			}
-		}
-		else {
-			path_.emplace_back(min.x, max.y);
-		}
-
-		// bottom right
-		if (rounding_br > 0.5f) {
-			for (float i = 0.f; i < math::g_pi_div_2; i += step) {
-				path_.emplace_back(
-					max.x - rounding_br + std::sin(i) * rounding_br,
-					max.y - rounding_br + std::cos(i) * rounding_br
-				);
-			}
-		}
-		else {
-			path_.emplace_back(max.x, max.y);
-		}
-
-		// top right
-		if (rounding_tr > 0.5f) {
-			for (float i = 0.f; i < math::g_pi_div_2; i += step) {
-				path_.emplace_back(
-					max.x - rounding_tr + std::sin(i + math::g_pi_div_2) * rounding_tr,
-					min.y + rounding_tr + std::cos(i + math::g_pi_div_2) * rounding_tr
-				);
-			}
-		}
-		else {
-			path_.emplace_back(max.x, min.y);
-		}
-
-		// draw
+		path_rect(min, max, rounding, flags, corner_step);
 		path_fill_convex(col);
 	}
 }
@@ -303,6 +267,74 @@ inline void renderer2d::path_clear()
 inline void renderer2d::path_add_point(const vec2& p)
 {
 	path_.emplace_back(p);
+}
+
+
+template <int a_min_of_12, int a_max_of_12>
+inline void renderer2d::path_arc_to_fast(const vec2& center, float radius, float step)
+{
+	static_assert(a_min_of_12 < a_max_of_12);
+	static_assert(a_min_of_12 >= 0 && a_min_of_12 < 12);
+	static_assert(a_max_of_12 > 0 && a_max_of_12 <= 12);
+	assert(radius >= 0.5f);
+
+	constexpr float kStart = (static_cast<float>(a_min_of_12) / 12.f) * math::g_2_pi;
+	constexpr float kEnd = (static_cast<float>(a_max_of_12) / 12.f) * math::g_2_pi;
+
+	for (float i = kStart; i < kEnd; i += step) {
+		path_.emplace_back(
+			center.x + std::sin(i) * radius,
+			center.y + std::cos(i) * radius
+		);
+	}
+
+	path_.emplace_back(
+		center.x + std::sin(kEnd) * radius,
+		center.y + std::cos(kEnd) * radius
+	);
+}
+
+inline void renderer2d::path_rect(const vec2& min, const vec2& max, float rounding, e_rounding_flags flags, float corner_step)
+{
+	if (rounding < 0.5f ||
+		flags == e_rounding_flags::rounding_none) {
+		path_add_point(min);
+		path_add_point(vec2(max.x, min.y));
+		path_add_point(max);
+		path_add_point(vec2(min.x, max.y));
+	}
+	else {
+		const float rounding_tl = flags & e_rounding_flags::rounding_topleft ? rounding : 0.f;
+		const float rounding_tr = flags & e_rounding_flags::rounding_topright ? rounding : 0.f;
+		const float rounding_bl = flags & e_rounding_flags::rounding_bottomleft ? rounding : 0.f;
+		const float rounding_br = flags & e_rounding_flags::rounding_bottomright ? rounding : 0.f;
+		const float corner_size = rounding * math::g_pi_div_2;
+		const float step = corner_step / corner_size * 2.f;
+
+		if (rounding_tl > 0.5f) {
+			path_arc_to_fast<6, 9>(vec2{ min.x + rounding_tl, min.y + rounding_tl }, rounding_tl, step);
+		} else {
+			path_.emplace_back(min.x, min.y);
+		}
+
+		if (rounding_bl > 0.5f) {
+			path_arc_to_fast<9, 12>(vec2{ min.x + rounding_bl, max.y - rounding_bl }, rounding_bl, step);
+		} else {
+			path_.emplace_back(min.x, max.y);
+		}
+
+		if (rounding_br > 0.5f) {
+			path_arc_to_fast<0, 3>(vec2{ max.x - rounding_br, max.y - rounding_br }, rounding_br, step);
+		} else {
+			path_.emplace_back(max.x, max.y);
+		}
+
+		if (rounding_tr > 0.5f) {
+			path_arc_to_fast<3, 6>(vec2{ max.x - rounding_tr, min.y + rounding_tr }, rounding_tr, step);
+		} else {
+			path_.emplace_back(max.x, min.y);
+		}
+	}
 }
 
 inline void renderer2d::path_fill_convex(color_u32 col)
