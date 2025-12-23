@@ -1,11 +1,11 @@
 workspace "r2"
     configurations { "Debug_d3d11", "Debug_opengl", "Release_d3d11", "Release_opengl" }
-    platforms { "Win32", "x64" }
+    platforms { "x86", "x64" }
     language "C++"
     cppdialect "C++23"
     staticruntime "Off"
 
-    filter "platforms:Win32"
+    filter "platforms:x86"
         architecture "x86"
     filter "platforms:x64"
         architecture "x86_64"
@@ -48,7 +48,7 @@ workspace "r2"
     filter "system:windows"
         systemversion "latest"
         defines { "R2_PLATFORM_WINDOWS" }
-    filter { "system:windows", "platforms:Win32" }
+    filter { "system:windows", "platforms:x86" }
         defines { "R2_PLATFORM_WINDOWS_X86" }
     filter { "system:windows", "platforms:x64" }
         defines { "R2_PLATFORM_WINDOWS_X64" }
@@ -167,7 +167,6 @@ project "r2"
     }
     
     dependson { "backend", "backend_d3d11", "backend_opengl" }
-    links     { "backend", "backend_d3d11", "backend_opengl" }
     
 project "TestRun"
     kind "WindowedApp"
@@ -193,14 +192,14 @@ project "TestRun"
 
     filter { "system:windows", "platforms:x64" }
         links { "TestRun/ext/GLFW/windows/x64/glfw3" }
-    filter { "system:windows", "platforms:Win32" }
+    filter { "system:windows", "platforms:x86" }
         links { "TestRun/ext/GLFW/windows/x86/glfw3" }
     filter { }
     
     filter { "configurations:*_opengl", "system:windows", "platforms:x64" }
         links { "TestRun/ext/gl/windows/x64/glew32s" }
-    filter { "configurations:*_opengl", "system:windows", "platforms:Win32" }
-        links { "TestRun/ext/gl/windows/x64/glew32s" }
+    filter { "configurations:*_opengl", "system:windows", "platforms:x86" }
+        links { "TestRun/ext/gl/windows/x86/glew32s" }
     filter { }
     
     filter { "configurations:*_d3d11" }

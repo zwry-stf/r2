@@ -204,7 +204,12 @@ inline void renderer2d::add_rect_inner(const vec2& min, const vec2& max, color_u
 {
     const vec2 offset = vec2(line_width * 0.5f);
 
-    path_rect(min + offset, max - offset, rounding, flags, corner_step);
+    path_rect(
+        min + offset,
+        max - offset,
+        rounding, 
+        flags, corner_step
+    );
     path_stroke(col, line_width, true);
 }
 
@@ -376,6 +381,11 @@ inline void renderer2d::path_rect(const vec2& min, const vec2& max, float roundi
         const float rounding_br = flags & e_rounding_flags::rounding_bottomright ? rounding : 0.f;
         const float corner_size = rounding * math::g_pi_div_2;
         const float step = corner_step / corner_size * 2.f;
+
+        assert(rounding_tl + rounding_tr <= max.x - min.x);
+        assert(rounding_bl + rounding_br <= max.x - min.x);
+        assert(rounding_tl + rounding_bl <= max.y - min.y);
+        assert(rounding_tr + rounding_br <= max.y - min.y);
 
         [[likely]] if (rounding_tl > 0.5f) {
             path_arc_to<6, 9>(vec2{ min.x + rounding_tl, min.y + rounding_tl }, rounding_tl, step);

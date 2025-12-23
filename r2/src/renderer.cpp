@@ -213,6 +213,7 @@ void renderer2d::reset_render_data()
     indices_.clear();
     cmds_.clear();
     clip_rect_stack_.clear();
+    texture_stack_.clear();
 
     add_draw_cmd();
     push_clip_rect(

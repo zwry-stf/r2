@@ -124,8 +124,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_d3d11|Win32'">
     <OutDir>$(ProjectDir)..\build\backend\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend\Debug_d3d11\Win32\</IntDir>
-    <TargetName>backend_Debug_d3d11_Win32</TargetName>
+    <IntDir>$(ProjectDir)..\build\backend\Debug_d3d11\x86\</IntDir>
+    <TargetName>backend_Debug_d3d11_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_d3d11|x64'">
@@ -136,8 +136,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_opengl|Win32'">
     <OutDir>$(ProjectDir)..\build\backend\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend\Debug_opengl\Win32\</IntDir>
-    <TargetName>backend_Debug_opengl_Win32</TargetName>
+    <IntDir>$(ProjectDir)..\build\backend\Debug_opengl\x86\</IntDir>
+    <TargetName>backend_Debug_opengl_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_opengl|x64'">
@@ -148,8 +148,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_d3d11|Win32'">
     <OutDir>$(ProjectDir)..\build\backend\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend\Release_d3d11\Win32\</IntDir>
-    <TargetName>backend_Release_d3d11_Win32</TargetName>
+    <IntDir>$(ProjectDir)..\build\backend\Release_d3d11\x86\</IntDir>
+    <TargetName>backend_Release_d3d11_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_d3d11|x64'">
@@ -160,8 +160,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_opengl|Win32'">
     <OutDir>$(ProjectDir)..\build\backend\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend\Release_opengl\Win32\</IntDir>
-    <TargetName>backend_Release_opengl_Win32</TargetName>
+    <IntDir>$(ProjectDir)..\build\backend\Release_opengl\x86\</IntDir>
+    <TargetName>backend_Release_opengl_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_opengl|x64'">
