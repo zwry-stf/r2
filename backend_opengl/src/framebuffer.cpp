@@ -13,8 +13,8 @@ GLenum gl_framebuffer::to_gl_depth_attachment(texture_format fmt) noexcept
 }
 
 gl_framebuffer::gl_framebuffer(gl_context* ctx, const framebuffer_desc& desc)
-	: r2::framebuffer(desc),
-	  gl_object(ctx)
+    : r2::framebuffer(desc),
+      gl_object(ctx)
 {
     clear_gl_errors();
 

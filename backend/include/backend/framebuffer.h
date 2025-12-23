@@ -17,7 +17,7 @@ struct framebuffer_desc {
 
 class framebuffer : public object<framebuffer_desc> {
 protected:
-	using object<framebuffer_desc>::object;
+    using object<framebuffer_desc>::object;
 };
 
 r2_end_

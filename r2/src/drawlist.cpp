@@ -8,19 +8,19 @@ r2_begin_
 
 void renderer2d::add_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col)
 {
-	if (num_points < 3u ||
-		(col & color::alpha_mask) == 0u)
-		return;
-	
+    if (num_points < 3u ||
+        (col & color::alpha_mask) == 0u)
+        return;
+    
     const vec2 uv = shared_data_.uv_white_px;
 
     if (flags_.anti_aliased_fill) {
         const std::uint32_t vtx_inner_idx = vertex_ptr_;
         const std::uint32_t vtx_outer_idx = vertex_ptr_ + 1u;
         for (std::uint32_t i = 2u; i < num_points; i++) {
-			indices_.emplace_back(vtx_inner_idx);
-			indices_.emplace_back(vtx_inner_idx + ((i - 1u) << 1u));
-			indices_.emplace_back(vtx_inner_idx + (i << 1u));
+            indices_.emplace_back(vtx_inner_idx);
+            indices_.emplace_back(vtx_inner_idx + ((i - 1u) << 1u));
+            indices_.emplace_back(vtx_inner_idx + (i << 1u));
         }
 
         shared_data_.temp_buffer.clear();
@@ -28,57 +28,57 @@ void renderer2d::add_convex_filled(const vec2* points, std::uint32_t num_points,
         for (std::uint32_t i0 = num_points - 1u, i1 = 0u; i1 < num_points; i0 = i1++) {
             const vec2& p0 = points[i0];
             const vec2& p1 = points[i1];
-			vec2 d = (p0 - p1).normalize();
+            vec2 d = (p0 - p1).normalize();
             shared_data_.temp_buffer[i0].x = d.y;
             shared_data_.temp_buffer[i0].y = -d.x;
         }
 
-		const color_u32 col_no_alpha = col & ~color::alpha_mask;
+        const color_u32 col_no_alpha = col & ~color::alpha_mask;
         for (std::uint32_t i0 = num_points - 1u, i1 = 0u; i1 < num_points; i0 = i1++) {
             const vec2& n0 = shared_data_.temp_buffer[i0];
             const vec2& n1 = shared_data_.temp_buffer[i1];
 
-			vec2 dm = ((n0 + n1) * vec2(0.5f)).normalize(100.f);
+            vec2 dm = ((n0 + n1) * vec2(0.5f)).normalize(100.f);
 
             dm.x *= aa_scale_ * 0.5f;
             dm.y *= aa_scale_ * 0.5f;
 
-			vertices_.emplace_back(
-				vec2{ points[i1].x - dm.x, points[i1].y - dm.y },
-				uv,
-				col
-			);
+            vertices_.emplace_back(
+                vec2{ points[i1].x - dm.x, points[i1].y - dm.y },
+                uv,
+                col
+            );
 
-			vertices_.emplace_back(
-				vec2{ points[i1].x + dm.x, points[i1].y + dm.y },
-				uv,
-				col_no_alpha
-			);
+            vertices_.emplace_back(
+                vec2{ points[i1].x + dm.x, points[i1].y + dm.y },
+                uv,
+                col_no_alpha
+            );
 
             vertex_ptr_ += 2u;
 
-			indices_.emplace_back(vtx_inner_idx + (i1 << 1u));
-			indices_.emplace_back(vtx_inner_idx + (i0 << 1u));
-			indices_.emplace_back(vtx_outer_idx + (i0 << 1u));
-			indices_.emplace_back(vtx_outer_idx + (i0 << 1u));
-			indices_.emplace_back(vtx_outer_idx + (i1 << 1u));
-			indices_.emplace_back(vtx_inner_idx + (i1 << 1u));
+            indices_.emplace_back(vtx_inner_idx + (i1 << 1u));
+            indices_.emplace_back(vtx_inner_idx + (i0 << 1u));
+            indices_.emplace_back(vtx_outer_idx + (i0 << 1u));
+            indices_.emplace_back(vtx_outer_idx + (i0 << 1u));
+            indices_.emplace_back(vtx_outer_idx + (i1 << 1u));
+            indices_.emplace_back(vtx_inner_idx + (i1 << 1u));
         }
     }
     else {
         for (std::uint32_t i = 0u; i < num_points; i++) {
-			vertices_.emplace_back(
-				points[i],
-				uv,
-				col
-			);
+            vertices_.emplace_back(
+                points[i],
+                uv,
+                col
+            );
         }
         for (std::uint32_t i = 2u; i < num_points; i++) {
-			indices_.emplace_back(vertex_ptr_);
-			indices_.emplace_back(vertex_ptr_ + i - 1u);
-			indices_.emplace_back(vertex_ptr_ + i);
+            indices_.emplace_back(vertex_ptr_);
+            indices_.emplace_back(vertex_ptr_ + i - 1u);
+            indices_.emplace_back(vertex_ptr_ + i);
         }
-		vertex_ptr_ += num_points;
+        vertex_ptr_ += num_points;
     }
 }
 
@@ -263,9 +263,9 @@ void renderer2d::add_shadow_convex_filled(const vec2* points, std::uint32_t num_
 
 void renderer2d::add_lines(const vec2* points, std::uint32_t num_points, color_u32 col, float line_width, bool closed)
 {
-	if (num_points < 2u ||
-		(col & color::alpha_mask) == 0u)
-		return;
+    if (num_points < 2u ||
+        (col & color::alpha_mask) == 0u)
+        return;
 
     if (line_width == 0.f)
         return;

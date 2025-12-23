@@ -16,23 +16,23 @@ renderer2d::~renderer2d()
 
 void renderer2d::init(const context_init_data& init_data)
 {
-	context_ = r2::context::make_context(init_data, true);
-	if (context_->has_error()) {
-		throw error(
-			error_code::context_initialization,
-			context_->get_error(),
-			context_->get_detail()
-		);
-	}
+    context_ = r2::context::make_context(init_data, true);
+    if (context_->has_error()) {
+        throw error(
+            error_code::context_initialization,
+            context_->get_error(),
+            context_->get_detail()
+        );
+    }
 
     do_init();
 }
 
 void renderer2d::init(r2::context* ctx)
 {
-	assert(ctx != nullptr);
+    assert(ctx != nullptr);
 
-	context_.reset(ctx);
+    context_.reset(ctx);
 
     do_init();
 }
@@ -131,10 +131,10 @@ void renderer2d::post_resize()
 
 void renderer2d::update_display_size(const vec2& display_size)
 {
-	vec4 cb_data(display_size.x, display_size.y, 0.f, 0.f);
-	render_data_->constant_buffer->update(&cb_data, sizeof(cb_data));
+    vec4 cb_data(display_size.x, display_size.y, 0.f, 0.f);
+    render_data_->constant_buffer->update(&cb_data, sizeof(cb_data));
 
-	display_size_ = display_size;
+    display_size_ = display_size;
 
     context_->update_display_size(
         static_cast<std::uint32_t>(display_size.x),
@@ -191,14 +191,14 @@ void renderer2d::setup_render_state()
     context_->set_primitive_topology(primitive_topology::triangle_list);
     render_data_->input_layout->bind();
     render_data_->shader->bind();
-	context_->set_uniform_buffer(
+    context_->set_uniform_buffer(
         render_data_->constant_buffer.get(), shader_bind_type::vs);
 
-	context_->set_sampler(render_data_->sampler.get());
+    context_->set_sampler(render_data_->sampler.get());
 
     render_data_->blend_state->bind();
     render_data_->depth_stencil_state->bind();
-	render_data_->rasterizer_state->bind();
+    render_data_->rasterizer_state->bind();
 
     context_->setup_render_state();
 }
