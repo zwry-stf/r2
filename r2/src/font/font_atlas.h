@@ -26,9 +26,6 @@ private:
 	std::vector<std::uint32_t> free_rect_slots_;
 	std::vector<atlas_rect> rects_;
 
-	std::uint32_t white_px_id_;
-	std::uint32_t tex_lines_id_;
-
 public:
 	inline static constexpr std::uint32_t kBakedLinesMaxWidth = 63u;
 	vec4 tex_uv_lines[kBakedLinesMaxWidth + 1u]{};
@@ -39,7 +36,9 @@ public:
 private:
 	bool check_side(std::uint32_t x, std::uint32_t y, std::uint32_t width, std::uint32_t height);
 	void find_rect(std::uint32_t width, std::uint32_t height, std::uint32_t& x, std::uint32_t& y);
+	void add_white_pixel();
 	void add_tex_lines();
+	void add_shadow_tex();
 
 public:
 	std::uint32_t register_rect(std::uint32_t width, std::uint32_t height);
@@ -63,9 +62,6 @@ public:
 	}
 	[[nodiscard]] auto get_height() const noexcept {
 		return height_;
-	}
-	[[nodiscard]] auto white_px_id() const noexcept {
-		return white_px_id_;
 	}
 };
 

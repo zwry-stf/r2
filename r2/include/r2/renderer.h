@@ -46,6 +46,8 @@ private:
 	std::thread::id render_thread_id_;
 #endif
 
+	friend class font_atlas;
+
 public:
 	renderer2d();
 	~renderer2d();
@@ -104,9 +106,12 @@ public:
 		                e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
 	void add_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding = 0.f,
 		                 e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
+	void add_shadow_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding = 0.f, float shadow_size = 50.f,
+		                        e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
 	void add_quad_filled(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, color_u32 col);
 	void add_line(const vec2& start, const vec2& end, color_u32 col, float line_width);
 	void add_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col);
+	void add_shadow_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col, float shadow_size, bool filled = true);
 	void add_lines(const vec2* points, std::uint32_t num_points, color_u32 col, float line_width, bool closed = false);
 
 	/// text
@@ -157,13 +162,10 @@ private:
 
 	void aa_side(const vec2& start, const vec2& end, std::uint32_t vtx_start, std::uint32_t vtx_end, color_u32 col);
 
-	int calc_circle_auto_segment_count(float radius);
-
 public:
 	[[nodiscard]] auto* context() const noexcept {
 		return context_.get();
 	}
-
 	[[nodiscard]] auto flags() const noexcept {
 		return flags_;
 	}

@@ -11,14 +11,6 @@ font_atlas::font_atlas(renderer2d* instance) noexcept
       height_(kDefaultSize)
 {
     data32_.resize(width_ * height_);
-
-    // reserve white pixel
-    white_px_id_ = register_rect(1u, 1u);
-
-    // reserve tex lines
-    if (instance->flags().anti_aliased_lines_use_tex) {
-        tex_lines_id_ = register_rect(kBakedLinesMaxWidth + 2u, kBakedLinesMaxWidth + 1u);
-    }
 }
 
 
@@ -113,12 +105,25 @@ void font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint3
     throw error(error_code::font_atlas_full);
 }
 
+void font_atlas::add_white_pixel()
+{
+    constexpr std::uint8_t kWhitePixel = 0xFFu;
+    auto rect_id = register_rect(1u, 1u);
+    write_data(rect_id, &kWhitePixel, 1u);
+
+    vec2 uv_min, uv_max;
+    get_rect_uv(rect_id, uv_min, uv_max);
+
+    renderer_->shared_data_.uv_white_px = (uv_min + uv_max) * vec2(0.5f);
+}
+
 void font_atlas::add_tex_lines()
 {
     if (!renderer_->flags().anti_aliased_lines_use_tex)
         return;
 
-    const auto& r = this->get_rect(tex_lines_id_);
+    auto rect_id = register_rect(kBakedLinesMaxWidth + 2u, kBakedLinesMaxWidth + 1u);
+    const auto& r = this->get_rect(rect_id);
 
     for (std::uint32_t n = 0u; n < kBakedLinesMaxWidth + 1u; n++) {
         std::uint32_t y = n;
@@ -162,6 +167,58 @@ void font_atlas::add_tex_lines()
             half_v / static_cast<float>(height_)
         );
     }
+}
+
+void font_atlas::add_shadow_tex()
+{
+    constexpr std::uint32_t kShadowTexSize = 32u;
+    const std::uint32_t shadow_convex_size = kShadowTexSize;
+    auto rect_id = register_rect(shadow_convex_size, shadow_convex_size);
+
+    constexpr float kShadowFallowPower = 3.f;
+    constexpr float kShadowDistanceFieldOffset = 3.8f;
+
+    std::vector<std::uint8_t> data(shadow_convex_size * shadow_convex_size);
+
+
+    const vec2 target_point = vec2(static_cast<float>(shadow_convex_size));
+
+    // calculate highest value for scale
+    const float scale_dist = (vec2(static_cast<float>(shadow_convex_size - 1u)) - target_point).length();
+
+    float scale = 1.0f - std::min(
+        std::max(static_cast<float>(scale_dist) + kShadowDistanceFieldOffset, 0.0f) /
+        std::max(static_cast<float>(shadow_convex_size) + kShadowDistanceFieldOffset, 0.001f),
+        1.0f
+    );
+    scale = std::pow(scale, kShadowFallowPower);
+    scale = 1.f / scale;
+
+    // build
+    for (std::uint32_t y = 0u; y < shadow_convex_size; y++) {
+        for (std::uint32_t x = 0u; x < shadow_convex_size; x++) {
+            const float dist = (vec2(static_cast<float>(x), static_cast<float>(y)) - target_point).length();
+
+            float alpha = 1.0f - std::min(
+                std::max(static_cast<float>(dist) + kShadowDistanceFieldOffset, 0.0f) /
+                std::max(static_cast<float>(shadow_convex_size) + kShadowDistanceFieldOffset, 0.001f),
+                1.0f
+            );
+            alpha = std::pow(alpha, kShadowFallowPower);
+            alpha *= scale;
+            data[x + (y * shadow_convex_size)] = static_cast<std::uint8_t>(std::clamp(alpha * 255.f, 0.f, 255.f));
+        }
+    }
+
+    write_data(rect_id, data.data(), data.size());
+
+    vec2 uv_min, uv_max;
+    get_rect_uv(rect_id, uv_min, uv_max);
+
+    renderer_->shared_data_.shadow_uvs = vec4(
+        uv_min.x, uv_min.y,
+        uv_max.x, uv_max.y
+    );
 }
 
 std::uint32_t font_atlas::register_rect(std::uint32_t width, std::uint32_t height)
@@ -264,21 +321,18 @@ void font_atlas::write_data(std::uint32_t id, const std::uint8_t* data, std::siz
         uint32_t* dst_row = data32_.data() + (rect.pos_y + y) *
             width_ + rect.pos_x;
         for (std::uint32_t x = 0u; x < rect.width; x++) {
-            auto byte = src_row[x];
-            dst_row[x] = byte | (byte << 8) | (byte << 16) | (byte << 24);
+            const std::uint8_t byte = src_row[x];
+            constexpr std::uint8_t white = 0xffu;
+            dst_row[x] = white | (white << 8) | (white << 16) | (byte << 24);
         }
     }
 }
 
 bool font_atlas::build()
 {
-    // white px
-    {
-        constexpr std::uint8_t kWhitePixel = 0xFFu;
-        write_data(white_px_id_, &kWhitePixel, 1u);
-    }
-
+    add_white_pixel();
     add_tex_lines();
+    add_shadow_tex();
 
     return true;
 }

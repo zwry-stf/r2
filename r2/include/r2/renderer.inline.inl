@@ -160,15 +160,6 @@ inline void renderer2d::aa_side(const vec2& start, const vec2& end, std::uint32_
 	}
 }
 
-inline int renderer2d::calc_circle_auto_segment_count(float radius)
-{
-	const int radius_idx = static_cast<int>(std::ceil(radius));
-	if (radius_idx < shared_data::kNumCircleSegmentCounts)
-		return shared_data_.circle_segment_counts[radius_idx];
-	else
-		return shared_data::calc_circle_auto_segment(radius, shared_data_.circle_segment_max_error);
-}
-
 inline void renderer2d::add_line(const vec2& start, const vec2& end, color_u32 col, float line_width)
 {
 	const vec2 d = (end - start);
@@ -245,6 +236,14 @@ inline void renderer2d::add_rect_filled(const vec2& min, const vec2& max, color_
 		path_rect(min, max, rounding, flags, corner_step);
 		path_fill_convex(col);
 	}
+}
+
+inline void renderer2d::add_shadow_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding,
+	                                           float shadow_size, e_rounding_flags flags, float corner_step)
+{
+	path_rect(min, max, rounding, flags, corner_step);
+	add_shadow_convex_filled(path_.data(), static_cast<std::uint32_t>(path_.size()), col, shadow_size);
+	path_clear();
 }
 
 inline void renderer2d::add_quad_filled(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, color_u32 col)

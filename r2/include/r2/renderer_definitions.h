@@ -73,11 +73,11 @@ public:
 	[[nodiscard]] v_always_inline float length() const noexcept {
 		return std::sqrt(x * x + y * y);
 	}
-	[[nodiscard]] v_always_inline float dot() const noexcept {
-		return x * x + y * y;
-	}
 	[[nodiscard]] v_always_inline vec2 perp() const noexcept {
 		return vec2(-y, x);
+	}
+	[[nodiscard]] v_always_inline float dot(const vec2& b) const noexcept {
+		return x * b.x + y * b.y;
 	}
 	[[nodiscard]] v_always_inline float cross(const vec2& b) const noexcept {
 		return x * b.y - y * b.x;
@@ -278,28 +278,8 @@ namespace math
 
 struct shared_data {
 	vec2 uv_white_px;
+	vec4 shadow_uvs;
 	std::vector<vec2> temp_buffer;
-
-	// circles
-	inline static constexpr int kArcFastTableSize = 48;
-	vec2 arc_fast_vtx[kArcFastTableSize];
-	inline static constexpr int kNumCircleSegmentCounts = 48;
-	float circle_segment_max_error;
-	std::uint8_t circle_segment_counts[kNumCircleSegmentCounts];
-
-public:
-	shared_data();
-
-	static int calc_circle_auto_segment(float radius, float max_error) {
-		const int v = (int)std::ceilf(math::g_pi /
-			std::acos(1.f - (std::min)((max_error), radius) / radius));
-		return std::clamp(
-			((v + 1) / 2) * 2,
-			0,
-			2048
-		);
-	}
-	void set_circle_tessellation_max_error(float max_error);
 };
 
 struct font_cfg {

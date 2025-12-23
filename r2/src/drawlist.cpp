@@ -82,6 +82,185 @@ void renderer2d::add_convex_filled(const vec2* points, std::uint32_t num_points,
     }
 }
 
+void renderer2d::add_shadow_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col, float shadow_size, bool filled)
+{
+    if (num_points < 3u ||
+        (col & color::alpha_mask) == 0u)
+        return;
+
+    const int vertex_winding = (
+        ((points[0].x * (points[1].y - points[2].y)) + 
+            (points[1].x * (points[2].y - points[0].y)) + 
+            (points[2].x * (points[0].y - points[1].y))) < 0.0f) ? -1 : 1;
+
+    const bool use_inset_distance = flags_.anti_aliased_fill;
+    const vec2 inset_distance = vec2(0.5f);
+
+    const vec4 shadow_uvs = shared_data_.shadow_uvs;
+
+    const vec2 tex_size = vec2(
+        static_cast<float>(font_atlas_->get_width()),
+        static_cast<float>(font_atlas_->get_height())
+    );
+    const vec2 inv_tex_size = vec2(1.f) / tex_size;
+    const vec2 half_texel = inv_tex_size * vec2(0.5f);
+
+    const vec2 uv_min_in = vec2(shadow_uvs.x, shadow_uvs.y) + half_texel;
+    const vec2 uv_max_in = vec2(shadow_uvs.z, shadow_uvs.w) - half_texel;
+
+    const vec2 solid_uv = uv_max_in;
+    const vec2 edge_uv = vec2(uv_min_in.x, uv_max_in.y);
+
+    const vec2 solid_to_edge_delta_texels = (edge_uv - solid_uv) * tex_size;
+
+    const std::uint32_t num_edges = num_points;
+
+    shared_data_.temp_buffer.resize(num_edges);
+    auto* edge_size_scales = reinterpret_cast<float*>(alloca(num_edges * sizeof(float)));
+
+    vec2* edge_normals = shared_data_.temp_buffer.data();
+
+    for (std::uint32_t edge_index = 0u; edge_index < num_edges; edge_index++) {
+        vec2 edge_start = points[edge_index];
+        vec2 edge_end = points[(edge_index + 1) % num_edges];
+        vec2 edge_normal = vec2(edge_end.y - edge_start.y, -(edge_end.x - edge_start.x)).normalize();
+        edge_normals[edge_index] = edge_normal * vec2(static_cast<float>(vertex_winding));
+    }
+
+    {
+        vec2 prev_edge_normal = edge_normals[num_edges - 1u];
+        for (std::uint32_t edge_index = 0u; edge_index < num_edges; edge_index++) {
+            vec2 edge_normal = edge_normals[edge_index];
+            float cos_angle_coverage = edge_normal.dot(prev_edge_normal);
+
+            if (cos_angle_coverage < 0.999999f) {
+                float angle_coverage = std::acos(cos_angle_coverage);
+                if (cos_angle_coverage <= 0.f)
+                    angle_coverage *= 0.5f;
+                edge_size_scales[edge_index] = 1.f / std::cos(angle_coverage * 0.5f);
+            }
+            else {
+                edge_size_scales[edge_index] = 1.f;
+            }
+
+            prev_edge_normal = edge_normal;
+        }
+    }
+
+    vec2 prev_edge_normal = edge_normals[num_edges - 1u];
+    vec2 edge_start = points[0];
+
+    if (use_inset_distance)
+        edge_start -= (edge_normals[0] + prev_edge_normal).normalize() * inset_distance;
+
+    for (std::uint32_t edge_index = 0u; edge_index < num_edges; edge_index++) {
+        vec2 edge_end = points[(edge_index + 1u) % num_edges];
+        vec2 edge_normal = edge_normals[edge_index];
+        const float size_scale_start = edge_size_scales[edge_index];
+        const float size_scale_end = edge_size_scales[(edge_index + 1) % num_edges];
+
+        if (use_inset_distance)
+            edge_end -= (edge_normals[(edge_index + 1u) % num_edges] + 
+                edge_normal).normalize() * inset_distance;
+
+        float cos_angle_coverage = edge_normal.dot(prev_edge_normal);
+        if (cos_angle_coverage < 0.999999f) {
+            std::uint32_t num_steps = (cos_angle_coverage <= 0.0f) ? 2u : 1u;
+
+            for (std::uint32_t step = 0u; step < num_steps; step++) {
+                if (num_steps > 1u) {
+                    if (step == 0)
+                        edge_normal = (edge_normal + prev_edge_normal).normalize();
+                    else
+                        edge_normal = edge_normals[edge_index];
+
+                    cos_angle_coverage = edge_normal.dot(prev_edge_normal);
+                }
+
+                const float angle_coverage = std::acos(cos_angle_coverage);
+                const float sin_angle_coverage = std::sin(angle_coverage);
+
+                const vec2 edge_delta = solid_to_edge_delta_texels * vec2(size_scale_start);
+
+                const vec2 rotated_edge_delta = vec2(
+                    (edge_delta.x * cos_angle_coverage) +
+                        (edge_delta.y * sin_angle_coverage), 
+                    (edge_delta.x * sin_angle_coverage) +
+                        (edge_delta.y * cos_angle_coverage)
+                );
+
+                const vec2 edge_delta_uv = edge_delta * inv_tex_size;
+                const vec2 rotated_edge_delta_uv = rotated_edge_delta * inv_tex_size;
+
+                const vec2 expanded_edge_uv = solid_uv + edge_delta_uv;
+                const vec2 other_edge_uv = solid_uv + rotated_edge_delta_uv;
+
+                const vec2 expanded_thickness = vec2(shadow_size * size_scale_start);
+
+                const vec2 outer_edge_start = edge_start + (prev_edge_normal * expanded_thickness);
+                const vec2 outer_edge_end = edge_start + (edge_normal * expanded_thickness);
+
+                const float size_scale_prev = edge_size_scales[(edge_index + num_edges - 1u) % num_edges];
+
+                const vec2 uv_curr = solid_uv + (edge_uv - solid_uv) * vec2(size_scale_start);
+                const vec2 uv_prev = solid_uv + (edge_uv - solid_uv) * vec2(size_scale_prev);
+
+                vertices_.emplace_back(edge_start, solid_uv, col);
+                vertices_.emplace_back(outer_edge_end, uv_curr, col);
+                vertices_.emplace_back(outer_edge_start, uv_prev, col);
+
+                indices_.emplace_back(vertex_ptr_ + 0u);
+                indices_.emplace_back(vertex_ptr_ + 1u);
+                indices_.emplace_back(vertex_ptr_ + 2u);
+
+                vertex_ptr_ += 3u;
+
+                prev_edge_normal = edge_normal;
+            }
+        }
+
+        const float edge_length = (edge_end - edge_start).length();
+        if (edge_length > 0.00001f) {
+            const vec2 outer_edge_start = edge_start + (edge_normal * vec2(shadow_size * size_scale_start));
+            const vec2 outer_edge_end = edge_end + (edge_normal * vec2(shadow_size * size_scale_end));
+            const vec2 scaled_edge_uv_start = solid_uv + ((edge_uv - solid_uv) * vec2(size_scale_start));
+            const vec2 scaled_edge_uv_end = solid_uv + ((edge_uv - solid_uv) * vec2(size_scale_end));
+
+            vertices_.emplace_back(edge_start, solid_uv, col);
+            vertices_.emplace_back(edge_end, solid_uv, col);
+            vertices_.emplace_back(outer_edge_end, scaled_edge_uv_end, col);
+            vertices_.emplace_back(outer_edge_start, scaled_edge_uv_start, col);
+
+            indices_.emplace_back(vertex_ptr_ + 0u);
+            indices_.emplace_back(vertex_ptr_ + 1u);
+            indices_.emplace_back(vertex_ptr_ + 2u);
+            indices_.emplace_back(vertex_ptr_ + 0u);
+            indices_.emplace_back(vertex_ptr_ + 2u);
+            indices_.emplace_back(vertex_ptr_ + 3u);
+
+            vertex_ptr_ += 4u;
+        }
+
+        edge_start = edge_end;
+    }
+
+    [[likely]] if (filled) {
+        for (std::uint32_t i = 0u; i < num_points; i++) {
+            vertices_.emplace_back(
+                points[i],
+                solid_uv,
+                col
+            );
+        }
+        for (std::uint32_t i = 2u; i < num_points; i++) {
+            indices_.emplace_back(vertex_ptr_);
+            indices_.emplace_back(vertex_ptr_ + i - 1u);
+            indices_.emplace_back(vertex_ptr_ + i);
+        }
+        vertex_ptr_ += num_points;
+    }
+}
+
 void renderer2d::add_lines(const vec2* points, std::uint32_t num_points, color_u32 col, float line_width, bool closed)
 {
 	if (num_points < 2u ||

@@ -75,12 +75,6 @@ void renderer2d::build_fonts()
     if (!font_atlas_->build())
         throw error(error_code::font_build);
 
-    // white px
-    vec2 uv_min, uv_max;
-    font_atlas_->get_rect_uv(font_atlas_->white_px_id(), uv_min, uv_max);
-
-    shared_data_.uv_white_px = (uv_min + uv_max) * vec2(0.5f);
-
     // fonts
     for (auto& font : fonts_) {
         if (!font->build())
@@ -232,8 +226,6 @@ void renderer2d::reset_render_data()
     push_texture_id(
         render_data_->font_view.get()
     );
-
-    shared_data_.set_circle_tessellation_max_error(0.3f);
 }
 
 void renderer2d::render()
@@ -284,10 +276,10 @@ void renderer2d::render()
         color::cyan().interp(color::black(), 0.5f).interp(color::white(), 0.3f)
     );
 
-    add_rect_filled(
+    add_shadow_rect_filled(
         vec2(600.f, 400.f),
         vec2(900.f, 600.f),
-        color::white().interp(color::black(), 0.5f),
+        color::white(),
         20.f
     );
 
@@ -343,6 +335,21 @@ void renderer2d::render()
         color::blue().interp(color::white(), 0.4f).interp(color::green(), 0.3f),
         std::u8string_view(u8"Ä*+**''Ä")
     );
+    if (false) {
+        indices_.push_back(vertex_ptr_ + 0u);
+        indices_.push_back(vertex_ptr_ + 1u);
+        indices_.push_back(vertex_ptr_ + 2u);
+        indices_.push_back(vertex_ptr_ + 0u);
+        indices_.push_back(vertex_ptr_ + 2u);
+        indices_.push_back(vertex_ptr_ + 3u);
+
+        const auto& uvs = shared_data_.shadow_uvs;
+        vertices_.emplace_back(vec2{ 300.f, 300.f },  vec2(uvs.x, uvs.y), color::white());
+        vertices_.emplace_back(vec2{ 300.f, 700.f },  vec2(uvs.x, uvs.w), color::white());
+        vertices_.emplace_back(vec2{ 1000.f, 700.f }, vec2(uvs.z, uvs.w), color::white());
+        vertices_.emplace_back(vec2{ 1000.f, 300.f }, vec2(uvs.z, uvs.y), color::white());
+        vertex_ptr_ += 4u;
+    }
 
     // update buffers
     ensure_capacity(
@@ -404,8 +411,8 @@ void renderer2d::create_resources()
     // Create vertex shader
     vertex_attribute_desc vs_desc[] = {
         { "POSITION", vertex_attribute_format::f32f32,         offsetof(vertex, pos), false, 0 },
-        { "TEXCOORD", vertex_attribute_format::f32f32,         offsetof(vertex, uv),  false, 0},
-        { "COLOR",    vertex_attribute_format::r8r8r8r8_unorm, offsetof(vertex, col), false, 0},
+        { "TEXCOORD", vertex_attribute_format::f32f32,         offsetof(vertex, uv),  false, 0 },
+        { "COLOR",    vertex_attribute_format::r8r8r8r8_unorm, offsetof(vertex, col), false, 0 },
     };
 
     std::unique_ptr<compiled_shader> vs_data = context_->compile_vertex_shader(
