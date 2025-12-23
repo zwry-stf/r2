@@ -86,23 +86,17 @@ inline void renderer2d::pop_clip_rect()
 	on_changed_header(rect, &draw_cmd::clip_rect);
 }
 
-inline bool renderer2d::push_texture_id(texture_handle texture)
+inline void renderer2d::push_texture_id(texture_handle texture)
 {
-	if (!texture_stack_.empty() &&
-		texture_stack_.front() == texture)
-		return false;
-
 	texture_stack_.push_back(texture);
 	on_changed_header(texture, &draw_cmd::texture);
-
-	return true;
 }
 
-inline bool renderer2d::push_texture_id(textureview* texture)
+inline void renderer2d::push_texture_id(textureview* texture)
 {
 	assert(texture != nullptr && 
 		   texture->desc().usage == view_usage::shader_resource);
-	return push_texture_id(texture->native_texture_handle());
+	push_texture_id(texture->native_texture_handle());
 }
 
 inline void renderer2d::pop_texture_id()
@@ -162,6 +156,8 @@ inline void renderer2d::aa_side(const vec2& start, const vec2& end, std::uint32_
 
 inline void renderer2d::add_line(const vec2& start, const vec2& end, color_u32 col, float line_width)
 {
+	assert(path_.empty());
+
 	const vec2 d = (end - start);
 	const float length = d.length();
 	if (length < 1e-6f)
@@ -178,14 +174,13 @@ inline void renderer2d::add_line(const vec2& start, const vec2& end, color_u32 c
 	indices_.push_back(vertex_ptr_ + 2u);
 	indices_.push_back(vertex_ptr_ + 3u);
 
-	auto backup = vertex_ptr_;
-
-	vertex_ptr_ += 4u;
-
 	vertices_.emplace_back(start - n, shared_data_.uv_white_px, col);
 	vertices_.emplace_back(start + n, shared_data_.uv_white_px, col);
 	vertices_.emplace_back(end + n, shared_data_.uv_white_px, col);
 	vertices_.emplace_back(end - n, shared_data_.uv_white_px, col);
+
+	const auto backup = vertex_ptr_;
+	vertex_ptr_ += 4u;
 
 	[[unlikely]] if (!flags_.anti_aliased_lines)
 		return;
@@ -258,6 +253,66 @@ inline void renderer2d::add_quad_filled(const vec2& p1, const vec2& p2, const ve
 	path_fill_convex(col);
 }
 
+inline void renderer2d::add_image(texture_handle texture, const vec2& min, const vec2& max, color_u32 col, const vec2& uv_min, const vec2& uv_max)
+{
+	push_texture_id(texture);
+
+	indices_.emplace_back(vertex_ptr_ + 0u);
+	indices_.emplace_back(vertex_ptr_ + 1u);
+	indices_.emplace_back(vertex_ptr_ + 2u);
+	indices_.emplace_back(vertex_ptr_ + 0u);
+	indices_.emplace_back(vertex_ptr_ + 2u);
+	indices_.emplace_back(vertex_ptr_ + 3u);
+
+	vertices_.emplace_back(min, uv_min, col);
+	vertices_.emplace_back(vec2{ min.x, max.y }, vec2{ uv_min.x, uv_max.y }, col);
+	vertices_.emplace_back(max, uv_max, col);
+	vertices_.emplace_back(vec2{ max.x, min.y }, vec2{ uv_max.x, uv_min.y }, col);
+
+	vertex_ptr_ += 4u;
+
+	pop_texture_id();
+}
+
+inline void renderer2d::add_image_rounded(texture_handle texture, const vec2& min, const vec2& max, float rounding, color_u32 col,
+	                                      const vec2& uv_min, const vec2& uv_max)
+{
+	push_texture_id(texture);
+
+	const auto backup = vertex_ptr_;
+	add_rect_filled(min, max, col, rounding);
+
+	shade_vertices_uv(
+		backup,
+		vertex_ptr_,
+		min, max,
+		uv_min, uv_max
+	);
+
+	pop_texture_id();
+}
+
+inline void renderer2d::shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max,
+	                                      const vec2& uv_min, const vec2& uv_max)
+{
+	if ((max - min) == vec2(0.f))
+		return;
+
+	const auto& curr_cmd = cmds_.back();
+
+	for (std::uint32_t i = curr_cmd.vertex_start + vtx_start;
+		i < curr_cmd.vertex_start + vtx_end; i++) {
+		auto& vtx = vertices_[i];
+
+		vec2 d = (vtx.pos - min) / (max - min);
+		// clamp
+		d.x = std::clamp(d.x, 0.f, 1.f);
+		d.y = std::clamp(d.y, 0.f, 1.f);
+
+		vtx.uv = uv_min + (uv_max - uv_min) * d;
+	}
+}
+
 inline void renderer2d::path_clear()
 {
 	path_.clear();
@@ -268,29 +323,37 @@ inline void renderer2d::path_add_point(const vec2& p)
 	path_.emplace_back(p);
 }
 
-
 template <int a_min_of_12, int a_max_of_12>
-inline void renderer2d::path_arc_to_fast(const vec2& center, float radius, float step)
+inline void renderer2d::path_arc_to(const vec2& center, float radius, float step)
 {
-	static_assert(a_min_of_12 < a_max_of_12);
-	static_assert(a_min_of_12 >= 0 && a_min_of_12 < 12);
-	static_assert(a_max_of_12 > 0 && a_max_of_12 <= 12);
-	assert(radius >= 0.5f);
+    static_assert(a_min_of_12 < a_max_of_12);
+    static_assert(a_min_of_12 >= 0 && a_min_of_12 < 12);
+    static_assert(a_max_of_12 > 0 && a_max_of_12 <= 12);
+    assert(radius >= 0.5f);
+    assert(step > 0.0f);
 
-	constexpr float kStart = (static_cast<float>(a_min_of_12) / 12.f) * math::g_2_pi;
-	constexpr float kEnd = (static_cast<float>(a_max_of_12) / 12.f) * math::g_2_pi;
+    constexpr float kStart = (static_cast<float>(a_min_of_12) / 12.0f) * math::g_2_pi;
+    constexpr float kEnd   = (static_cast<float>(a_max_of_12) / 12.0f) * math::g_2_pi;
 
-	for (float i = kStart; i < kEnd; i += step) {
-		path_.emplace_back(
-			center.x + std::sin(i) * radius,
-			center.y + std::cos(i) * radius
-		);
-	}
+	const float span = kEnd - kStart;
+	const int n = (std::max)(1, static_cast<int>(std::ceil(span / step)));
+	const float delta = span / static_cast<float>(n);
 
-	path_.emplace_back(
-		center.x + std::sin(kEnd) * radius,
-		center.y + std::cos(kEnd) * radius
-	);
+    float s = std::sin(kStart);
+    float c = std::cos(kStart);
+    const float sd = std::sin(delta);
+    const float cd = std::cos(delta);
+
+    for (int j = 0; j <= n; ++j) {
+        path_.emplace_back(center.x + s * radius, center.y + c * radius);
+
+        if (j != n) {
+            const float s_next = s * cd + c * sd;
+            const float c_next = c * cd - s * sd;
+            s = s_next;
+            c = c_next;
+        }
+    }
 }
 
 inline void renderer2d::path_rect(const vec2& min, const vec2& max, float rounding, e_rounding_flags flags, float corner_step)
@@ -311,25 +374,25 @@ inline void renderer2d::path_rect(const vec2& min, const vec2& max, float roundi
 		const float step = corner_step / corner_size * 2.f;
 
 		if (rounding_tl > 0.5f) {
-			path_arc_to_fast<6, 9>(vec2{ min.x + rounding_tl, min.y + rounding_tl }, rounding_tl, step);
+			path_arc_to<6, 9>(vec2{ min.x + rounding_tl, min.y + rounding_tl }, rounding_tl, step);
 		} else {
 			path_.emplace_back(min.x, min.y);
 		}
 
 		if (rounding_bl > 0.5f) {
-			path_arc_to_fast<9, 12>(vec2{ min.x + rounding_bl, max.y - rounding_bl }, rounding_bl, step);
+			path_arc_to<9, 12>(vec2{ min.x + rounding_bl, max.y - rounding_bl }, rounding_bl, step);
 		} else {
 			path_.emplace_back(min.x, max.y);
 		}
 
 		if (rounding_br > 0.5f) {
-			path_arc_to_fast<0, 3>(vec2{ max.x - rounding_br, max.y - rounding_br }, rounding_br, step);
+			path_arc_to<0, 3>(vec2{ max.x - rounding_br, max.y - rounding_br }, rounding_br, step);
 		} else {
 			path_.emplace_back(max.x, max.y);
 		}
 
 		if (rounding_tr > 0.5f) {
-			path_arc_to_fast<3, 6>(vec2{ max.x - rounding_tr, min.y + rounding_tr }, rounding_tr, step);
+			path_arc_to<3, 6>(vec2{ max.x - rounding_tr, min.y + rounding_tr }, rounding_tr, step);
 		} else {
 			path_.emplace_back(max.x, min.y);
 		}

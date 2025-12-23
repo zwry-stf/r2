@@ -283,6 +283,16 @@ void renderer2d::render()
         20.f
     );
 
+    add_image_rounded(
+        render_data_->font_view->native_texture_handle(),
+        vec2(100.f, 100.f),
+        vec2(400.f, 400.f),
+        50.f,
+        color::white(),
+        vec2(shared_data_.shadow_uvs.x, shared_data_.shadow_uvs.y),
+        vec2(shared_data_.shadow_uvs.z, shared_data_.shadow_uvs.w)
+    );
+
     add_rect(
         vec2(600.f, 700.f),
         vec2(900.f, 900.f),

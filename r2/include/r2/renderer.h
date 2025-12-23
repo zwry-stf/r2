@@ -93,8 +93,8 @@ public:
 	void push_clip_rect(const vec2& min, const vec2& max, bool intersect_current = false);
 	void push_clip_rect(const rect& r, bool intersect_current = false);
 	void pop_clip_rect();
-	bool push_texture_id(texture_handle texture);
-	bool push_texture_id(textureview* texture);
+	void push_texture_id(texture_handle texture);
+	void push_texture_id(textureview* texture);
 	void pop_texture_id();
 	void push_font(class font* font);
 	void pop_font();
@@ -113,6 +113,13 @@ public:
 	void add_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col);
 	void add_shadow_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col, float shadow_size, bool filled = true);
 	void add_lines(const vec2* points, std::uint32_t num_points, color_u32 col, float line_width, bool closed = false);
+
+	void add_image(texture_handle texture, const vec2& min, const vec2& max, color_u32 col = color::white(),
+		           const vec2& uv_min = vec2(0.f), const vec2& uv_max = vec2(1.f));
+	void add_image_rounded(texture_handle texture, const vec2& min, const vec2& max, float rounding, color_u32 col = color::white(),
+		                   const vec2& uv_min = vec2(0.f), const vec2& uv_max = vec2(1.f));
+	void shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
+		                   const vec2& uv_min, const vec2& uv_max);
 
 	/// text
 	template <unicode::string_like String>
@@ -144,7 +151,7 @@ public:
 	void path_clear();
 	void path_add_point(const vec2& p);
 	template <int a_min_of_12, int a_max_of_12>
-	void path_arc_to_fast(const vec2& center, float radius, float step);
+	void path_arc_to(const vec2& center, float radius, float step);
 	void path_rect(const vec2& min, const vec2& max, float rounding,
 		           e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
 	void path_fill_convex(color_u32 col);
