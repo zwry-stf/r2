@@ -108,6 +108,88 @@ viewport gl_context::get_viewport() const noexcept
     return v;
 }
 
+void gl_context::copy_subresource(textureview* dst, const textureview* src,
+                                  const rect& src_rect, const rect& dst_rect)
+{
+    assert(dst_rect.right - dst_rect.left == src_rect.right - src_rect.left);
+    assert(dst_rect.bottom - dst_rect.top == src_rect.bottom - src_rect.top);
+
+    const auto* gl_src = to_native(src);
+    auto* gl_dst = to_native(dst);
+
+    const auto& ddesc = gl_dst->resource()->desc();
+    const auto& sdesc = gl_src->resource()->desc();
+
+    if (gl_src->texture() == 0u ||
+        !has_version(4, 3)) {
+        resolve_subresource(
+            dst, src, 
+            std::nullopt, /* format */
+            src_rect, dst_rect
+        );
+    }
+    else {
+        const GLint src_level = 0;
+        const GLint dst_level = 0;
+
+        const GLint src_x = static_cast<GLint>(src_rect.left);
+        const GLint src_y = static_cast<GLint>(sdesc.height - src_rect.bottom); // note bottom
+        const GLint src_z = 0;
+
+        const GLint dst_x = static_cast<GLint>(dst_rect.left);
+        const GLint dst_y = static_cast<GLint>(ddesc.height - dst_rect.bottom); // note bottom
+        const GLint dst_z = 0;
+
+        const GLsizei w = static_cast<GLsizei>(src_rect.right - src_rect.left);
+        const GLsizei h = static_cast<GLsizei>(src_rect.bottom - src_rect.top);
+        const GLsizei d = 1;
+
+        gl_call(glCopyImageSubData(
+            gl_src->texture(), GL_TEXTURE_2D, src_level,
+            src_x, src_y, src_z,
+            gl_dst->texture(), GL_TEXTURE_2D, dst_level,
+            dst_x, dst_y, dst_z,
+            w, h, d)
+        );
+    }
+}
+
+void gl_context::resolve_subresource(textureview* dst, const textureview* src, std::optional<texture_format> format,
+                                     const rect& src_rect, const rect& dst_rect)
+{
+    assert(dst_rect.right - dst_rect.left == src_rect.right - src_rect.left);
+    assert(dst_rect.bottom - dst_rect.top == src_rect.bottom - src_rect.top);
+
+    (void)format;
+
+    const auto* gl_src = to_native(src);
+    auto* gl_dst = to_native(dst);
+
+    const auto& ddesc = gl_dst->resource()->desc();
+    const auto& sdesc = gl_src->resource()->desc();
+
+    GLboolean scissors_was_enabled;
+    glGetBooleanv(GL_SCISSOR_TEST, &scissors_was_enabled);
+    glDisable(GL_SCISSOR_TEST);
+
+    gl_call(glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_src->fbo()));
+    gl_call(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gl_dst->fbo()));
+
+    if (gl_dst->fbo() != 0)
+        gl_call(glDrawBuffer(GL_COLOR_ATTACHMENT0));
+    else
+        gl_call(glDrawBuffer(GL_BACK));
+
+    gl_call(glBlitFramebuffer(
+        src_rect.left, sdesc.height - src_rect.top, src_rect.right, sdesc.height - src_rect.bottom,
+        dst_rect.left, ddesc.height - dst_rect.top, dst_rect.right, ddesc.height - dst_rect.bottom,
+        GL_COLOR_BUFFER_BIT, GL_NEAREST)
+    );
+
+    if (scissors_was_enabled)
+        glEnable(GL_SCISSOR_TEST);
+}
+
 /// create
 
 std::unique_ptr<blendstate> gl_context::create_blendstate(const blendstate_desc& desc)
@@ -213,7 +295,7 @@ std::unique_ptr<framebuffer> gl_context::create_framebuffer(const framebuffer_de
 
 /// bind
 
-void gl_context::set_vertex_buffer(buffer* vb, std::uint32_t slot)
+void gl_context::set_vertex_buffer(const buffer* vb, std::uint32_t slot)
 {
     GLuint buf = 0u;
     if (vb != nullptr) {
@@ -234,7 +316,7 @@ void gl_context::set_vertex_buffer(buffer* vb, std::uint32_t slot)
     }
 }
 
-void gl_context::set_index_buffer(buffer* ib)
+void gl_context::set_index_buffer(const buffer* ib)
 {
     GLuint buf = 0u;
     if (ib != nullptr) {
@@ -254,7 +336,7 @@ void gl_context::set_index_buffer(buffer* ib)
         GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
 }
 
-void gl_context::set_uniform_buffer(buffer* ub, shader_bind_type stage, std::uint32_t slot)
+void gl_context::set_uniform_buffer(const buffer* ub, shader_bind_type stage, std::uint32_t slot)
 {
     GLuint buf = 0u;
     if (ub != nullptr) {
@@ -267,7 +349,7 @@ void gl_context::set_uniform_buffer(buffer* ub, shader_bind_type stage, std::uin
     gl_call(glBindBufferBase(GL_UNIFORM_BUFFER, static_cast<GLuint>(slot), buf));
 }
 
-void gl_context::set_texture(textureview* srv, shader_bind_type stage, std::uint32_t slot)
+void gl_context::set_texture(const textureview* srv, shader_bind_type stage, std::uint32_t slot)
 {
     (void)stage;
 
@@ -294,7 +376,7 @@ void gl_context::set_texture_native(void* handle, shader_bind_type stage, std::u
     gl_call(glBindTexture(target, tex));
 }
 
-void gl_context::set_sampler(sampler* s, shader_bind_type stage, std::uint32_t slot)
+void gl_context::set_sampler(const sampler* s, shader_bind_type stage, std::uint32_t slot)
 {
     (void)stage;
 
@@ -306,7 +388,7 @@ void gl_context::set_sampler(sampler* s, shader_bind_type stage, std::uint32_t s
     gl_call(glBindSampler(static_cast<GLuint>(slot), samp));
 }
 
-void gl_context::set_framebuffer(framebuffer* fb)
+void gl_context::set_framebuffer(const framebuffer* fb)
 {
     GLuint fbo = 0;
     if (fb != nullptr) {
@@ -335,7 +417,7 @@ void gl_context::set_framebuffer(framebuffer* fb)
     current_render_height_ = static_cast<std::int32_t>(td.height);
 }
 
-void gl_context::clear_framebuffer(framebuffer* fb)
+void gl_context::clear_framebuffer(const framebuffer* fb)
 {
     auto fbo = to_native(fb->desc().color_attachment.view)->fbo();
 

@@ -30,7 +30,7 @@ public:
 public:
     v_always_inline constexpr vec2() noexcept
         : x(0.f), y(0.f) { }
-    v_always_inline constexpr explicit vec2(float x, float y) noexcept
+    v_always_inline constexpr vec2(float x, float y) noexcept
         : x(x), y(y) { }
     v_always_inline constexpr explicit vec2(float v) noexcept
         : x(v), y(v) { }
@@ -191,7 +191,7 @@ public:
 public:
     v_always_inline constexpr vec4() noexcept
         : x(0.f), y(0.f), z(0.f), w(0.f) { }
-    v_always_inline constexpr explicit vec4(float x, float y, float z, float w) noexcept
+    v_always_inline constexpr vec4(float x, float y, float z, float w) noexcept
         : x(x), y(y), z(z), w(w) { }
     v_always_inline constexpr explicit vec4(float v) noexcept
         : x(v), y(v), z(v), w(v) { }

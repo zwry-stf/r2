@@ -92,6 +92,88 @@ viewport d3d11_context::get_viewport() const noexcept
     };
 }
 
+void d3d11_context::copy_subresource(textureview* dst, const textureview* src,
+                                     const rect& src_rect, const rect& dst_rect)
+{
+    assert(dst_rect.right - dst_rect.left == src_rect.right - src_rect.left);
+    assert(dst_rect.bottom - dst_rect.top == src_rect.bottom - src_rect.top);
+
+    const auto* src_texture = to_native(src);
+    auto* dst_texture = to_native(dst);
+
+    D3D11_BOX box{ 
+        static_cast<UINT>(src_rect.left), 
+        static_cast<UINT>(src_rect.top),
+        0u, /* front */
+        static_cast<UINT>(src_rect.right),
+        static_cast<UINT>(src_rect.bottom),
+        1u /* back */
+    };
+    context_->CopySubresourceRegion(
+        dst_texture->resource()->texture(), 0u,
+        static_cast<UINT>(dst_rect.left),
+        static_cast<UINT>(dst_rect.top),
+        0u, /* dst z */
+        src_texture->resource()->texture(),
+        0u,
+        &box
+    );
+}
+
+DXGI_FORMAT get_correct_format(DXGI_FORMAT curr)
+{
+    switch (curr) {
+    case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+        return DXGI_FORMAT_R8G8B8A8_UNORM;
+    case DXGI_FORMAT_BC1_UNORM_SRGB:
+        return DXGI_FORMAT_BC1_UNORM;
+    case DXGI_FORMAT_BC2_UNORM_SRGB:
+        return DXGI_FORMAT_BC2_UNORM;
+    case DXGI_FORMAT_BC3_UNORM_SRGB:
+        return DXGI_FORMAT_BC3_UNORM;
+    case DXGI_FORMAT_BC7_UNORM_SRGB:
+        return DXGI_FORMAT_BC7_UNORM;
+    case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+        return DXGI_FORMAT_B8G8R8X8_UNORM;
+    case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+        return DXGI_FORMAT_B8G8R8A8_UNORM;
+    }
+
+    return curr;
+}
+
+void d3d11_context::resolve_subresource(textureview* dst, const textureview* src, std::optional<texture_format> format,
+                                        const rect& src_rect, const rect& dst_rect)
+{
+    assert(dst_rect.right - dst_rect.left == src_rect.right - src_rect.left);
+    assert(dst_rect.bottom - dst_rect.top == src_rect.bottom - src_rect.top);
+
+    (void)src_rect;
+    (void)dst_rect;
+
+    const auto* src_texture = to_native(src);
+    auto* dst_texture = to_native(dst);
+
+    DXGI_FORMAT fmt;
+    if (!format.has_value()) {
+        D3D11_TEXTURE2D_DESC d;
+        dst_texture->resource()->texture()->GetDesc(&d);
+
+        fmt = get_correct_format(d.Format);
+    }
+    else {
+        fmt = d3d11_texture2d::to_dxgi_format(format.value());
+    }
+
+    context_->ResolveSubresource(
+        dst_texture->resource()->texture(),
+        0,
+        src_texture->resource()->texture(),
+        0,
+        fmt
+    );
+}
+
 /// create
 
 std::unique_ptr<blendstate> d3d11_context::create_blendstate(const blendstate_desc& desc)
@@ -204,7 +286,7 @@ std::unique_ptr<framebuffer> d3d11_context::create_framebuffer(const framebuffer
 
 /// bind
 
-void d3d11_context::set_vertex_buffer(buffer* vb, std::uint32_t slot)
+void d3d11_context::set_vertex_buffer(const buffer* vb, std::uint32_t slot)
 {
     assert(vb == nullptr || vb->desc().usage == buffer_usage::vertex);
 
@@ -222,7 +304,7 @@ void d3d11_context::set_vertex_buffer(buffer* vb, std::uint32_t slot)
     );
 }
 
-void d3d11_context::set_index_buffer(buffer* ib)
+void d3d11_context::set_index_buffer(const buffer* ib)
 {
     assert(ib == nullptr || ib->desc().usage == buffer_usage::index);
 
@@ -234,7 +316,7 @@ void d3d11_context::set_index_buffer(buffer* ib)
     );
 }
 
-void d3d11_context::set_uniform_buffer(buffer* ub, shader_bind_type stage, std::uint32_t slot)
+void d3d11_context::set_uniform_buffer(const buffer* ub, shader_bind_type stage, std::uint32_t slot)
 {
     auto* cbuf = ub == nullptr ? nullptr : to_native(ub)->buffer();
 
@@ -263,7 +345,7 @@ void d3d11_context::set_uniform_buffer(buffer* ub, shader_bind_type stage, std::
     }
 }
 
-void d3d11_context::set_texture(textureview* srv, shader_bind_type stage, std::uint32_t slot)
+void d3d11_context::set_texture(const textureview* srv, shader_bind_type stage, std::uint32_t slot)
 {
     assert(srv == nullptr || srv->desc().usage == view_usage::shader_resource);
 
@@ -301,7 +383,7 @@ void d3d11_context::set_texture_native(void* handle, shader_bind_type stage, std
     }
 }
 
-void d3d11_context::set_sampler(sampler* s, shader_bind_type stage, std::uint32_t slot)
+void d3d11_context::set_sampler(const sampler* s, shader_bind_type stage, std::uint32_t slot)
 {
     auto* sampler = s == nullptr ? nullptr : to_native(s)->sampler();
 
@@ -330,7 +412,7 @@ void d3d11_context::set_sampler(sampler* s, shader_bind_type stage, std::uint32_
     }
 }
 
-void d3d11_context::set_framebuffer(framebuffer* fb)
+void d3d11_context::set_framebuffer(const framebuffer* fb)
 {
     ID3D11RenderTargetView* rtv = nullptr;
     ID3D11DepthStencilView* dsv = nullptr;
@@ -351,7 +433,7 @@ void d3d11_context::set_framebuffer(framebuffer* fb)
     );
 }
 
-void d3d11_context::clear_framebuffer(framebuffer* fb)
+void d3d11_context::clear_framebuffer(const framebuffer* fb)
 {
     constexpr FLOAT clear_color[] = { 0.f, 0.f, 0.f, 0.f };
     context_->ClearRenderTargetView(

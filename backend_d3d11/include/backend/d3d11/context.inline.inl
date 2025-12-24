@@ -67,14 +67,27 @@ struct get_native_t<framebuffer*> {
     using type = class d3d11_framebuffer*;
 };
 
+template <>
+struct get_native_t<context*> {
+    using type = class d3d11_context*;
+};
+
 template <typename T>
 inline auto to_native(T* v) {
+    using src_t = std::remove_const_t<T>;
+    using native_pointee_t = typename get_native_t<src_t*>::type;
+    using native_ret_t = std::conditional_t<
+        std::is_const_v<T>,
+        std::add_pointer_t<std::add_const_t<std::remove_pointer_t<native_pointee_t>>>,
+        native_pointee_t
+    >;
+
 #if defined(_DEBUG)
-    auto* ret = dynamic_cast<get_native_t<T*>::type>(v);
+    auto* ret = dynamic_cast<native_ret_t>(v);
     assert(ret != nullptr || v == nullptr);
     return ret;
 #else
-    return reinterpret_cast<get_native_t<T*>::type>(v);
+    return reinterpret_cast<native_ret_t>(v);
 #endif
 }
 

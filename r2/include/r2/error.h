@@ -31,11 +31,13 @@ private:
     std::int32_t detail_;
 
 public:
-    error(error_code code)
-        : code_(code), error_(0), detail_(0) { }
-    
-    error(error_code code, std::int32_t error, std::int32_t detail)
-        : code_(code), error_(error), detail_(detail) { }
+    error(error_code code, std::int32_t error, std::int32_t detail) noexcept
+        : code_(code), 
+          error_(error), 
+          detail_(detail) { }
+
+    error(error_code code) noexcept
+        : error(code, -1, 0) { }
 
 public:
     [[nodiscard]] auto get_code() const noexcept {
@@ -117,7 +119,7 @@ public:
             break;
         }
 
-        if (error_ != 0) {
+        if (error_ != -1) {
             ret += " ( ";
             ret += std::to_string(error_);
             if (detail_ != 0) {

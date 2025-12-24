@@ -34,6 +34,10 @@ public:
     virtual rect get_scissor_rect() const noexcept override;
     virtual primitive_topology get_primitive_topology() const noexcept override;
     virtual viewport get_viewport() const noexcept override;
+    virtual void copy_subresource(textureview* dst, const textureview* src,
+                                  const rect& src_rect, const rect& dst_rect) override;
+    virtual void resolve_subresource(textureview* dst, const textureview* src, std::optional<texture_format> format,
+                                     const rect& src_rect, const rect& dst_rect) override;
 
     /// create
     virtual std::unique_ptr<blendstate> create_blendstate(const blendstate_desc& desc) override;
@@ -56,14 +60,14 @@ public:
     virtual std::unique_ptr<framebuffer> create_framebuffer(const framebuffer_desc& desc) override;
 
     /// bind
-    virtual void set_vertex_buffer(buffer* vb, std::uint32_t slot = 0u) override;
-    virtual void set_index_buffer(buffer* ib) override;
-    virtual void set_uniform_buffer(buffer* ub, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) override;
-    virtual void set_texture(textureview* srv, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) override;
+    virtual void set_vertex_buffer(const buffer* vb, std::uint32_t slot = 0u) override;
+    virtual void set_index_buffer(const buffer* ib) override;
+    virtual void set_uniform_buffer(const buffer* ub, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) override;
+    virtual void set_texture(const textureview* srv, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) override;
     virtual void set_texture_native(void* handle, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) override;
-    virtual void set_sampler(sampler* s, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) override;
-    virtual void set_framebuffer(framebuffer* fb) override;
-    virtual void clear_framebuffer(framebuffer* fb) override;
+    virtual void set_sampler(const sampler* s, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) override;
+    virtual void set_framebuffer(const framebuffer* fb) override;
+    virtual void clear_framebuffer(const framebuffer* fb) override;
 
     // immediate
     virtual void draw(std::uint32_t count, std::uint32_t vertex_start = 0u) override;
