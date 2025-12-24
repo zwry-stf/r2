@@ -22,4 +22,9 @@ std::unique_ptr<context> context::make_context(const context_init_data& data, bo
 #endif // R2_BACKEND_OPENGL
 }
 
+void context::release_backbuffer()
+{
+    backbuffer_.reset();
+}
+
 r2_end_

@@ -278,9 +278,15 @@ std::unique_ptr<texture2d> gl_context::create_texture2d(const texture_desc& desc
     return std::make_unique<gl_texture2d>(this, desc, initial_data);
 }
 
-std::optional<std::unique_ptr<texture2d>> gl_context::acquire_backbuffer()
+void gl_context::acquire_backbuffer()
 {
-    return std::make_unique<gl_texture2d>(this, nullptr);
+    backbuffer_ = std::make_unique<gl_texture2d>(this, nullptr);
+    if (backbuffer_->has_error()) {
+        set_error(
+            std::to_underlying(gl_context_error::backbuffer),
+            backbuffer_->get_detail()
+        );
+    }
 }
 
 std::unique_ptr<textureview> gl_context::create_textureview(texture2d* tex, const textureview_desc& desc)

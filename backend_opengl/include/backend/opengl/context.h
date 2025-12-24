@@ -8,6 +8,7 @@ r2_begin_
 enum class gl_context_error : std::int32_t {
     invalid_param,
     glew_init,
+    backbuffer
 };
 
 class gl_context : public context {
@@ -29,6 +30,8 @@ public:
 #endif // R2_PLATFORM_WINDOWS
 
 public:
+    virtual void acquire_backbuffer() override;
+
     /// get
     // immediate
     virtual rect get_scissor_rect() const noexcept override;
@@ -55,7 +58,6 @@ public:
     virtual std::unique_ptr<inputlayout> create_inputlayout(const vertex_attribute_desc* desc, std::uint32_t count,
                                                             const void* vs_data, std::size_t vs_data_size) override;
     virtual std::unique_ptr<texture2d> create_texture2d(const texture_desc& desc, const void* initial_data = nullptr) override;
-    virtual std::optional<std::unique_ptr<texture2d>> acquire_backbuffer() override;
     virtual std::unique_ptr<textureview> create_textureview(texture2d* tex, const textureview_desc& desc) override;
     virtual std::unique_ptr<framebuffer> create_framebuffer(const framebuffer_desc& desc) override;
 

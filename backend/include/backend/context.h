@@ -25,12 +25,18 @@ r2_begin_
 
 class context : public object<void> {
 protected:
+    std::unique_ptr<texture2d> backbuffer_;
+
+protected:
     context() = default;
 
 public:
     static std::unique_ptr<context> make_context(const context_init_data& data, bool common_origin = true);
 
 public:
+    void release_backbuffer();
+    virtual void acquire_backbuffer() = 0;
+
     /// get
     // immediate
     virtual rect get_scissor_rect() const noexcept = 0;
@@ -57,7 +63,6 @@ public:
     virtual std::unique_ptr<inputlayout> create_inputlayout(const vertex_attribute_desc* desc, std::uint32_t count,
                                                             const void* vs_data, std::size_t vs_data_size) = 0;
     virtual std::unique_ptr<texture2d> create_texture2d(const texture_desc& desc, const void* initial_data = nullptr) = 0;
-    virtual std::optional<std::unique_ptr<texture2d>> acquire_backbuffer() = 0;
     virtual std::unique_ptr<textureview> create_textureview(texture2d* tex, const textureview_desc& desc) = 0;
     virtual std::unique_ptr<framebuffer> create_framebuffer(const framebuffer_desc& desc) = 0;
 
@@ -83,6 +88,10 @@ public:
     virtual void backup_render_state() = 0;
     virtual void restore_render_state() = 0;
     virtual void setup_render_state() = 0;
+
+    [[nodiscard]] auto* get_backbuffer() const noexcept {
+        return backbuffer_.get();
+    }
 };
 
 r2_end_

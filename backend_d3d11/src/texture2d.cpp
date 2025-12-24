@@ -17,7 +17,10 @@ DXGI_FORMAT d3d11_texture2d::to_dxgi_format(texture_format fmt) noexcept
 
     case texture_format::d24s8:       return DXGI_FORMAT_R24G8_TYPELESS;
     case texture_format::d32_float:   return DXGI_FORMAT_R32_TYPELESS;
-    default:                          return DXGI_FORMAT_UNKNOWN;
+    case texture_format::backbuffer: assert(false);
+    default:
+        assert(false);
+        return {};
     }
 }
 
@@ -66,7 +69,12 @@ d3d11_texture2d::d3d11_texture2d(d3d11_context* ctx, const texture_desc& desc, c
     d.Height    = desc.height;
     d.MipLevels = desc.mip_levels;
     d.ArraySize = 1;
-    d.Format = to_dxgi_format(desc.format);
+    if (desc.format == texture_format::backbuffer) {
+
+    }
+    else {
+        d.Format = to_dxgi_format(desc.format);
+    }
     d.SampleDesc.Count   = desc.sample_desc.count;
     d.SampleDesc.Quality = desc.sample_desc.quality;
     d.Usage = D3D11_USAGE_DEFAULT;

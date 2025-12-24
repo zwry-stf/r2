@@ -120,7 +120,7 @@ void d3d11_context::copy_subresource(textureview* dst, const textureview* src,
     );
 }
 
-DXGI_FORMAT get_correct_format(DXGI_FORMAT curr)
+DXGI_FORMAT d3d11_context::get_format_no_srgb(DXGI_FORMAT curr) noexcept
 {
     switch (curr) {
     case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
@@ -156,10 +156,15 @@ void d3d11_context::resolve_subresource(textureview* dst, const textureview* src
 
     DXGI_FORMAT fmt;
     if (!format.has_value()) {
-        D3D11_TEXTURE2D_DESC d;
-        dst_texture->resource()->texture()->GetDesc(&d);
+        if (dst_texture->resource() == backbuffer_.get()) {
+            fmt = backbuffer_format_no_srgb_; // use cached value for performance
+        }
+        else {
+            D3D11_TEXTURE2D_DESC d;
+            dst_texture->resource()->texture()->GetDesc(&d);
 
-        fmt = get_correct_format(d.Format);
+            fmt = get_format_no_srgb(d.Format);
+        }
     }
     else {
         fmt = d3d11_texture2d::to_dxgi_format(format.value());
@@ -264,14 +269,30 @@ std::unique_ptr<texture2d> d3d11_context::create_texture2d(const texture_desc& d
     return std::make_unique<d3d11_texture2d>(this, desc, initial_data);
 }
 
-std::optional<std::unique_ptr<texture2d>> d3d11_context::acquire_backbuffer()
+void d3d11_context::acquire_backbuffer()
 {
     d3d_pointer<ID3D11Texture2D> back_buffer;
     HRESULT res = sc_->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&back_buffer);
-    if (FAILED(res))
-        return std::nullopt;
+    if (FAILED(res)) {
+        set_error(
+            std::to_underlying(d3d11_context_error::backbuffer),
+            res
+        );
+        return;
+    }
 
-    return d3d11_texture2d::from_existing(this, back_buffer.get());
+    backbuffer_ = d3d11_texture2d::from_existing(this, back_buffer.get());
+    if (backbuffer_->has_error()) {
+        set_error(
+            std::to_underlying(d3d11_context_error::backbuffer),
+            backbuffer_->get_detail()
+        );
+    }
+
+    D3D11_TEXTURE2D_DESC d;
+    back_buffer->GetDesc(&d);
+
+    backbuffer_format_no_srgb_ = get_format_no_srgb(d.Format);
 }
 
 std::unique_ptr<textureview> d3d11_context::create_textureview(texture2d* tex, const textureview_desc& desc)

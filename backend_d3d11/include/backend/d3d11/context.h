@@ -9,6 +9,7 @@ r2_begin_
 enum class d3d11_context_error : std::int32_t {
     invalid_param,
     device,
+    backbuffer,
 };
 
 class d3d11_context : public context {
@@ -16,11 +17,14 @@ private:
     d3d_pointer<ID3D11Device> device_;
     d3d_pointer<ID3D11DeviceContext> context_;
     d3d_pointer<IDXGISwapChain> sc_;
+    DXGI_FORMAT backbuffer_format_no_srgb_;
 
 public:
     d3d11_context(IDXGISwapChain* sc);
 
 public:
+    virtual void acquire_backbuffer() override;
+
     /// get
     // immediate
     virtual rect get_scissor_rect() const noexcept override;
@@ -47,7 +51,6 @@ public:
     virtual std::unique_ptr<inputlayout> create_inputlayout(const vertex_attribute_desc* desc, std::uint32_t count,
                                                             const void* vs_data, std::size_t vs_data_size) override;
     virtual std::unique_ptr<texture2d> create_texture2d(const texture_desc& desc, const void* initial_data = nullptr) override;
-    virtual std::optional<std::unique_ptr<texture2d>> acquire_backbuffer() override;
     virtual std::unique_ptr<textureview> create_textureview(texture2d* tex, const textureview_desc& desc) override;
     virtual std::unique_ptr<framebuffer> create_framebuffer(const framebuffer_desc& desc) override;
 
@@ -78,14 +81,14 @@ public:
     [[nodiscard]] auto* get_device() const noexcept {
         return device_.get();
     }
-
     [[nodiscard]] auto* get_context() const noexcept {
         return context_.get();
     }
-
     [[nodiscard]] auto* get_swapchain() const noexcept {
         return sc_.get();
     }
+
+    static [[nodiscard]] DXGI_FORMAT get_format_no_srgb(DXGI_FORMAT f) noexcept;
 };
 
 r2_end_

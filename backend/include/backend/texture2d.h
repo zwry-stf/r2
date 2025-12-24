@@ -14,6 +14,7 @@ enum class texture_format : std::uint8_t {
     r32_float,
     d24s8,
     d32_float,
+    backbuffer,
 };
 
 enum class texture_usage : std::uint8_t {
