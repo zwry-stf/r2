@@ -87,6 +87,9 @@ public:
     [[nodiscard]] auto* get_swapchain() const noexcept {
         return sc_.get();
     }
+    [[nodiscard]] auto get_backbuffer_format_no_srgb() const noexcept {
+        return backbuffer_format_no_srgb_;
+    }
 
     static [[nodiscard]] DXGI_FORMAT get_format_no_srgb(DXGI_FORMAT f) noexcept;
 };

@@ -8,6 +8,7 @@ r2_begin_
 
 enum class error_code : std::int32_t {
     context_initialization,
+    context_backbuffer,
     vertex_shader_compile,
     vertex_shader_create,
     input_layout_create,
@@ -56,6 +57,10 @@ public:
         switch (code_) {
         case error_code::context_initialization:
             ret = "Context initialization failed.";
+            break;
+
+        case error_code::context_backbuffer:
+            ret = "Context failed to acquire backbuffer.";
             break;
 
         case error_code::vertex_shader_compile:

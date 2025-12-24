@@ -48,7 +48,12 @@ d3d11_textureview::d3d11_textureview(d3d11_context* ctx, d3d11_texture2d* tex, c
         assert((td.usage & texture_usage::shader_resource) != texture_usage::none);
 
         D3D11_SHADER_RESOURCE_VIEW_DESC sd{};
-        sd.Format = to_dxgi_format_srv(fmt);
+        if (fmt == texture_format::backbuffer) {
+            sd.Format = ctx->get_backbuffer_format_no_srgb();
+        }
+        else {
+            sd.Format = to_dxgi_format_srv(fmt);
+        }
         sd.ViewDimension = msaa ?
             D3D11_SRV_DIMENSION_TEXTURE2DMS : D3D11_SRV_DIMENSION_TEXTURE2D;
 
@@ -75,12 +80,16 @@ d3d11_textureview::d3d11_textureview(d3d11_context* ctx, d3d11_texture2d* tex, c
         assert((td.usage & texture_usage::render_target) != texture_usage::none);
 
         D3D11_RENDER_TARGET_VIEW_DESC rd{};
-        rd.Format = d3d11_texture2d::to_dxgi_format(fmt);
+        if (fmt == texture_format::backbuffer) {
+            rd.Format = ctx->get_backbuffer_format_no_srgb();
+        }
+        else {
+            rd.Format = d3d11_texture2d::to_dxgi_format(fmt);
+        }
         rd.ViewDimension = msaa ?
             D3D11_RTV_DIMENSION_TEXTURE2DMS : D3D11_RTV_DIMENSION_TEXTURE2D;
 
-        if (rd.ViewDimension == D3D11_RTV_DIMENSION_TEXTURE2D)
-        {
+        if (rd.ViewDimension == D3D11_RTV_DIMENSION_TEXTURE2D) {
             rd.Texture2D.MipSlice = desc_.range.base_mip;
         }
 
@@ -102,6 +111,7 @@ d3d11_textureview::d3d11_textureview(d3d11_context* ctx, d3d11_texture2d* tex, c
         assert((td.usage & texture_usage::depth_stencil) != texture_usage::none);
 
         D3D11_DEPTH_STENCIL_VIEW_DESC dd{};
+        assert(fmt != texture_format::backbuffer);
         dd.Format = to_dxgi_format_dsv(fmt);
         dd.ViewDimension = msaa ?
             D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;

@@ -43,13 +43,18 @@ void renderer2d::do_init()
     render_data_ = std::make_unique<render_data>();
     font_atlas_ = std::make_unique<font_atlas>(this);
 
+    context_->acquire_backbuffer();
+    if (context_->has_error())
+        throw error(error_code::blend_state_create,
+            context_->get_error(), context_->get_detail());
+
+    create_resources();
+
     destroyed_.store(false, std::memory_order_release);
     update_thread_ = std::thread([this]()
         {
             this->font_update_thread();
         });
-
-    create_resources();
 
     resources_created_ = true;
 }
@@ -59,6 +64,8 @@ void renderer2d::destroy()
     resources_created_ = false;
     is_initialized_ = true;
     destroyed_.store(true, std::memory_order_release);
+
+    context_->release_backbuffer();
 
     render_data_.reset();
     font_atlas_.reset();
@@ -123,10 +130,16 @@ void renderer2d::create_font_texture()
 
 void renderer2d::pre_resize()
 {
+    assert(is_initialized());
+
+    context_->release_backbuffer();
 }
 
 void renderer2d::post_resize()
 {
+    assert(is_initialized());
+
+    context_->acquire_backbuffer();
 }
 
 void renderer2d::update_display_size(const vec2& display_size)

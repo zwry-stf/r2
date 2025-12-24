@@ -7,8 +7,7 @@ r2_begin_
 
 void gl_texture2d::to_gl_format(texture_format fmt, GLint& out_internal, GLenum& out_format, GLenum& out_type) noexcept
 {
-    switch (fmt)
-    {
+    switch (fmt) {
     case texture_format::rgba8_unorm:
         out_internal = GL_RGBA8;
         out_format   = GL_RGBA;
@@ -50,13 +49,21 @@ void gl_texture2d::to_gl_format(texture_format fmt, GLint& out_internal, GLenum&
         out_format   = GL_DEPTH_COMPONENT;
         out_type     = GL_FLOAT;
         break;
+
+    case texture_format::backbuffer:
+        out_internal = GL_RGBA8;
+        out_format = GL_RGBA;
+        out_type = GL_UNSIGNED_BYTE;
+        break;
+    default:
+        assert(false);
+        return;
     }
 }
 
 std::uint32_t bytes_per_pixel(texture_format fmt) noexcept
 {
-    switch (fmt)
-    {
+    switch (fmt) {
     case texture_format::rgba8_unorm: return 4;
     case texture_format::bgra8_unorm: return 4;
     case texture_format::r8_unorm:    return 1;

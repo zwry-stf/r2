@@ -70,7 +70,7 @@ d3d11_texture2d::d3d11_texture2d(d3d11_context* ctx, const texture_desc& desc, c
     d.MipLevels = desc.mip_levels;
     d.ArraySize = 1;
     if (desc.format == texture_format::backbuffer) {
-
+        d.Format = ctx->get_backbuffer_format_no_srgb();
     }
     else {
         d.Format = to_dxgi_format(desc.format);
