@@ -38,9 +38,15 @@ struct glyph_lookup_data {
     std::uint32_t index : 30 { kInvalidIndex };
 };
 
+struct font_range {
+    wchar range_min;
+    wchar range_max;
+};
+
 struct font_data {
     const std::uint8_t* const data;
     const std::size_t size;
+    std::vector<font_range> ranges;
     std::unique_ptr<stbtt_fontinfo> font_info;
 };
 
@@ -95,6 +101,12 @@ public:
     // Adds font data to the font instance.
     // The order of added fonts matters. Only TTF format is supported.
     bool add_font(const std::uint8_t* data, std::size_t data_size);
+    // Adds font data to the font instance.
+    // The order of added fonts matters. Only TTF format is supported.
+    bool add_font(const std::uint8_t* data, std::size_t data_size, const std::vector<font_range>& ranges);
+    // Adds font data to the font instance.
+    // The order of added fonts matters. Only TTF format is supported.
+    bool add_font(const std::uint8_t* data, std::size_t data_size, std::vector<font_range>&& ranges);
 
 private:
     std::optional<pending_glyph> rasterize_glyph(wchar glyph, font_data* data = nullptr, bool blurred = false);
@@ -102,6 +114,7 @@ private:
     void build_weights();
     void blur_rect(std::uint32_t w, std::uint32_t h);
     void glow_rect(std::uint32_t w, std::uint32_t h);
+    stbtt_fontinfo* get_font_data_for_char(wchar c) const noexcept;
 };
 
 r2_end_

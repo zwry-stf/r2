@@ -137,17 +137,10 @@ bool font::build()
             continue;
         }
 
-        for (auto& data : fonts_) {
-            const int glyph_index = stbtt_FindGlyphIndex(
-                data.font_info.get(),
-                static_cast<int>(cp)
-            );
-            if (glyph_index != 0) {
-                l.supported = true;
-                if (has_blur) {
-                    glyph_lookup_blurred_[cp].supported = true;
-                }
-                break;
+        if (get_font_data_for_char(cp) != nullptr) {
+            l.supported = true;
+            if (has_blur) {
+                glyph_lookup_blurred_[cp].supported = true;
             }
         }
     }
@@ -160,7 +153,26 @@ bool font::build()
 
 bool font::add_font(const std::uint8_t* data, std::size_t data_size)
 {
-    fonts_.emplace_back(data, data_size, std::make_unique<stbtt_fontinfo>());
+    std::vector<font_range> ranges;
+    ranges.emplace_back(wchar(0), unicode::codepoint_max);
+
+    return add_font(data, data_size, std::move(ranges));
+}
+
+bool font::add_font(const std::uint8_t* data, std::size_t data_size, const std::vector<font_range>& ranges)
+{
+    std::vector<font_range> copy = ranges;
+    return add_font(data, data_size, std::move(copy));
+}
+
+bool font::add_font(const std::uint8_t* data, std::size_t data_size, std::vector<font_range>&& ranges)
+{
+    fonts_.emplace_back(
+        data,
+        data_size,
+        std::move(ranges),
+        std::make_unique<stbtt_fontinfo>()
+    );
 
     const int ok = stbtt_InitFont(
         fonts_.back().font_info.get(),
@@ -331,6 +343,32 @@ void font::glow_rect(std::uint32_t w, std::uint32_t h)
     }
 }
 
+stbtt_fontinfo* font::get_font_data_for_char(wchar c) const noexcept
+{
+    for (auto& d : fonts_) {
+        bool in_range = false;
+        for (auto& r : d.ranges) {
+            if (c >= r.range_min &&
+                c <= r.range_max) {
+                in_range = true;
+                break;
+            }
+        }
+        if (!in_range)
+            continue;
+
+        const int glyph_index = stbtt_FindGlyphIndex(
+            d.font_info.get(),
+            static_cast<int>(c)
+        );
+        if (glyph_index != 0) {
+            return d.font_info.get();
+        }
+    }
+
+    return nullptr;
+}
+
 std::optional<pending_glyph> font::rasterize_glyph(wchar c, font_data* data, bool blurred)
 {
     assert(!blurred || cfg_.glow_radius > 0u);
@@ -346,16 +384,7 @@ std::optional<pending_glyph> font::rasterize_glyph(wchar c, font_data* data, boo
         info = data->font_info.get();
     }
     else {
-        for (auto& d : fonts_) {
-            const int glyph_index = stbtt_FindGlyphIndex(
-                d.font_info.get(), 
-                static_cast<int>(c)
-            );
-            if (glyph_index != 0) {
-                info = d.font_info.get();
-                break;
-            }
-        }
+        info = get_font_data_for_char(c);
     }
     if (info == nullptr) {
         return std::nullopt;

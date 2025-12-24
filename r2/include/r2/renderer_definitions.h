@@ -8,6 +8,9 @@
 
 r2_begin_
 
+// forward declarations
+class font;
+
 #ifndef v_always_inline
 #if defined(_MSC_VER)
 #define v_always_inline __forceinline
