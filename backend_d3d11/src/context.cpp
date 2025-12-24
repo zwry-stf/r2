@@ -653,11 +653,14 @@ void d3d11_context::backup_render_state()
         &backup_data_->vertex_buffer_offset
     );
     get_context()->IAGetInputLayout(backup_data_->input_layout.address_of());
+
+    backup_data_->captured = true;
 }
 
 void d3d11_context::restore_render_state()
 {
     assert(backup_data_->captured);
+    backup_data_->captured = false;
 
     auto release_instances = [](ID3D11ClassInstance** instances, std::uint32_t& count)
     {

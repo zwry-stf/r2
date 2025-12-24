@@ -757,11 +757,14 @@ void gl_context::backup_render_state()
         backup_data_->last_color_mask[3]
     );
     gl_call(glDepthMask(backup_data_->last_depth_mask));
+
+    backup_data_->captured = true;
 }
 
 void gl_context::restore_render_state()
 {
     assert(backup_data_->captured);
+    backup_data_->captured = false;
 
     // viewport + scissor
     glViewport(
