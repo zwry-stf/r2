@@ -66,6 +66,8 @@ void renderer2d::do_init()
             this->font_update_thread();
         });
 
+    update_display_size();
+
     resources_created_ = true;
 }
 
@@ -150,19 +152,21 @@ void renderer2d::post_resize()
     assert(is_initialized());
 
     context_->acquire_backbuffer();
+    update_display_size();
 }
 
-void renderer2d::update_display_size(const vec2& display_size)
+void renderer2d::update_display_size()
 {
-    vec4 cb_data(display_size.x, display_size.y, 0.f, 0.f);
-    render_data_->constant_buffer->update(&cb_data, sizeof(cb_data));
-
-    display_size_ = display_size;
-
-    context_->update_display_size(
-        static_cast<std::uint32_t>(display_size.x),
-        static_cast<std::uint32_t>(display_size.y)
+    display_size_ = r2::vec2(
+        static_cast<float>(context_->get_backbuffer()->desc().width),
+        static_cast<float>(context_->get_backbuffer()->desc().height)
     );
+
+    vec4 cb_data(
+        display_size_.x, display_size_.y,
+        0.f, 0.f
+    );
+    render_data_->constant_buffer->update(&cb_data, sizeof(cb_data));
 }
 
 void renderer2d::set_flags(renderer_flags f)

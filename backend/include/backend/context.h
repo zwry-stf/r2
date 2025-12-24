@@ -84,7 +84,6 @@ public:
     virtual void set_viewport(const viewport& v) = 0;
 
     //
-    virtual void update_display_size(std::uint32_t width, std::uint32_t height) = 0;
     virtual void backup_render_state() = 0;
     virtual void restore_render_state() = 0;
     virtual void setup_render_state() = 0;

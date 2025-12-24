@@ -1,6 +1,9 @@
 #pragma once
 #include <backend/context.h>
 #include <gl/glew.h>
+#if defined(R2_PLATFORM_WINDOWS)
+#include <Windows.h>
+#endif
 
 
 r2_begin_
@@ -23,12 +26,15 @@ private:
     std::int32_t current_render_height_{ 0 };
     std::uint32_t render_width_{ 0u };
     std::uint32_t render_height_{ 0u };
+#if defined(R2_PLATFORM_WINDOWS)
+    HWND hwnd_;
+#endif // R2_PLATFORM_WINDOWS
 
     std::unique_ptr<struct backup_render_data> backup_data_;
 
 public:
 #if defined(R2_PLATFORM_WINDOWS)
-    gl_context(bool common_origin);
+    gl_context(const context_init_data& init_data, bool common_origin);
 #endif // R2_PLATFORM_WINDOWS
 
 public:
@@ -81,7 +87,6 @@ public:
     virtual void set_viewport(const viewport& v) override;
 
     //
-    virtual void update_display_size(std::uint32_t width, std::uint32_t height) override;
     virtual void backup_render_state() override;
     virtual void restore_render_state() override;
     virtual void setup_render_state() override;
@@ -90,6 +95,11 @@ public:
     [[nodiscard]] bool has_version(GLint major, GLint minor) const noexcept {
         return major_ > major || (major_ == major && minor_ >= minor);
     }
+#if defined(R2_PLATFORM_WINDOWS)
+    [[nodiscard]] HWND get_hwnd() const noexcept {
+        return hwnd_;
+    }
+#endif // R2_PLATFORM_WINDOWS
 };
 
 r2_end_

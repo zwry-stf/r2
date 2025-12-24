@@ -1,6 +1,11 @@
 #include <backend/opengl/texture2d.h>
+#include <backend/opengl/context.h>
 #include <assert.h>
 #include <utility>
+
+#if defined(R2_PLATFORM_WINDOWS)
+#include <Windows.h>
+#endif
 
 
 r2_begin_
@@ -154,8 +159,8 @@ gl_texture2d::gl_texture2d(gl_context* ctx, const texture_desc& desc, const void
     }
 }
 
-gl_texture2d::gl_texture2d(gl_context* ctx, std::nullptr_t)
-    : r2::texture2d(texture_desc{}),
+gl_texture2d::gl_texture2d(gl_context* ctx, std::nullptr_t, const texture_desc& desc)
+    : r2::texture2d(desc),
       gl_object(ctx),
       backbuffer_handle_(true)
 {
@@ -167,6 +172,20 @@ gl_texture2d::~gl_texture2d()
         glDeleteTextures(1, &texture_);
         texture_ = 0;
     }
+}
+
+std::unique_ptr<gl_texture2d> gl_texture2d::from_backbuffer(gl_context* ctx)
+{
+    texture_desc desc{};
+
+#if defined(R2_PLATFORM_WINDOWS)
+    RECT r;
+    GetClientRect(ctx->get_hwnd(), &r);
+    desc.width = static_cast<std::uint32_t>(r.right - r.left);
+    desc.height = static_cast<std::uint32_t>(r.bottom - r.top);
+#endif
+
+    return std::make_unique<gl_texture2d>(ctx, nullptr, desc);
 }
 
 void gl_texture2d::update(const void* data, std::uint32_t row_pitch)

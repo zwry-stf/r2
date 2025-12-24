@@ -92,7 +92,7 @@ int __stdcall WinMain(HINSTANCE /* instance */,
 #if defined(R2_BACKEND_D3D11)
     r2::context_init_data init_data(g_data.render_data.swapchain.get());
 #elif defined(R2_BACKEND_OPENGL)
-    r2::context_init_data init_data;
+    r2::context_init_data init_data(glfwGetWin32Window(g_data.window_data.window));
 #endif
 
     try {
@@ -119,11 +119,6 @@ int __stdcall WinMain(HINSTANCE /* instance */,
 
     if (!create_render_target())
         show_error_and_exit("failed to create render target");
-
-    g_renderer.update_display_size(r2::vec2(
-        static_cast<float>(g_data.window_data.fb_width),
-        static_cast<float>(g_data.window_data.fb_height)
-    ));
 
     // run
     glfwShowWindow(g_data.window_data.window);
@@ -337,15 +332,10 @@ bool resize(int width, int height)
         return false;
 #endif
 
-    if (!create_render_target())
-        return false;
-
     g_renderer.post_resize();
 
-    g_renderer.update_display_size(r2::vec2(
-        static_cast<float>(width),
-        static_cast<float>(height)
-    ));
+    if (!create_render_target())
+        return false;
 
     g_data.window_data.fb_width = width;
     g_data.window_data.fb_height = height;

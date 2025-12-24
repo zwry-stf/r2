@@ -74,7 +74,6 @@ public:
     virtual void set_viewport(const viewport& v) override;
 
     //
-    virtual void update_display_size(std::uint32_t width, std::uint32_t height) override;
     virtual void backup_render_state() override;
     virtual void restore_render_state() override;
     virtual void setup_render_state() override;

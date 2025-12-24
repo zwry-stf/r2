@@ -575,12 +575,6 @@ void d3d11_context::set_viewport(const viewport& v)
     context_->RSSetViewports(1u, &vp);
 }
 
-void d3d11_context::update_display_size(std::uint32_t width, std::uint32_t height)
-{
-    (void)width;
-    (void)height;
-}
-
 void d3d11_context::backup_render_state()
 {
     assert(!backup_data_->captured);

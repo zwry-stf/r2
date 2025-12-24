@@ -2,6 +2,7 @@
 #include <backend/texture2d.h>
 #include <backend/opengl/object.h>
 #include <assert.h>
+#include <memory>
 
 
 r2_begin_
@@ -20,8 +21,10 @@ private:
 
 public:
     gl_texture2d(gl_context* ctx, const texture_desc& desc, const void* data = nullptr);
-    gl_texture2d(gl_context* ctx, std::nullptr_t);
+    gl_texture2d(gl_context* ctx, std::nullptr_t, const texture_desc& desc);
     ~gl_texture2d();
+
+    static std::unique_ptr<gl_texture2d> from_backbuffer(gl_context* ctx);
 
 public:
     virtual void update(const void* data, std::uint32_t row_pitch) override;

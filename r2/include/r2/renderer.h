@@ -74,8 +74,6 @@ public:
     void pre_resize();
     void post_resize();
 
-    void update_display_size(const vec2& display_size);
-
     void set_flags(renderer_flags f);
 
     font* add_font(const font_cfg& cfg);
@@ -168,6 +166,7 @@ private:
     void ensure_capacity(std::uint32_t num_indices, std::uint32_t num_vertices);
     draw_cmd& add_draw_cmd();
     void font_update_thread();
+    void update_display_size();
 
     template <typename O>
     void on_changed_header(const O& new_value, O draw_cmd::* field);
@@ -180,6 +179,9 @@ public:
     }
     [[nodiscard]] auto flags() const noexcept {
         return flags_;
+    }
+    [[nodiscard]] const auto& get_render_size() const noexcept {
+        return display_size_;
     }
 };
 

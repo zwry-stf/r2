@@ -18,7 +18,7 @@ std::unique_ptr<context> context::make_context(const context_init_data& data, bo
     return std::make_unique<d3d11_context>(data.sc);
 #elif defined(R2_BACKEND_OPENGL)
     (void)data;
-    return std::make_unique<gl_context>(common_origin);
+    return std::make_unique<gl_context>(data, common_origin);
 #endif // R2_BACKEND_OPENGL
 }
 

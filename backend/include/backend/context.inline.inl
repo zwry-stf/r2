@@ -9,12 +9,26 @@
 struct IDXGISwapChain;
 #endif // R2_BACKEND_D3D11
 
+#if defined(R2_BACKEND_OPENGL)
+#if defined(R2_PLATFORM_WINDOWS)
+struct HWND__;
+#endif // R2_PLATFORM_WINDOWS;
+#endif // R2_BACKEND_OPENGL
+
 r2_begin_
 
 struct context_init_data {
 #if defined(R2_BACKEND_D3D11)
     IDXGISwapChain* sc;
-#endif // R2_BACKEND_D3D11
+    explicit context_init_data(IDXGISwapChain* sc)
+        : sc(sc) { }
+#elif defined(R2_BACKEND_OPENGL) // R2_BACKEND_D3D11
+#if defined(R2_PLATFORM_WINDOWS)
+    HWND__* hwnd;
+    explicit context_init_data(HWND__* hwnd)
+        : hwnd(hwnd) { }
+#endif // R2_PLATFORM_WINDOWS
+#endif // R2_BACKEND_OPENGL
 };
 
 
