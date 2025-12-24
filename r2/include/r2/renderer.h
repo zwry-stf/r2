@@ -28,9 +28,9 @@ private:
 
     std::vector<rect> clip_rect_stack_;
     std::vector<texture_handle> texture_stack_;
-    std::vector<class font*> font_stack_;
-    std::vector<std::unique_ptr<class font>> fonts_;
-    class font* current_font_{ nullptr };
+    std::vector<font*> font_stack_;
+    std::vector<std::unique_ptr<font>> fonts_;
+    font* current_font_{ nullptr };
 
     float aa_scale_{ 1.f };
 
@@ -78,7 +78,7 @@ public:
 
     void set_flags(renderer_flags f);
 
-    class font* add_font(const font_cfg& cfg);
+    font* add_font(const font_cfg& cfg);
 
     [[nodiscard]] bool is_initialized();
 
@@ -90,13 +90,16 @@ public:
     void render();
 
     /// states
+    void set_clip_rect(const rect& r);
     void push_clip_rect(const vec2& min, const vec2& max, bool intersect_current = false);
     void push_clip_rect(const rect& r, bool intersect_current = false);
     void pop_clip_rect();
+    void set_current_texture(texture_handle texture);
     void push_texture_id(texture_handle texture);
     void push_texture_id(textureview* texture);
     void pop_texture_id();
-    void push_font(class font* font);
+    void set_current_font(font* font);
+    void push_font(font* font);
     void pop_font();
 
     /// render

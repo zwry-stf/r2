@@ -46,6 +46,11 @@ inline void renderer2d::on_changed_header(const O& new_value, O draw_cmd::* fiel
     }
 }
 
+inline void renderer2d::set_clip_rect(const rect& r)
+{
+    on_changed_header(r, &draw_cmd::clip_rect);
+}
+
 inline void renderer2d::push_clip_rect(const vec2& min, const vec2& max, bool intersect_current)
 {
     push_clip_rect({
@@ -73,7 +78,7 @@ inline void renderer2d::push_clip_rect(const rect& r, bool intersect_current)
     }
 
     clip_rect_stack_.push_back(rect);
-    on_changed_header(rect, &draw_cmd::clip_rect);
+    set_clip_rect(rect);
 }
 
 inline void renderer2d::pop_clip_rect()
@@ -86,10 +91,15 @@ inline void renderer2d::pop_clip_rect()
     on_changed_header(rect, &draw_cmd::clip_rect);
 }
 
+inline void renderer2d::set_current_texture(texture_handle texture)
+{
+    on_changed_header(texture, &draw_cmd::texture);
+}
+
 inline void renderer2d::push_texture_id(texture_handle texture)
 {
     texture_stack_.push_back(texture);
-    on_changed_header(texture, &draw_cmd::texture);
+    set_current_texture(texture);
 }
 
 inline void renderer2d::push_texture_id(textureview* texture)
@@ -104,15 +114,18 @@ inline void renderer2d::pop_texture_id()
     assert(texture_stack_.size() > 1u);
 
     texture_stack_.pop_back();
-    auto* tex = texture_stack_.back();
+    set_current_texture(texture_stack_.back());
+}
 
-    on_changed_header(tex, &draw_cmd::texture);
+inline void renderer2d::set_current_font(font* font)
+{
+    current_font_ = font;
 }
 
 inline void renderer2d::push_font(font* font)
 {
     font_stack_.push_back(font);
-    current_font_ = font;
+    set_current_font(font);
 }
 
 inline void renderer2d::pop_font()
@@ -120,7 +133,7 @@ inline void renderer2d::pop_font()
     assert(font_stack_.size() > 1u);
 
     font_stack_.pop_back();
-    current_font_ = font_stack_.back();
+    set_current_font(font_stack_.back());
 }
 
 inline void renderer2d::aa_side(const vec2& start, const vec2& end, std::uint32_t vtx_start, std::uint32_t vtx_end, color_u32 col)
