@@ -19,6 +19,40 @@
 
 r2_begin_
 
+struct backup_render_data {
+    bool captured = false;
+
+    std::uint32_t  scissor_rects_count, viewports_count;
+    D3D11_RECT     scissor_rects[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+    D3D11_VIEWPORT viewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+
+    d3d_pointer<ID3D11RasterizerState> rasterizer_state;
+
+    d3d_pointer<ID3D11BlendState> blend_state;
+    FLOAT blend_factor[4];
+    std::uint32_t sample_mask;
+
+    std::uint32_t stencil_ref;
+    d3d_pointer<ID3D11DepthStencilState> depth_stencil_state;
+
+    d3d_pointer<ID3D11ShaderResourceView> ps_shader_resource;
+    d3d_pointer<ID3D11SamplerState>       ps_sampler;
+
+    d3d_pointer<ID3D11PixelShader>  pixel_shader;
+    d3d_pointer<ID3D11VertexShader> vertex_shader;
+
+    std::uint32_t        ps_instances_count, vs_instances_count;
+    ID3D11ClassInstance* ps_instances[256], * vs_instances[256];
+
+    D3D11_PRIMITIVE_TOPOLOGY primitive_topology;
+
+    d3d_pointer<ID3D11Buffer> index_buffer, vertex_buffer, constant_buffer;
+    std::uint32_t             index_buffer_offset, vertex_buffer_stride, vertex_buffer_offset;
+    DXGI_FORMAT               index_buffer_format;
+
+    d3d_pointer<ID3D11InputLayout> input_layout;
+};
+
 d3d11_context::d3d11_context(IDXGISwapChain* sc)
 {
     if (sc == nullptr) {
@@ -206,7 +240,7 @@ std::unique_ptr<sampler> d3d11_context::create_sampler(const sampler_desc& desc)
     return std::make_unique<d3d11_sampler>(this, desc);
 }
 
-std::unique_ptr<compiled_shader> d3d11_context::compile_vertex_shader(const char* source, std::size_t length)
+std::unique_ptr<compiled_shader> d3d11_context::compile_vertexshader(const char* source, std::size_t length)
 {
     return std::make_unique<d3d11_compiled_shader>(this, source, length, "vs_4_0");
 }
@@ -227,7 +261,7 @@ std::unique_ptr<vertexshader> d3d11_context::create_vertexshader(const void* dat
     );
 }
 
-std::unique_ptr<compiled_shader> d3d11_context::compile_pixel_shader(const char* source, std::size_t length)
+std::unique_ptr<compiled_shader> d3d11_context::compile_pixelshader(const char* source, std::size_t length)
 {
     return std::make_unique<d3d11_compiled_shader>(this, source, length, "ps_4_0");
 }
@@ -547,10 +581,185 @@ void d3d11_context::update_display_size(std::uint32_t width, std::uint32_t heigh
 
 void d3d11_context::backup_render_state()
 {
+    assert(!backup_data_->captured);
+
+    // Grab scissor rects / viewports
+    backup_data_->scissor_rects_count =
+        backup_data_->viewports_count =
+            D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+
+    get_context()->RSGetScissorRects(
+        &backup_data_->scissor_rects_count,
+        backup_data_->scissor_rects
+    );
+    get_context()->RSGetViewports(
+        &backup_data_->viewports_count,
+        backup_data_->viewports
+    );
+
+    // Rasterizer / blend / depth-stencil state
+    get_context()->RSGetState(backup_data_->rasterizer_state.address_of());
+    get_context()->OMGetBlendState(
+        backup_data_->blend_state.address_of(),
+        backup_data_->blend_factor,
+        &backup_data_->sample_mask
+    );
+    get_context()->OMGetDepthStencilState(
+        backup_data_->depth_stencil_state.address_of(),
+        &backup_data_->stencil_ref
+    );
+
+    // PS resources
+    get_context()->PSGetShaderResources(0, 1, backup_data_->ps_shader_resource.address_of());
+    get_context()->PSGetSamplers(0, 1, backup_data_->ps_sampler.address_of());
+
+    // Shaders + class instances
+    backup_data_->ps_instances_count =
+        backup_data_->vs_instances_count =
+            static_cast<std::uint32_t>(_countof(backup_data_->ps_instances));
+
+    get_context()->PSGetShader(
+        backup_data_->pixel_shader.address_of(),
+        backup_data_->ps_instances,
+        &backup_data_->ps_instances_count
+    );
+    get_context()->VSGetShader(
+        backup_data_->vertex_shader.address_of(),
+        backup_data_->vs_instances,
+        &backup_data_->vs_instances_count
+    );
+
+    // Constant buffer
+    get_context()->VSGetConstantBuffers(
+        0u,
+        1u,
+        backup_data_->constant_buffer.address_of()
+    );
+
+    // IA state
+    get_context()->IAGetPrimitiveTopology(&backup_data_->primitive_topology);
+    get_context()->IAGetIndexBuffer(
+        backup_data_->index_buffer.address_of(),
+        &backup_data_->index_buffer_format,
+        &backup_data_->index_buffer_offset
+    );
+    get_context()->IAGetVertexBuffers(
+        0,
+        1,
+        backup_data_->vertex_buffer.address_of(),
+        &backup_data_->vertex_buffer_stride,
+        &backup_data_->vertex_buffer_offset
+    );
+    get_context()->IAGetInputLayout(backup_data_->input_layout.address_of());
 }
 
 void d3d11_context::restore_render_state()
 {
+    assert(backup_data_->captured);
+
+    auto release_instances = [](ID3D11ClassInstance** instances, std::uint32_t& count)
+    {
+        for (std::uint32_t i = 0; i < count; ++i) {
+            if (instances[i]) {
+                instances[i]->Release();
+                instances[i] = nullptr;
+            }
+        }
+        count = 0u;
+    };
+
+    get_context()->RSSetScissorRects(
+        backup_data_->scissor_rects_count,
+        backup_data_->scissor_rects
+    );
+    get_context()->RSSetViewports(
+        backup_data_->viewports_count,
+        backup_data_->viewports
+    );
+
+    get_context()->RSSetState(backup_data_->rasterizer_state);
+    backup_data_->rasterizer_state.reset();
+
+    get_context()->OMSetBlendState(
+        backup_data_->blend_state,
+        backup_data_->blend_factor,
+        backup_data_->sample_mask
+    );
+    backup_data_->blend_state.reset();
+
+    get_context()->OMSetDepthStencilState(
+        backup_data_->depth_stencil_state,
+        backup_data_->stencil_ref
+    );
+    backup_data_->depth_stencil_state.reset();
+
+    get_context()->PSSetShaderResources(
+        0u,
+        1u,
+        backup_data_->ps_shader_resource.address_of()
+    );
+    backup_data_->ps_shader_resource.reset();
+
+    get_context()->PSSetSamplers(
+        0u,
+        1u,
+        backup_data_->ps_sampler.address_of()
+    );
+    backup_data_->ps_sampler.reset();
+
+    get_context()->PSSetShader(
+        backup_data_->pixel_shader,
+        backup_data_->ps_instances,
+        backup_data_->ps_instances_count
+    );
+    backup_data_->pixel_shader.reset();
+    release_instances(backup_data_->ps_instances, backup_data_->ps_instances_count);
+
+    get_context()->VSSetShader(
+        backup_data_->vertex_shader,
+        backup_data_->vs_instances,
+        backup_data_->vs_instances_count
+    );
+    backup_data_->vertex_shader.reset();
+    release_instances(backup_data_->vs_instances, backup_data_->vs_instances_count);
+
+    get_context()->VSSetConstantBuffers(
+        0u,
+        1u,
+        backup_data_->constant_buffer.address_of()
+    );
+    backup_data_->constant_buffer.reset();
+
+    get_context()->IASetPrimitiveTopology(backup_data_->primitive_topology);
+
+    get_context()->IASetIndexBuffer(
+        backup_data_->index_buffer,
+        backup_data_->index_buffer_format,
+        backup_data_->index_buffer_offset
+    );
+    backup_data_->index_buffer.reset();
+    backup_data_->index_buffer_format = DXGI_FORMAT_UNKNOWN;
+    backup_data_->index_buffer_offset = 0;
+
+    get_context()->IASetVertexBuffers(
+        0u,
+        1u,
+        backup_data_->vertex_buffer.address_of(),
+        &backup_data_->vertex_buffer_stride,
+        &backup_data_->vertex_buffer_offset
+    );
+    backup_data_->vertex_buffer.reset();
+    backup_data_->vertex_buffer_stride = 0;
+    backup_data_->vertex_buffer_offset = 0;
+
+    get_context()->IASetInputLayout(backup_data_->input_layout);
+    backup_data_->input_layout.reset();
+
+    backup_data_->scissor_rects_count = 0u;
+    backup_data_->viewports_count     = 0u;
+    backup_data_->primitive_topology  = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    backup_data_->sample_mask         = 0u;
+    backup_data_->stencil_ref         = 0u;
 }
 
 void d3d11_context::setup_render_state()

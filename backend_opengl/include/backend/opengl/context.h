@@ -24,6 +24,8 @@ private:
     std::uint32_t render_width_{ 0u };
     std::uint32_t render_height_{ 0u };
 
+    std::unique_ptr<struct backup_render_state> backup_data_;
+
 public:
 #if defined(R2_PLATFORM_WINDOWS)
     gl_context(bool common_origin);
@@ -48,10 +50,10 @@ public:
     virtual std::unique_ptr<depthstencilstate> create_depthstencilstate(const depthstencilstate_desc& desc) override;
     virtual std::unique_ptr<rasterizerstate> create_rasterizerstate(const rasterizerstate_desc& desc) override;
     virtual std::unique_ptr<sampler> create_sampler(const sampler_desc& desc) override;
-    virtual std::unique_ptr<compiled_shader> compile_vertex_shader(const char* source, std::size_t length) override;
+    virtual std::unique_ptr<compiled_shader> compile_vertexshader(const char* source, std::size_t length) override;
     virtual std::unique_ptr<vertexshader> create_vertexshader(compiled_shader* shader_data) override;
     virtual std::unique_ptr<vertexshader> create_vertexshader(const void* data, std::size_t size_bytes) override;
-    virtual std::unique_ptr<compiled_shader> compile_pixel_shader(const char* source, std::size_t length) override;
+    virtual std::unique_ptr<compiled_shader> compile_pixelshader(const char* source, std::size_t length) override;
     virtual std::unique_ptr<pixelshader> create_pixelshader(compiled_shader* shader_data) override;
     virtual std::unique_ptr<pixelshader> create_pixelshader(const void* data, std::size_t size_bytes) override;
     virtual std::unique_ptr<shaderprogram> create_shaderprogram(vertexshader* vs, pixelshader* ps) override;

@@ -86,6 +86,8 @@ public:
     /// frame
     void on_frame();
     void setup_render_state();
+    void backup_render_state();
+    void restore_render_state();
     void reset_render_data();
     void render();
 

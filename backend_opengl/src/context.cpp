@@ -28,6 +28,73 @@
 
 r2_begin_
 
+struct backup_render_state {
+    bool captured = false;
+
+    GLint      last_program;
+    GLint      last_active_texture;
+    GLint      last_texture;
+    GLint      last_sampler;
+    GLint      last_array_buffer;
+    GLint      last_vertex_array;
+    GLint      last_polygon_mode[2];
+    GLint      last_viewport[4];
+    GLint      last_scissor_box[4];
+    GLfloat    last_depth_range[2];
+
+    GLint      last_blend_src_rgb;
+    GLint      last_blend_dst_rgb;
+    GLint      last_blend_src_alpha;
+    GLint      last_blend_dst_alpha;
+    GLint      last_blend_eq_rgb;
+    GLint      last_blend_eq_alpha;
+    GLfloat    last_blend_color[4];
+    GLuint     last_sample_mask;
+
+    GLint      last_fbo;
+    GLint      last_draw_fbo;
+    GLint      last_read_fbo;
+
+    GLboolean  last_enable_blend;
+    GLboolean  last_enable_cull_face;
+    GLboolean  last_enable_depth_test;
+    GLboolean  last_enable_stencil_test;
+    GLboolean  last_enable_scissor_test;
+    GLboolean  last_enable_color_op;
+    GLboolean  last_depth_clamp;
+    GLboolean  last_multisample;
+    GLboolean  last_line_smooth;
+
+    GLint      last_stencil_func_front;
+    GLint      last_stencil_ref_front;
+    GLuint     last_stencil_valuemask_front;
+    GLint      last_stencil_sfail_front;
+    GLint      last_stencil_dpfail_front;
+    GLint      last_stencil_dppass_front;
+    GLuint     last_stencil_writemask_front;
+
+    GLint      last_stencil_func_back;
+    GLint      last_stencil_ref_back;
+    GLuint     last_stencil_valuemask_back;
+    GLint      last_stencil_sfail_back;
+    GLint      last_stencil_dpfail_back;
+    GLint      last_stencil_dppass_back;
+    GLuint     last_stencil_writemask_back;
+
+    GLboolean  last_poly_offset_fill;
+    GLint      last_cull_face_mode;
+    GLint      last_front_face;
+    GLfloat    last_poly_offset_factor;
+    GLfloat    last_poly_offset_units;
+
+    GLint      last_depth_func;
+
+    GLboolean  last_color_mask[4];
+    GLboolean  last_depth_mask;
+
+    GLuint     last_uniform_buffer_0;
+};
+
 gl_context::gl_context(bool common_origin)
     : common_origin_(common_origin)
 {
@@ -217,7 +284,7 @@ std::unique_ptr<sampler> gl_context::create_sampler(const sampler_desc& desc)
     return std::make_unique<gl_sampler>(this, desc);
 }
 
-std::unique_ptr<compiled_shader> gl_context::compile_vertex_shader(const char* source, std::size_t length)
+std::unique_ptr<compiled_shader> gl_context::compile_vertexshader(const char* source, std::size_t length)
 {
     return std::make_unique<gl_compiled_shader>(this, source, length);
 }
@@ -237,7 +304,7 @@ std::unique_ptr<vertexshader> gl_context::create_vertexshader(const void* data, 
     return create_vertexshader(&cs);
 }
 
-std::unique_ptr<compiled_shader> gl_context::compile_pixel_shader(const char* source, std::size_t length)
+std::unique_ptr<compiled_shader> gl_context::compile_pixelshader(const char* source, std::size_t length)
 {
     return std::make_unique<gl_compiled_shader>(this, source, length);
 }
@@ -554,10 +621,278 @@ void gl_context::update_display_size(std::uint32_t width, std::uint32_t height)
 
 void gl_context::backup_render_state()
 {
+    assert(!backup_data_->captured);
+
+    // viewport + scissor
+    glViewport(
+        backup_data_->last_viewport[0],
+        backup_data_->last_viewport[1],
+        backup_data_->last_viewport[2],
+        backup_data_->last_viewport[3]
+    );
+    glScissor(
+        backup_data_->last_scissor_box[0],
+        backup_data_->last_scissor_box[1],
+        backup_data_->last_scissor_box[2],
+        backup_data_->last_scissor_box[3]
+    );
+
+    glDepthRangef(backup_data_->last_depth_range[0], backup_data_->last_depth_range[1]);
+
+    // enables
+    if (backup_data_->last_enable_blend)        glEnable(GL_BLEND);          else glDisable(GL_BLEND);
+    if (backup_data_->last_enable_cull_face)    glEnable(GL_CULL_FACE);      else glDisable(GL_CULL_FACE);
+    if (backup_data_->last_enable_depth_test)   glEnable(GL_DEPTH_TEST);     else glDisable(GL_DEPTH_TEST);
+    if (backup_data_->last_enable_stencil_test) glEnable(GL_STENCIL_TEST);   else glDisable(GL_STENCIL_TEST);
+    if (backup_data_->last_enable_scissor_test) glEnable(GL_SCISSOR_TEST);   else glDisable(GL_SCISSOR_TEST);
+    if (backup_data_->last_enable_color_op)     glEnable(GL_COLOR_LOGIC_OP); else glDisable(GL_COLOR_LOGIC_OP);
+
+    // blend state
+    glBlendEquationSeparate(
+        backup_data_->last_blend_eq_rgb,
+        backup_data_->last_blend_eq_alpha
+    );
+    glBlendFuncSeparate(
+        backup_data_->last_blend_src_rgb,
+        backup_data_->last_blend_dst_rgb,
+        backup_data_->last_blend_src_alpha,
+        backup_data_->last_blend_dst_alpha
+    );
+    glBlendColor(
+        backup_data_->last_blend_color[0],
+        backup_data_->last_blend_color[1],
+        backup_data_->last_blend_color[2],
+        backup_data_->last_blend_color[3]
+    );
+
+#ifdef GL_SAMPLE_MASK_VALUE
+    glSampleMaski(0, backup_data_->last_sample_mask);
+#endif
+
+    // polygon mode
+    gl_call(glPolygonMode(GL_FRONT_AND_BACK, backup_data_->last_polygon_mode[0]));
+
+    // program
+    gl_call(glUseProgram(backup_data_->last_program));
+
+    // fb0
+    glBindFramebuffer(GL_FRAMEBUFFER,        backup_data_->last_fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER,   backup_data_->last_draw_fbo);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER,   backup_data_->last_read_fbo);
+
+    // UBO binding 0
+    if (has_version(3, 1)) {
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, backup_data_->last_uniform_buffer_0);
+    }
+
+    // VAO + VBO
+    glBindVertexArray(backup_data_->last_vertex_array);
+    glBindBuffer(GL_ARRAY_BUFFER, backup_data_->last_array_buffer);
+
+    // texture / sampler / active tex
+    // glActiveTexture(backup_data_->last_active_texture); // causes visual bugs
+    glBindTexture(GL_TEXTURE_2D, backup_data_->last_texture);
+#ifdef GL_SAMPLER_BINDING
+    glBindSampler(0, backup_data_->last_sampler);
+#endif
+
+    // rasterizer / depth
+    glCullFace(backup_data_->last_cull_face_mode);
+    glFrontFace(backup_data_->last_front_face);
+
+    if (backup_data_->last_poly_offset_fill) glEnable(GL_POLYGON_OFFSET_FILL);
+    else                                     glDisable(GL_POLYGON_OFFSET_FILL);
+
+    glPolygonOffset(
+        backup_data_->last_poly_offset_factor,
+        backup_data_->last_poly_offset_units
+    );
+
+    if (backup_data_->last_depth_clamp) glEnable(GL_DEPTH_CLAMP);
+    else                                glDisable(GL_DEPTH_CLAMP);
+
+    if (backup_data_->last_multisample) glEnable(GL_MULTISAMPLE);
+    else                                glDisable(GL_MULTISAMPLE);
+
+    if (backup_data_->last_line_smooth) glEnable(GL_LINE_SMOOTH);
+    else                                glDisable(GL_LINE_SMOOTH);
+
+    glDepthFunc(backup_data_->last_depth_func);
+
+    glStencilFuncSeparate(
+        GL_FRONT,
+        backup_data_->last_stencil_func_front,
+        backup_data_->last_stencil_ref_front,
+        backup_data_->last_stencil_valuemask_front
+    );
+    glStencilOpSeparate(
+        GL_FRONT,
+        backup_data_->last_stencil_sfail_front,
+        backup_data_->last_stencil_dpfail_front,
+        backup_data_->last_stencil_dppass_front
+    );
+    glStencilMaskSeparate(GL_FRONT, backup_data_->last_stencil_writemask_front);
+
+    glStencilFuncSeparate(
+        GL_BACK,
+        backup_data_->last_stencil_func_back,
+        backup_data_->last_stencil_ref_back,
+        backup_data_->last_stencil_valuemask_back
+    );
+    glStencilOpSeparate(
+        GL_BACK,
+        backup_data_->last_stencil_sfail_back,
+        backup_data_->last_stencil_dpfail_back,
+        backup_data_->last_stencil_dppass_back
+    );
+    glStencilMaskSeparate(GL_BACK, backup_data_->last_stencil_writemask_back);
+
+    // write masks
+    glColorMask(
+        backup_data_->last_color_mask[0],
+        backup_data_->last_color_mask[1],
+        backup_data_->last_color_mask[2],
+        backup_data_->last_color_mask[3]
+    );
+    gl_call(glDepthMask(backup_data_->last_depth_mask));
 }
 
 void gl_context::restore_render_state()
 {
+    assert(backup_data_->captured);
+
+    // viewport + scissor
+    glViewport(
+        backup_data_->last_viewport[0],
+        backup_data_->last_viewport[1],
+        backup_data_->last_viewport[2],
+        backup_data_->last_viewport[3]
+    );
+    glScissor(
+        backup_data_->last_scissor_box[0],
+        backup_data_->last_scissor_box[1],
+        backup_data_->last_scissor_box[2],
+        backup_data_->last_scissor_box[3]
+    );
+
+    glDepthRangef(backup_data_->last_depth_range[0], backup_data_->last_depth_range[1]);
+
+    // enables
+    if (backup_data_->last_enable_blend)        glEnable(GL_BLEND);          else glDisable(GL_BLEND);
+    if (backup_data_->last_enable_cull_face)    glEnable(GL_CULL_FACE);      else glDisable(GL_CULL_FACE);
+    if (backup_data_->last_enable_depth_test)   glEnable(GL_DEPTH_TEST);     else glDisable(GL_DEPTH_TEST);
+    if (backup_data_->last_enable_stencil_test) glEnable(GL_STENCIL_TEST);   else glDisable(GL_STENCIL_TEST);
+    if (backup_data_->last_enable_scissor_test) glEnable(GL_SCISSOR_TEST);   else glDisable(GL_SCISSOR_TEST);
+    if (backup_data_->last_enable_color_op)     glEnable(GL_COLOR_LOGIC_OP); else glDisable(GL_COLOR_LOGIC_OP);
+
+    // blend state
+    glBlendEquationSeparate(
+        backup_data_->last_blend_eq_rgb,
+        backup_data_->last_blend_eq_alpha
+    );
+    glBlendFuncSeparate(
+        backup_data_->last_blend_src_rgb,
+        backup_data_->last_blend_dst_rgb,
+        backup_data_->last_blend_src_alpha,
+        backup_data_->last_blend_dst_alpha
+    );
+    glBlendColor(
+        backup_data_->last_blend_color[0],
+        backup_data_->last_blend_color[1],
+        backup_data_->last_blend_color[2],
+        backup_data_->last_blend_color[3]
+    );
+
+#ifdef GL_SAMPLE_MASK_VALUE
+    glSampleMaski(0, backup_data_->last_sample_mask);
+#endif
+
+    // polygon mode
+    gl_call(glPolygonMode(GL_FRONT_AND_BACK, backup_data_->last_polygon_mode[0]));
+
+    // program
+    gl_call(glUseProgram(backup_data_->last_program));
+
+    // fb0
+    glBindFramebuffer(GL_FRAMEBUFFER,        backup_data_->last_fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER,   backup_data_->last_draw_fbo);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER,   backup_data_->last_read_fbo);
+
+    // UBO binding 0
+    if (has_version(3, 1)) {
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, backup_data_->last_uniform_buffer_0);
+    }
+
+    // VAO + VBO
+    glBindVertexArray(backup_data_->last_vertex_array);
+    glBindBuffer(GL_ARRAY_BUFFER, backup_data_->last_array_buffer);
+
+    // texture / sampler / active tex
+    // glActiveTexture(backup_data_->last_active_texture); // causes visual bugs
+    glBindTexture(GL_TEXTURE_2D, backup_data_->last_texture);
+#ifdef GL_SAMPLER_BINDING
+    glBindSampler(0, backup_data_->last_sampler);
+#endif
+
+    // rasterizer / depth
+    glCullFace(backup_data_->last_cull_face_mode);
+    glFrontFace(backup_data_->last_front_face);
+
+    if (backup_data_->last_poly_offset_fill) glEnable(GL_POLYGON_OFFSET_FILL);
+    else                                     glDisable(GL_POLYGON_OFFSET_FILL);
+
+    glPolygonOffset(
+        backup_data_->last_poly_offset_factor,
+        backup_data_->last_poly_offset_units
+    );
+
+    if (backup_data_->last_depth_clamp) glEnable(GL_DEPTH_CLAMP);
+    else                                glDisable(GL_DEPTH_CLAMP);
+
+    if (backup_data_->last_multisample) glEnable(GL_MULTISAMPLE);
+    else                                glDisable(GL_MULTISAMPLE);
+
+    if (backup_data_->last_line_smooth) glEnable(GL_LINE_SMOOTH);
+    else                                glDisable(GL_LINE_SMOOTH);
+
+    glDepthFunc(backup_data_->last_depth_func);
+
+    glStencilFuncSeparate(
+        GL_FRONT,
+        backup_data_->last_stencil_func_front,
+        backup_data_->last_stencil_ref_front,
+        backup_data_->last_stencil_valuemask_front
+    );
+    glStencilOpSeparate(
+        GL_FRONT,
+        backup_data_->last_stencil_sfail_front,
+        backup_data_->last_stencil_dpfail_front,
+        backup_data_->last_stencil_dppass_front
+    );
+    glStencilMaskSeparate(GL_FRONT, backup_data_->last_stencil_writemask_front);
+
+    glStencilFuncSeparate(
+        GL_BACK,
+        backup_data_->last_stencil_func_back,
+        backup_data_->last_stencil_ref_back,
+        backup_data_->last_stencil_valuemask_back
+    );
+    glStencilOpSeparate(
+        GL_BACK,
+        backup_data_->last_stencil_sfail_back,
+        backup_data_->last_stencil_dpfail_back,
+        backup_data_->last_stencil_dppass_back
+    );
+    glStencilMaskSeparate(GL_BACK, backup_data_->last_stencil_writemask_back);
+
+    // write masks
+    glColorMask(
+        backup_data_->last_color_mask[0],
+        backup_data_->last_color_mask[1],
+        backup_data_->last_color_mask[2],
+        backup_data_->last_color_mask[3]
+    );
+    gl_call(glDepthMask(backup_data_->last_depth_mask));
 }
 
 void gl_context::setup_render_state()

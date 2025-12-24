@@ -43,12 +43,22 @@ void renderer2d::do_init()
     render_data_ = std::make_unique<render_data>();
     font_atlas_ = std::make_unique<font_atlas>(this);
 
+    backup_render_state();
+
     context_->acquire_backbuffer();
     if (context_->has_error())
         throw error(error_code::blend_state_create,
             context_->get_error(), context_->get_detail());
 
-    create_resources();
+    try {
+        create_resources();
+    }
+    catch (const error& e) {
+        restore_render_state();
+        throw e;
+    }
+
+    restore_render_state();
 
     destroyed_.store(false, std::memory_order_release);
     update_thread_ = std::thread([this]()
@@ -214,6 +224,16 @@ void renderer2d::setup_render_state()
     render_data_->rasterizer_state->bind();
 
     context_->setup_render_state();
+}
+
+void renderer2d::backup_render_state()
+{
+    context_->backup_render_state();
+}
+
+void renderer2d::restore_render_state()
+{
+    context_->restore_render_state();
 }
 
 void renderer2d::reset_render_data()
@@ -439,7 +459,7 @@ void renderer2d::create_resources()
         { "COLOR",    vertex_attribute_format::r8r8r8r8_unorm, offsetof(vertex, col), false, 0 },
     };
 
-    std::unique_ptr<compiled_shader> vs_data = context_->compile_vertex_shader(
+    std::unique_ptr<compiled_shader> vs_data = context_->compile_vertexshader(
         &vs_source[0], sizeof(vs_source));
     if (vs_data->has_error())
         throw error(error_code::vertex_shader_compile,
@@ -457,7 +477,7 @@ void renderer2d::create_resources()
         throw error(error_code::input_layout_create,
             render_data_->input_layout->get_error(), render_data_->input_layout->get_detail());
 
-    std::unique_ptr<compiled_shader> ps_data = context_->compile_pixel_shader(
+    std::unique_ptr<compiled_shader> ps_data = context_->compile_pixelshader(
         &ps_source[0], sizeof(ps_source));
     if (ps_data->has_error())
         throw error(error_code::vertex_shader_compile,
