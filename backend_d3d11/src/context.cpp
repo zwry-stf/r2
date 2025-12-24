@@ -75,6 +75,8 @@ d3d11_context::d3d11_context(IDXGISwapChain* sc)
     }
 
     device_->GetImmediateContext(context_.address_of());
+
+    backup_data_ = std::make_unique<backup_render_data>();
 }
 
 /// get

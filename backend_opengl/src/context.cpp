@@ -28,7 +28,7 @@
 
 r2_begin_
 
-struct backup_render_state {
+struct backup_render_data {
     bool captured = false;
 
     GLint      last_program;
@@ -111,6 +111,8 @@ gl_context::gl_context(bool common_origin)
     // version
     glGetIntegerv(GL_MAJOR_VERSION, &major_);
     glGetIntegerv(GL_MINOR_VERSION, &minor_);
+
+    backup_data_ = std::make_unique<backup_render_data>();
 }
 
 /// get

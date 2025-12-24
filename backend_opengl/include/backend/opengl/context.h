@@ -24,7 +24,7 @@ private:
     std::uint32_t render_width_{ 0u };
     std::uint32_t render_height_{ 0u };
 
-    std::unique_ptr<struct backup_render_state> backup_data_;
+    std::unique_ptr<struct backup_render_data> backup_data_;
 
 public:
 #if defined(R2_PLATFORM_WINDOWS)
