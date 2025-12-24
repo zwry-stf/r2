@@ -35,7 +35,6 @@ struct GlobalRenderData
     d3d_pointer<ID3D11Device> device;
     d3d_pointer<ID3D11DeviceContext> context;
 #endif
-    std::unique_ptr<r2::texture2d> back_buffer;
     std::unique_ptr<r2::textureview> render_target_view;
     std::unique_ptr<r2::framebuffer> render_target;
 };
@@ -264,19 +263,13 @@ bool initialize_backend()
 
 bool create_render_target()
 {
-    auto b = g_renderer.context()->acquire_backbuffer();
-    if (!b.has_value())
-        return false;
-
-    g_data.render_data.back_buffer = std::move(b.value());
-    if (g_data.render_data.back_buffer->has_error())
-        return false;
+    auto b = g_renderer.context()->get_backbuffer();
 
     r2::textureview_desc rdesc{};
     rdesc.usage = r2::view_usage::render_target;
 
     g_data.render_data.render_target_view = g_renderer.context()->create_textureview(
-        g_data.render_data.back_buffer.get(), rdesc);
+        b, rdesc);
     if (g_data.render_data.render_target_view->has_error())
         return false;
 
@@ -327,7 +320,6 @@ bool resize(int width, int height)
     g_data.render_data.context->Flush();
 #endif
 
-    g_data.render_data.back_buffer.reset();
     g_data.render_data.render_target_view.reset();
     g_data.render_data.render_target.reset();
 
