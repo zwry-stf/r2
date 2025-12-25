@@ -80,11 +80,12 @@ void renderer2d::destroy()
     context_->release_backbuffer();
 
     render_data_.reset();
-    font_atlas_.reset();
     context_.reset();
 
     if (update_thread_.joinable())
         update_thread_.join();
+    
+    font_atlas_.reset();
 }
 
 void renderer2d::build_fonts()
@@ -381,7 +382,7 @@ void renderer2d::render()
     add_text(
         vec2(300.f, 300.f),
         color::blue().interp(color::white(), 0.4f).interp(color::green(), 0.3f),
-        std::u8string_view(u8"Ä*+**''Ä")
+        std::u8string_view(u8"Ã„*+**''Ã„")
     );
     if (false) {
         indices_.push_back(vertex_ptr_ + 0u);
