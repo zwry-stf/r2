@@ -34,9 +34,6 @@ class rasterizerstate : public object<rasterizerstate_desc>
 {
 protected:
     using object<rasterizerstate_desc>::object;
-
-public:
-    virtual void bind() = 0;
 };
 
 r2_end_

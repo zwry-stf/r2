@@ -20,9 +20,7 @@ public:
     ~d3d11_blendstate();
 
 public:
-    virtual void bind(const float(&factor)[4] = { 0.f, 0.f, 0.f, 0.f }, std::uint32_t mask = 0xffffffffu) override;
-
-    [[nodiscard]] auto* blend_state() const noexcept { 
+    [[nodiscard]] auto* state() const noexcept { 
         return blend_state_.get(); 
     }
 

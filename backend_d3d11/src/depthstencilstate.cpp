@@ -82,14 +82,4 @@ d3d11_depthstencilstate::~d3d11_depthstencilstate()
     ds_state_.reset();
 }
 
-void d3d11_depthstencilstate::bind(std::uint32_t stencil_ref)
-{
-    assert(ds_state_);
-
-    context()->get_context()->OMSetDepthStencilState(
-        ds_state_.get(),
-        stencil_ref
-    );
-}
-
 r2_end_

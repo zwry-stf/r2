@@ -20,8 +20,6 @@ public:
     ~gl_shaderprogram() override;
 
 public:
-    void bind() const override;
-
     [[nodiscard]] auto program() const noexcept { 
         return program_;
     }

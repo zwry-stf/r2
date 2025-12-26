@@ -97,11 +97,4 @@ d3d11_inputlayout::~d3d11_inputlayout()
     layout_.reset();
 }
 
-void d3d11_inputlayout::bind() const
-{
-    assert(layout_);
-
-    context()->get_context()->IASetInputLayout(layout_);
-}
-
 r2_end_

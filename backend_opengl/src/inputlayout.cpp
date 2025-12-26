@@ -158,11 +158,6 @@ gl_inputlayout::~gl_inputlayout()
     }
 }
 
-void gl_inputlayout::bind() const
-{
-    gl_call(glBindVertexArray(vao_));
-}
-
 void gl_inputlayout::link(buffer* buffer)
 {
     assert(buffer->desc().usage == buffer_usage::vertex);

@@ -20,8 +20,6 @@ public:
     ~d3d11_depthstencilstate();
 
 public:
-    virtual void bind(std::uint32_t stencil_ref = 0u) override;
-
     [[nodiscard]] auto* state() const noexcept {
         return ds_state_.get();
     }

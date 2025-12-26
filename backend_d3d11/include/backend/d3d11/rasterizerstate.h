@@ -20,8 +20,6 @@ public:
     ~d3d11_rasterizerstate();
 
 public:
-    virtual void bind() override;
-
     [[nodiscard]] auto* state() const noexcept { 
         return state_.get(); 
     }

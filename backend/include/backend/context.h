@@ -67,6 +67,12 @@ public:
     virtual std::unique_ptr<framebuffer> create_framebuffer(const framebuffer_desc& desc) = 0;
 
     /// bind
+    virtual void set_blendstate(const blendstate* bs, const float(&factor)[4] = { 0.f, 0.f, 0.f, 0.f },
+                                std::uint32_t sample_mask = 0xffffffffu) = 0;
+    virtual void set_depthstencilstate(const depthstencilstate* ds, std::uint32_t stencil_ref = 0u) = 0;
+    virtual void set_inputlayout(const inputlayout* il) = 0;
+    virtual void set_rasterizerstate(const rasterizerstate* rs) = 0;
+    virtual void set_shaderprogram(const shaderprogram* s) = 0;
     virtual void set_vertex_buffer(const buffer* vb, std::uint32_t slot = 0u) = 0;
     virtual void set_index_buffer(const buffer* ib) = 0;
     virtual void set_uniform_buffer(const buffer* ub, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) = 0;

@@ -72,9 +72,6 @@ struct blendstate_desc {
 class blendstate : public object<blendstate_desc> {
 protected:
     using object<blendstate_desc>::object;
-
-public:
-    virtual void bind(const float(&factor)[4] = { 0.f, 0.f, 0.f, 0.f }, std::uint32_t mask = 0xffffffffu) = 0;
 };
 
 r2_end_

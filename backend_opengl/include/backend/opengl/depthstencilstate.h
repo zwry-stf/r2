@@ -12,7 +12,7 @@ public:
     ~gl_depthstencilstate();
 
 public:
-    virtual void bind(std::uint32_t stencil_ref = 0u) override;
+    void bind(std::uint32_t stencil_ref = 0u) const;
 
 public:
     static [[nodiscard]] GLenum to_gl_comp(comparison_func f) noexcept;

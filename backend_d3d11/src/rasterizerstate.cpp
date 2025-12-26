@@ -62,11 +62,4 @@ d3d11_rasterizerstate::~d3d11_rasterizerstate()
     state_.reset();
 }
 
-void d3d11_rasterizerstate::bind()
-{
-    assert(state_);
-
-    context()->get_context()->RSSetState(state_.get());
-}
-
 r2_end_

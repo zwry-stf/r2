@@ -12,7 +12,7 @@ public:
     ~gl_rasterizerstate();
 
 public:
-    virtual void bind() override;
+    void bind() const;
 
 public:
     static [[nodiscard]] GLenum to_gl_fill(fill_mode m) noexcept;

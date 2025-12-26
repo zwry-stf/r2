@@ -12,7 +12,7 @@ public:
     ~gl_blendstate();
 
 public:
-    virtual void bind(const float(&factor)[4] = { 0.f, 0.f, 0.f, 0.f }, std::uint32_t mask = 0xffffffffu) override;
+    void bind(const float(&factor)[4] = { 0.f, 0.f, 0.f, 0.f }, std::uint32_t sample_mask = 0xffffffffu) const;
 
 public:
     static [[nodiscard]] GLenum to_gl_op(blend_op op) noexcept;

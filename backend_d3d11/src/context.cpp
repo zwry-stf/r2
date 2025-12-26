@@ -341,6 +341,57 @@ std::unique_ptr<framebuffer> d3d11_context::create_framebuffer(const framebuffer
     return std::make_unique<d3d11_framebuffer>(this, desc);
 }
 
+void d3d11_context::set_blendstate(const blendstate* bs, const float(&factor)[4], std::uint32_t sample_mask)
+{
+    auto* state = bs == nullptr ? nullptr : to_native(bs)->state();
+
+    FLOAT cfactor[4] = {
+        static_cast<FLOAT>(factor[0]),
+        static_cast<FLOAT>(factor[1]),
+        static_cast<FLOAT>(factor[2]),
+        static_cast<FLOAT>(factor[3]),
+    };
+
+    context_->OMSetBlendState(
+        state,
+        &cfactor[0], 
+        static_cast<UINT>(sample_mask)
+    );
+}
+
+void d3d11_context::set_depthstencilstate(const depthstencilstate* ds, std::uint32_t stencil_ref)
+{
+    auto* state = ds == nullptr ? nullptr : to_native(ds)->state();
+
+    context_->OMSetDepthStencilState(
+        state,
+        static_cast<UINT>(stencil_ref)
+    );
+}
+
+void d3d11_context::set_inputlayout(const inputlayout* il)
+{
+    auto* layout = il == nullptr ? nullptr : to_native(il)->layout();
+
+    context_->IASetInputLayout(layout);
+}
+
+void d3d11_context::set_rasterizerstate(const rasterizerstate* rs)
+{
+    auto* state = rs == nullptr ? nullptr : to_native(rs)->state();
+
+    context_->RSSetState(state);
+}
+
+void d3d11_context::set_shaderprogram(const shaderprogram* s)
+{
+    auto* vs = s == nullptr ? nullptr : to_native(s)->vs();
+    auto* ps = s == nullptr ? nullptr : to_native(s)->ps();
+
+    context_->VSSetShader(vs, nullptr, 0u);
+    context_->PSSetShader(ps, nullptr, 0u);
+}
+
 /// bind
 
 void d3d11_context::set_vertex_buffer(const buffer* vb, std::uint32_t slot)

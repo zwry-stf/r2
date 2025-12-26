@@ -91,15 +91,4 @@ d3d11_blendstate::~d3d11_blendstate()
     blend_state_.reset();
 }
 
-void d3d11_blendstate::bind(const float(&factor)[4], std::uint32_t mask)
-{
-    assert(blend_state_);
-
-    context()->get_context()->OMSetBlendState(
-        blend_state_.get(),
-        factor,
-        mask
-    );
-}
-
 r2_end_

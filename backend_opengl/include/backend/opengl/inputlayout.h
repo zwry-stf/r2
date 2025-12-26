@@ -32,7 +32,6 @@ public:
     ~gl_inputlayout();
 
 public:
-    virtual void bind() const override;
     virtual void link(class buffer* buffer) override;
 
     [[nodiscard]] auto vao() const { 

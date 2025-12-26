@@ -22,8 +22,6 @@ public:
     ~d3d11_inputlayout();
 
 public:
-    virtual void bind() const override;
-
     [[nodiscard]] auto* layout() const noexcept {
         return layout_.get(); 
     }

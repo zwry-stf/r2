@@ -51,9 +51,4 @@ gl_shaderprogram::~gl_shaderprogram()
     }
 }
 
-void gl_shaderprogram::bind() const
-{
-    gl_call(glUseProgram(program_));
-}
-
 r2_end_

@@ -375,15 +375,60 @@ std::unique_ptr<framebuffer> gl_context::create_framebuffer(const framebuffer_de
     return std::make_unique<gl_framebuffer>(this, desc);
 }
 
+void gl_context::set_blendstate(const blendstate* bs, const float(&factor)[4], std::uint32_t sample_mask)
+{
+    if (bs != nullptr) {
+        to_native(bs)->bind(factor, sample_mask);
+    }
+    else {
+        glDisable(GL_BLEND);
+    }
+}
+
+void gl_context::set_depthstencilstate(const depthstencilstate* ds, std::uint32_t stencil_ref)
+{
+    if (ds != nullptr) {
+        to_native(ds)->bind(stencil_ref);
+    }
+    else {
+        glDisable(GL_STENCIL_TEST);
+        glDisable(GL_DEPTH_TEST);
+    }
+}
+
+void gl_context::set_inputlayout(const inputlayout* il)
+{
+    if (il != nullptr) {
+        gl_call(glBindVertexArray(
+            to_native(il)->vao()
+        ));
+    }
+    else {
+        gl_call(glBindVertexArray(0u));
+    }
+}
+
+void gl_context::set_rasterizerstate(const rasterizerstate* rs)
+{
+    if (rs != nullptr) {
+        to_native(rs)->bind();
+    }
+    else {
+        //
+    }
+}
+
+void gl_context::set_shaderprogram(const shaderprogram* s)
+{
+    const auto program = s == nullptr ? 0u : to_native(s)->program();
+    gl_call(glUseProgram(program));
+}
+
 /// bind
 
 void gl_context::set_vertex_buffer(const buffer* vb, std::uint32_t slot)
 {
-    GLuint buf = 0u;
-    if (vb != nullptr) {
-        auto* gvb = to_native(vb);
-        buf = gvb->buffer();
-    }
+    const auto buf = vb == nullptr ? 0u : to_native(vb)->buffer();
 
     if (has_version(4, 3)) {
         gl_call(glBindVertexBuffer(

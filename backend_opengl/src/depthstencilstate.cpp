@@ -49,7 +49,7 @@ gl_depthstencilstate::~gl_depthstencilstate()
 {
 }
 
-void gl_depthstencilstate::bind(std::uint32_t stencil_ref)
+void gl_depthstencilstate::bind(std::uint32_t stencil_ref) const
 {
     if (desc_.depth_enable) {
         glEnable(GL_DEPTH_TEST);

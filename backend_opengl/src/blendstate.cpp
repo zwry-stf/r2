@@ -66,7 +66,7 @@ gl_blendstate::~gl_blendstate()
 {
 }
 
-void gl_blendstate::bind(const float(&factor)[4], std::uint32_t mask)
+void gl_blendstate::bind(const float(&factor)[4], std::uint32_t mask) const
 {
     glBlendColor(factor[0], factor[1], factor[2], factor[3]);
     glSampleMaski(0, mask);

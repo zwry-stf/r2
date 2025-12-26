@@ -51,7 +51,6 @@ protected:
     using object<void>::object;
 
 public:
-    virtual void bind() const = 0;
     virtual void link(class buffer*) {};
 };
 

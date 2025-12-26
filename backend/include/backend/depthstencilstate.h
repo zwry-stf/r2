@@ -49,9 +49,6 @@ struct depthstencilstate_desc {
 class depthstencilstate : public object<depthstencilstate_desc> {
 protected:
     using object<depthstencilstate_desc>::object;
-
-public:
-    virtual void bind(std::uint32_t stencil_ref = 0u) = 0;
 };
 
 r2_end_

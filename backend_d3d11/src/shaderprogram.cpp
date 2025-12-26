@@ -27,12 +27,4 @@ d3d11_shaderprogram::~d3d11_shaderprogram()
     ps_.reset();
 }
 
-void d3d11_shaderprogram::bind() const
-{
-    assert(ps_ && vs_);
-
-    context()->get_context()->PSSetShader(ps_, nullptr, 0u);
-    context()->get_context()->VSSetShader(vs_, nullptr, 0u);
-}
-
 r2_end_

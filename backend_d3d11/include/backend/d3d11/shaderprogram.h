@@ -17,8 +17,6 @@ public:
     ~d3d11_shaderprogram();
 
 public:
-    virtual void bind() const override;
-
     [[nodiscard]] auto* vs() const noexcept {
         return vs_.get();
     }

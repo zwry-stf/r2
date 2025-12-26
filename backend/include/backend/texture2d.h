@@ -36,8 +36,7 @@ inline texture_usage operator&(const texture_usage& a, const texture_usage& b) {
         );
 }
 
-struct texture_desc
-{
+struct texture_desc {
     std::uint32_t width  = 0u;
     std::uint32_t height = 0u;
     std::uint32_t mip_levels = 1u;

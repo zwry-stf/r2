@@ -216,16 +216,16 @@ void renderer2d::setup_render_state()
     assert(render_data_);
 
     context_->set_primitive_topology(primitive_topology::triangle_list);
-    render_data_->input_layout->bind();
-    render_data_->shader->bind();
+    context_->set_inputlayout(render_data_->input_layout.get());
+    context_->set_shaderprogram(render_data_->shader.get());
     context_->set_uniform_buffer(
         render_data_->constant_buffer.get(), shader_bind_type::vs);
 
     context_->set_sampler(render_data_->sampler.get());
 
-    render_data_->blend_state->bind();
-    render_data_->depth_stencil_state->bind();
-    render_data_->rasterizer_state->bind();
+    context_->set_blendstate(render_data_->blend_state.get());
+    context_->set_depthstencilstate(render_data_->depth_stencil_state.get());
+    context_->set_rasterizerstate(render_data_->rasterizer_state.get());
 
     context_->setup_render_state();
 }
@@ -612,7 +612,7 @@ void renderer2d::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_ve
 
         render_data_->input_layout->link(render_data_->vertex_buffer.get());
         assert(!render_data_->input_layout->has_error());
-        render_data_->input_layout->bind();
+        context_->set_inputlayout(render_data_->input_layout.get());
     }
 }
 

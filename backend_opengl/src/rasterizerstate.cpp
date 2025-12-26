@@ -38,7 +38,7 @@ gl_rasterizerstate::~gl_rasterizerstate()
 {
 }
 
-void gl_rasterizerstate::bind()
+void gl_rasterizerstate::bind() const
 {
     // fill
     {
