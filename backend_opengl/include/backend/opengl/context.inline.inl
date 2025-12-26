@@ -68,6 +68,11 @@ struct get_native_t<compiled_shader*> {
 };
 
 template <>
+struct get_native_t<framebuffer*> {
+    using type = class gl_framebuffer*;
+};
+
+template <>
 struct get_native_t<context*> {
     using type = class gl_context*;
 };

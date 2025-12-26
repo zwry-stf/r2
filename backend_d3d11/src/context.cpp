@@ -128,14 +128,18 @@ viewport d3d11_context::get_viewport() const noexcept
     };
 }
 
-void d3d11_context::copy_subresource(textureview* dst, const textureview* src,
+void d3d11_context::copy_subresource(framebuffer* dst, const framebuffer* src,
                                      const rect& src_rect, const rect& dst_rect)
 {
     assert(dst_rect.right - dst_rect.left == src_rect.right - src_rect.left);
     assert(dst_rect.bottom - dst_rect.top == src_rect.bottom - src_rect.top);
+    assert(src != nullptr);
+    assert(dst != nullptr);
 
-    const auto* src_texture = to_native(src);
-    auto* dst_texture = to_native(dst);
+    const auto* src_texture = to_native(src->desc().color_attachment.view);
+    auto* dst_texture = to_native(dst->desc().color_attachment.view);
+    assert(src_texture != nullptr);
+    assert(dst_texture != nullptr);
 
     D3D11_BOX box{ 
         static_cast<UINT>(src_rect.left), 
@@ -178,17 +182,21 @@ DXGI_FORMAT d3d11_context::get_format_no_srgb(DXGI_FORMAT curr) noexcept
     return curr;
 }
 
-void d3d11_context::resolve_subresource(textureview* dst, const textureview* src, std::optional<texture_format> format,
+void d3d11_context::resolve_subresource(framebuffer* dst, const framebuffer* src, std::optional<texture_format> format,
                                         const rect& src_rect, const rect& dst_rect)
 {
     assert(dst_rect.right - dst_rect.left == src_rect.right - src_rect.left);
     assert(dst_rect.bottom - dst_rect.top == src_rect.bottom - src_rect.top);
+    assert(src != nullptr);
+    assert(dst != nullptr);
 
     (void)src_rect;
     (void)dst_rect;
 
-    const auto* src_texture = to_native(src);
-    auto* dst_texture = to_native(dst);
+    const auto* src_texture = to_native(src->desc().color_attachment.view);
+    auto* dst_texture = to_native(dst->desc().color_attachment.view);
+    assert(src_texture != nullptr);
+    assert(dst_texture != nullptr);
 
     DXGI_FORMAT fmt;
     if (!format.has_value()) {

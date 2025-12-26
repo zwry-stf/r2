@@ -80,11 +80,11 @@ d3d11_texture2d::d3d11_texture2d(d3d11_context* ctx, const texture_desc& desc, c
     d.Usage = D3D11_USAGE_DEFAULT;
 
     // bind flags
-    if ((desc.usage & texture_usage::shader_resource) != texture_usage::none)
+    if (desc.usage & texture_usage::shader_resource)
         d.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
-    if ((desc.usage & texture_usage::render_target) != texture_usage::none)
+    if (desc.usage & texture_usage::render_target)
         d.BindFlags |= D3D11_BIND_RENDER_TARGET;
-    if ((desc.usage & texture_usage::depth_stencil) != texture_usage::none)
+    if (desc.usage & texture_usage::depth_stencil)
         d.BindFlags |= D3D11_BIND_DEPTH_STENCIL;
 
     const bool has_init_data = (data != nullptr);

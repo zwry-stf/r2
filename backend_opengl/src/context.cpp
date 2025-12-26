@@ -181,7 +181,7 @@ viewport gl_context::get_viewport() const noexcept
     return v;
 }
 
-void gl_context::copy_subresource(textureview* dst, const textureview* src,
+void gl_context::copy_subresource(framebuffer* dst, const framebuffer* src,
                                   const rect& src_rect, const rect& dst_rect)
 {
     assert(dst_rect.right - dst_rect.left == src_rect.right - src_rect.left);
@@ -189,11 +189,18 @@ void gl_context::copy_subresource(textureview* dst, const textureview* src,
 
     const auto* gl_src = to_native(src);
     auto* gl_dst = to_native(dst);
+    assert(gl_src != nullptr);
+    assert(gl_dst != nullptr);
 
-    const auto& ddesc = gl_dst->resource()->desc();
-    const auto& sdesc = gl_src->resource()->desc();
+    const auto* gl_view_src = to_native(gl_src->desc().color_attachment.view);
+    auto* gl_view_dst = to_native(gl_dst->desc().color_attachment.view);
+    assert(gl_view_src != nullptr);
+    assert(gl_view_dst != nullptr);
 
-    if (gl_src->texture() == 0u ||
+    const auto& ddesc = gl_view_src->resource()->desc();
+    const auto& sdesc = gl_view_dst->resource()->desc();
+
+    if (gl_view_src->texture() == 0u ||
         !has_version(4, 3)) {
         resolve_subresource(
             dst, src, 
@@ -218,16 +225,16 @@ void gl_context::copy_subresource(textureview* dst, const textureview* src,
         const GLsizei d = 1;
 
         gl_call(glCopyImageSubData(
-            gl_src->texture(), GL_TEXTURE_2D, src_level,
+            gl_view_src->texture(), GL_TEXTURE_2D, src_level,
             src_x, src_y, src_z,
-            gl_dst->texture(), GL_TEXTURE_2D, dst_level,
+            gl_view_dst->texture(), GL_TEXTURE_2D, dst_level,
             dst_x, dst_y, dst_z,
             w, h, d)
         );
     }
 }
 
-void gl_context::resolve_subresource(textureview* dst, const textureview* src, std::optional<texture_format> format,
+void gl_context::resolve_subresource(framebuffer* dst, const framebuffer* src, std::optional<texture_format> format,
                                      const rect& src_rect, const rect& dst_rect)
 {
     assert(dst_rect.right - dst_rect.left == src_rect.right - src_rect.left);
@@ -237,9 +244,16 @@ void gl_context::resolve_subresource(textureview* dst, const textureview* src, s
 
     const auto* gl_src = to_native(src);
     auto* gl_dst = to_native(dst);
+    assert(gl_src != nullptr);
+    assert(gl_dst != nullptr);
 
-    const auto& ddesc = gl_dst->resource()->desc();
-    const auto& sdesc = gl_src->resource()->desc();
+    const auto* gl_view_src = to_native(gl_src->desc().color_attachment.view);
+    auto* gl_view_dst = to_native(gl_dst->desc().color_attachment.view);
+    assert(gl_view_src != nullptr);
+    assert(gl_view_dst != nullptr);
+
+    const auto& ddesc = gl_view_dst->resource()->desc();
+    const auto& sdesc = gl_view_src->resource()->desc();
 
     GLboolean scissors_was_enabled;
     glGetBooleanv(GL_SCISSOR_TEST, &scissors_was_enabled);
@@ -485,7 +499,7 @@ void gl_context::set_texture(const textureview* srv, shader_bind_type stage, std
     if (srv != nullptr) {
         auto* gsrv = to_native(srv);
         tex = gsrv->texture();
-        target = gsrv->target();
+        target = gsrv->view_target();
     }
 
     gl_call(glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(slot)));
@@ -517,10 +531,7 @@ void gl_context::set_sampler(const sampler* s, shader_bind_type stage, std::uint
 
 void gl_context::set_framebuffer(const framebuffer* fb)
 {
-    GLuint fbo = 0;
-    if (fb != nullptr) {
-        fbo = to_native(fb->desc().color_attachment.view)->fbo();
-    }
+    const auto fbo = fb == nullptr ? 0u : to_native(fb)->fbo();
 
     gl_call(glBindFramebuffer(GL_FRAMEBUFFER, fbo));
 
@@ -546,7 +557,8 @@ void gl_context::set_framebuffer(const framebuffer* fb)
 
 void gl_context::clear_framebuffer(const framebuffer* fb)
 {
-    auto fbo = to_native(fb->desc().color_attachment.view)->fbo();
+    assert(fb != nullptr);
+    auto fbo = to_native(fb)->fbo();
 
     if (fbo == 0) {
         const GLsizei width = static_cast<GLsizei>(render_width_);

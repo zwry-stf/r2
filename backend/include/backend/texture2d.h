@@ -30,10 +30,8 @@ inline texture_usage operator|(const texture_usage& a, const texture_usage& b) {
         );
 }
 
-inline texture_usage operator&(const texture_usage& a, const texture_usage& b) {
-    return static_cast<texture_usage>(
-        std::to_underlying(a) & std::to_underlying(b)
-        );
+inline bool operator&(const texture_usage& a, const texture_usage& b) {
+    return (std::to_underlying(a) & std::to_underlying(b)) != 0u;
 }
 
 struct texture_desc {

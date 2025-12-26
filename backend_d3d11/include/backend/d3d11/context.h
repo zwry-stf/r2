@@ -32,9 +32,9 @@ public:
     virtual rect get_scissor_rect() const noexcept override;
     virtual primitive_topology get_primitive_topology() const noexcept override;
     virtual viewport get_viewport() const noexcept override;
-    virtual void copy_subresource(textureview* dst, const textureview* src,
+    virtual void copy_subresource(framebuffer* dst, const framebuffer* src,
                                   const rect& src_rect, const rect& dst_rect) override;
-    virtual void resolve_subresource(textureview* dst, const textureview* src, std::optional<texture_format> format,
+    virtual void resolve_subresource(framebuffer* dst, const framebuffer* src, std::optional<texture_format> format,
                                      const rect& src_rect, const rect& dst_rect) override;
 
     /// create

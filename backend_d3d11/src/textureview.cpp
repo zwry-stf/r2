@@ -44,8 +44,8 @@ d3d11_textureview::d3d11_textureview(d3d11_context* ctx, d3d11_texture2d* tex, c
         (desc_.format_override == texture_format::unknown) ?
             td.format : desc_.format_override;
 
-    if (desc_.usage == view_usage::shader_resource) {
-        assert((td.usage & texture_usage::shader_resource) != texture_usage::none);
+    if (desc_.usage & view_usage::shader_resource) {
+        assert(td.usage & texture_usage::shader_resource);
 
         D3D11_SHADER_RESOURCE_VIEW_DESC sd{};
         if (fmt == texture_format::backbuffer) {
@@ -76,8 +76,8 @@ d3d11_textureview::d3d11_textureview(d3d11_context* ctx, d3d11_texture2d* tex, c
         }
     }
 
-    else if (desc_.usage == view_usage::render_target) {
-        assert((td.usage & texture_usage::render_target) != texture_usage::none);
+    else if (desc_.usage & view_usage::render_target) {
+        assert(td.usage & texture_usage::render_target);
 
         D3D11_RENDER_TARGET_VIEW_DESC rd{};
         if (fmt == texture_format::backbuffer) {
@@ -107,8 +107,8 @@ d3d11_textureview::d3d11_textureview(d3d11_context* ctx, d3d11_texture2d* tex, c
         }
     }
 
-    else if (desc_.usage == view_usage::depth_stencil) {
-        assert((td.usage & texture_usage::depth_stencil) != texture_usage::none);
+    else if (desc_.usage & view_usage::depth_stencil) {
+        assert(td.usage & texture_usage::depth_stencil);
 
         D3D11_DEPTH_STENCIL_VIEW_DESC dd{};
         assert(fmt != texture_format::backbuffer);

@@ -5,10 +5,6 @@
 r2_begin_
 
 enum class gl_textureview_error : std::int32_t {
-    unsupported_texture_view,   // glTextureView not available for SRV views
-    view_texture_generation,
-    framebuffer_generation,
-    framebuffer_incomplete,
     gl_error
 };
 
@@ -21,12 +17,11 @@ private:
 
     GLuint view_texture_{ 0u };
     GLenum view_target_{ 0u };
-
-    GLuint fbo_{ 0u };
+    GLint view_level_{ 0u };
+    texture_format view_format_{ texture_format::unknown };
 
 public:
     gl_textureview(gl_context* ctx, gl_texture2d* tex, const textureview_desc& desc);
-    ~gl_textureview();
 
 public:
     virtual void* native_texture_handle() const noexcept override {
@@ -39,11 +34,11 @@ public:
     [[nodiscard]] auto texture() const noexcept {
         return view_texture_;
     }
-    [[nodiscard]] auto target() const noexcept {
+    [[nodiscard]] auto view_target() const noexcept {
         return view_target_; 
     }
-    [[nodiscard]] auto fbo() const noexcept {
-        return fbo_;
+    [[nodiscard]] auto view_level() const noexcept {
+        return view_level_;
     }
 
 private:
