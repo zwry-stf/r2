@@ -56,7 +56,7 @@ gl_textureview::gl_textureview(gl_context* ctx, gl_texture2d* tex, const texture
         (desc_.format_override == texture_format::unknown) ?
             td.format : desc_.format_override;
 
-    view_target_ = (msaa) ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+    view_target_ = msaa ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
     if (msaa) {
         assert(td.mip_levels == 1u);

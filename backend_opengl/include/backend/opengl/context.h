@@ -14,6 +14,13 @@ enum class gl_context_error : std::int32_t {
     backbuffer
 };
 
+struct raster_state_cache {
+    viewport viewport{};
+    rect scissor{};
+    bool viewport_set = false;
+    bool scissor_set = false;
+};
+
 class gl_context : public context {
 private:
     const bool common_origin_;
@@ -23,28 +30,20 @@ private:
 
     GLenum current_topology_   = static_cast<GLenum>(-1);
     GLenum current_index_type_ = static_cast<GLenum>(-1);
-    std::int32_t current_render_height_{ 0 };
+    std::uint32_t current_render_height_{ 0 };
     std::uint32_t render_width_{ 0u };
     std::uint32_t render_height_{ 0u };
-#if defined(R2_PLATFORM_WINDOWS)
-    HWND hwnd_;
-#endif // R2_PLATFORM_WINDOWS
+    raster_state_cache raster_;
 
     std::unique_ptr<struct backup_render_data> backup_data_;
 
 public:
-#if defined(R2_PLATFORM_WINDOWS)
-    gl_context(const context_init_data& init_data, bool common_origin);
-#endif // R2_PLATFORM_WINDOWS
+    gl_context(const platform_init_data& pinit, bool common_origin);
 
 public:
     virtual void acquire_backbuffer() override;
 
     /// get
-    // immediate
-    virtual rect get_scissor_rect() const noexcept override;
-    virtual primitive_topology get_primitive_topology() const noexcept override;
-    virtual viewport get_viewport() const noexcept override;
     virtual void copy_subresource(framebuffer* dst, const framebuffer* src,
                                   const rect& src_rect, const rect& dst_rect) override;
     virtual void resolve_subresource(framebuffer* dst, const framebuffer* src, std::optional<texture_format> format,
@@ -106,6 +105,10 @@ public:
         return hwnd_;
     }
 #endif // R2_PLATFORM_WINDOWS
+
+private:
+    void apply_viewport_if_dirty();
+    void apply_scissor_if_dirty();
 };
 
 r2_end_

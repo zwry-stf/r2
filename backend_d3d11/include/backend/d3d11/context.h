@@ -22,16 +22,12 @@ private:
     std::unique_ptr<struct backup_render_data> backup_data_;
 
 public:
-    d3d11_context(IDXGISwapChain* sc);
+    d3d11_context(const platform_init_data& pinit, IDXGISwapChain* sc);
 
 public:
     virtual void acquire_backbuffer() override;
 
     /// get
-    // immediate
-    virtual rect get_scissor_rect() const noexcept override;
-    virtual primitive_topology get_primitive_topology() const noexcept override;
-    virtual viewport get_viewport() const noexcept override;
     virtual void copy_subresource(framebuffer* dst, const framebuffer* src,
                                   const rect& src_rect, const rect& dst_rect) override;
     virtual void resolve_subresource(framebuffer* dst, const framebuffer* src, std::optional<texture_format> format,

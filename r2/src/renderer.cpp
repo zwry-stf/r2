@@ -14,9 +14,9 @@ renderer2d::~renderer2d()
 {
 }
 
-void renderer2d::init(const context_init_data& init_data)
+void renderer2d::init(const platform_init_data& pinit, const backend_init_data& binit)
 {
-    context_ = r2::context::make_context(init_data, true);
+    context_ = r2::context::make_context(pinit, binit, true);
     if (context_->has_error()) {
         throw error(
             error_code::context_initialization,
@@ -613,7 +613,6 @@ void renderer2d::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_ve
 
         render_data_->input_layout->link(render_data_->vertex_buffer.get());
         assert(!render_data_->input_layout->has_error());
-        context_->set_inputlayout(render_data_->input_layout.get());
     }
 }
 

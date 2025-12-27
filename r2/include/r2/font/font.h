@@ -1,7 +1,6 @@
 #pragma once
 #include "../renderer_definitions.h"
 #include <mutex>
-#include <optional>
 #include <chrono>
 
 
@@ -20,6 +19,7 @@ struct font_glyph {
 };
 
 struct pending_glyph {
+    bool failed = false;
     wchar codepoint;
     bool visible;
     bool blurred{};
@@ -109,7 +109,7 @@ public:
     bool add_font(const std::uint8_t* data, std::size_t data_size, std::vector<font_range>&& ranges);
 
 private:
-    std::optional<pending_glyph> rasterize_glyph(wchar glyph, font_data* data = nullptr, bool blurred = false);
+    pending_glyph rasterize_glyph(wchar glyph, font_data* data = nullptr, bool blurred = false);
     void apply_glyph(const pending_glyph& pg);
     void build_weights();
     void blur_rect(std::uint32_t w, std::uint32_t h);

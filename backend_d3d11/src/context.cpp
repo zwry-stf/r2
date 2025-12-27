@@ -53,7 +53,8 @@ struct backup_render_data {
     d3d_pointer<ID3D11InputLayout> input_layout;
 };
 
-d3d11_context::d3d11_context(IDXGISwapChain* sc)
+d3d11_context::d3d11_context(const platform_init_data& pinit, IDXGISwapChain* sc)
+    : r2::context(pinit)
 {
     if (sc == nullptr) {
         set_error(
@@ -80,53 +81,6 @@ d3d11_context::d3d11_context(IDXGISwapChain* sc)
 }
 
 /// get
-rect d3d11_context::get_scissor_rect() const noexcept
-{
-    UINT count = 1;
-    D3D11_RECT r;
-    context_->RSGetScissorRects(&count, &r);
-
-    return rect{
-        static_cast<std::int32_t>(r.left),
-        static_cast<std::int32_t>(r.top),
-        static_cast<std::int32_t>(r.right),
-        static_cast<std::int32_t>(r.bottom)
-    };
-}
-
-primitive_topology d3d11_context::get_primitive_topology() const noexcept
-{
-    D3D11_PRIMITIVE_TOPOLOGY t;
-    context_->IAGetPrimitiveTopology(&t);
-
-    switch (t) {
-    case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
-        return primitive_topology::triangle_list;
-    case D3D11_PRIMITIVE_TOPOLOGY_LINELIST:
-        return primitive_topology::line_list;
-    case D3D11_PRIMITIVE_TOPOLOGY_POINTLIST:
-        return primitive_topology::point_list;
-
-    default:
-        return primitive_topology::unknown;
-    }
-}
-
-viewport d3d11_context::get_viewport() const noexcept
-{
-    UINT count = 1;
-    D3D11_VIEWPORT vp;
-    context_->RSGetViewports(&count, &vp);
-
-    return viewport{
-        static_cast<float>(vp.TopLeftX),
-        static_cast<float>(vp.TopLeftY),
-        static_cast<float>(vp.Width),
-        static_cast<float>(vp.Height),
-        static_cast<float>(vp.MinDepth),
-        static_cast<float>(vp.MaxDepth)
-    };
-}
 
 void d3d11_context::copy_subresource(framebuffer* dst, const framebuffer* src,
                                      const rect& src_rect, const rect& dst_rect)
@@ -463,7 +417,7 @@ void d3d11_context::set_uniform_buffer(const buffer* ub, shader_bind_type stage,
 
 void d3d11_context::set_texture(const textureview* srv, shader_bind_type stage, std::uint32_t slot)
 {
-    assert(srv == nullptr || srv->desc().usage == view_usage::shader_resource);
+    assert(srv == nullptr || srv->desc().usage & view_usage::shader_resource);
 
     auto* tex = srv == nullptr ? nullptr : to_native(srv)->srv();
 

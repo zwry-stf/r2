@@ -33,6 +33,13 @@ bool font::update_on_render()
     bool atlas_changed = !local_completed.empty();
 
     for (auto& pg : local_completed) {
+        if (pg.failed) {
+            // remove supported flag
+            (pg.blurred ?
+                glyph_lookup_blurred_[pg.codepoint].supported :
+                glyph_lookup_[pg.codepoint].supported) = 0u;
+            continue;
+        }
         apply_glyph(std::move(pg));
     }
 
@@ -87,9 +94,8 @@ void font::update_worker()
 
     for (const auto& cp : local_requests) {
         auto pg = rasterize_glyph(cp.codepoint, nullptr, cp.blurred);
-        if (pg.has_value())
-            local_completed.push_back(
-                std::move(pg.value()));
+        local_completed.push_back(
+            std::move(pg));
     }
 
     {
@@ -114,11 +120,11 @@ bool font::build()
 
     for (wchar i = kDefaultGlyphsStart; i <= kDefaultGlyphsEnd; i++) {
         auto ret = rasterize_glyph(i, nullptr, false);
-        if (!ret.has_value())
+        if (ret.failed)
             continue;
 
-        apply_glyph(*ret);
-        private_buffer_.swap(ret->bitmap);
+        apply_glyph(ret);
+        private_buffer_.swap(ret.bitmap);
     } 
 
     // build lookup table
@@ -196,14 +202,9 @@ void font::apply_glyph(const pending_glyph& pg)
     auto& lookup = pg.blurred ?
         glyph_lookup_blurred_[pg.codepoint] : glyph_lookup_[pg.codepoint];
 
-    if (!pg.visible) {
-        lookup.loading = 0u;
-        return;
-    }
-
     font_glyph g{};
     g.codepoint = pg.codepoint;
-    g.visible = true;
+    g.visible = pg.visible;
     g.advance_x = pg.advance_x;
     g.x0 = pg.x0;
     g.y0 = pg.y0;
@@ -212,9 +213,11 @@ void font::apply_glyph(const pending_glyph& pg)
     g.last_access = frame_start_;
     g.blurred = pg.blurred;
 
-    g.rect_id = atlas_->register_rect(pg.bmp_w, pg.bmp_h);
-    atlas_->get_rect_uv(g.rect_id, g.uv_min, g.uv_max);
-    atlas_->write_data(g.rect_id, pg.bitmap.data(), pg.bitmap.size());
+    if (pg.visible) {
+        g.rect_id = atlas_->register_rect(pg.bmp_w, pg.bmp_h);
+        atlas_->get_rect_uv(g.rect_id, g.uv_min, g.uv_max);
+        atlas_->write_data(g.rect_id, pg.bitmap.data(), pg.bitmap.size());
+    }
 
     std::uint32_t slot = 0u;
     if (!free_glyph_slots_.empty()) {
@@ -270,8 +273,7 @@ void font::blur_rect(std::uint32_t w, std::uint32_t h)
             float acc = 0.f;
 
             for (std::int32_t k = -static_cast<std::int32_t>(cfg_.glow_radius);
-                 k <= static_cast<std::int32_t>(cfg_.glow_radius); ++k)
-            {
+                 k <= static_cast<std::int32_t>(cfg_.glow_radius); ++k) {
                 std::int32_t sx = static_cast<std::int32_t>(col) + k;
                 sx = std::clamp(sx, 0, static_cast<std::int32_t>(w) - 1);
 
@@ -288,8 +290,7 @@ void font::blur_rect(std::uint32_t w, std::uint32_t h)
             float acc = 0.f;
 
             for (std::int32_t k = -static_cast<std::int32_t>(cfg_.glow_radius);
-                 k <= static_cast<std::int32_t>(cfg_.glow_radius); ++k)
-            {
+                 k <= static_cast<std::int32_t>(cfg_.glow_radius); ++k) {
                 std::int32_t ry = static_cast<std::int32_t>(row) + k;
                 ry = std::clamp(ry, 0, static_cast<std::int32_t>(h) - 1);
 
@@ -369,13 +370,58 @@ stbtt_fontinfo* font::get_font_data_for_char(wchar c) const noexcept
     return nullptr;
 }
 
-std::optional<pending_glyph> font::rasterize_glyph(wchar c, font_data* data, bool blurred)
+inline int floor_div(int a, int b) {
+    if (a >= 0) 
+        return a / b;
+    return -(((-a) + b - 1) / b);
+}
+
+inline int ceil_div(int a, int b) {
+    if (a >= 0) 
+        return (a + b - 1) / b;
+    return -((-a) / b);
+}
+
+void box_downsample_u8(const std::uint8_t* src, int src_w, int src_h, int src_stride,
+                       std::uint8_t* dst, int dst_w, int dst_h, int dst_stride,
+                       int factor_x, int factor_y,
+                       int dx, int dy) {
+    const int denom = factor_x * factor_y;
+
+    for (int y = 0; y < dst_h; ++y) {
+        const int sy0 = dy + y * factor_y;
+
+        for (int x = 0; x < dst_w; ++x) {
+            const int sx0 = dx + x * factor_x;
+
+            std::uint32_t sum = 0;
+            for (int yy = 0; yy < factor_y; ++yy) {
+                const int sy = sy0 + yy;
+                if ((unsigned)sy >= (unsigned)src_h) continue;
+
+                const std::uint8_t* row = src + sy * src_stride;
+
+                for (int xx = 0; xx < factor_x; ++xx) {
+                    const int sx = sx0 + xx;
+                    if ((unsigned)sx >= (unsigned)src_w) continue;
+
+                    sum += row[sx];
+                }
+            }
+
+            dst[y * dst_stride + x] = static_cast<std::uint8_t>(sum / denom);
+        }
+    }
+}
+
+pending_glyph font::rasterize_glyph(wchar c, font_data* data, bool blurred)
 {
     assert(!blurred || cfg_.glow_radius > 0u);
-    assert(cfg_.oversample_h > 1u);
-    assert(cfg_.oversample_v > 1u);
+    assert(cfg_.oversample_h >= 1u);
+    assert(cfg_.oversample_v >= 1u);
 
     pending_glyph e{};
+    e.failed = false;
     e.codepoint = c;
     e.blurred = blurred;
 
@@ -387,7 +433,8 @@ std::optional<pending_glyph> font::rasterize_glyph(wchar c, font_data* data, boo
         info = get_font_data_for_char(c);
     }
     if (info == nullptr) {
-        return std::nullopt;
+        e.failed = true;
+        return e;
     }
 
     const int glyph_index = stbtt_FindGlyphIndex(
@@ -395,13 +442,16 @@ std::optional<pending_glyph> font::rasterize_glyph(wchar c, font_data* data, boo
         static_cast<int>(c)
     );
     if (glyph_index == 0) {
-        return std::nullopt;
+        e.failed = true;
+        return e;
     }
 
     const float scale = stbtt_ScaleForPixelHeight(
         info, 
         static_cast<float>(cfg_.size)
     );
+    const float scale_x = scale * static_cast<float>(cfg_.oversample_h);
+    const float scale_y = scale * static_cast<float>(cfg_.oversample_v);
 
     int adv, lsb;
     stbtt_GetGlyphHMetrics(
@@ -419,16 +469,14 @@ std::optional<pending_glyph> font::rasterize_glyph(wchar c, font_data* data, boo
         &unscaled_descent,
         &unscaled_line_gap
     );
-    const float ascent = std::round(
-        (float)unscaled_ascent * scale + ((unscaled_ascent > 0) ? +1.f : -1.f)
-    );
+    const float ascent_f = static_cast<float>(unscaled_ascent) * scale;
+    const float baseline_px = std::ceil(ascent_f);
 
     int x0, y0, x1, y1;
     stbtt_GetGlyphBitmapBoxSubpixel(
         info,
         glyph_index,
-        scale,
-        scale,
+        scale, scale,
         0.f, 0.f, /* shift */
         &x0, &y0, &x1, &y1
     );
@@ -437,8 +485,8 @@ std::optional<pending_glyph> font::rasterize_glyph(wchar c, font_data* data, boo
     const int over_h = y1 - y0;
     const int blur_size = blurred ?
         static_cast<int>(cfg_.glow_radius) : 0;
-    const int width = over_w + (cfg_.oversample_h - 1) + blur_size * 2;
-    const int height = over_h + (cfg_.oversample_v - 1) + blur_size * 2;
+    const int width = over_w + blur_size * 2;
+    const int height = over_h + blur_size * 2;
 
     if (width <= 0 || height <= 0) {
         e.visible = false;
@@ -447,16 +495,17 @@ std::optional<pending_glyph> font::rasterize_glyph(wchar c, font_data* data, boo
 
     e.x0 = static_cast<float>(x0);
     e.x1 = static_cast<float>(x1);
-    e.y0 = static_cast<float>(y0) + ascent;
-    e.y1 = static_cast<float>(y1) + ascent;
-
-    private_buffer_.clear();
-    private_buffer_.resize(
-        static_cast<std::size_t>(width) * static_cast<std::size_t>(height));
-
-    std::uint8_t* const pixel_data = private_buffer_.data() + blur_size * width + blur_size;
+    e.y0 = static_cast<float>(y0) + baseline_px;
+    e.y1 = static_cast<float>(y1) + baseline_px;
 
     if (cfg_.oversample_h == 1u && cfg_.oversample_v == 1u) {
+        private_buffer_.assign(
+            static_cast<std::size_t>(width) * static_cast<std::size_t>(height),
+            0u
+        );
+
+        std::uint8_t* const pixel_data = private_buffer_.data() + blur_size * width + blur_size;
+
         stbtt_MakeGlyphBitmapSubpixel(
             info,
             pixel_data,
@@ -468,25 +517,78 @@ std::optional<pending_glyph> font::rasterize_glyph(wchar c, font_data* data, boo
         );
     }
     else {
-        float sub_x = 0.f;
-        float sub_y = 0.f;
+        const int oh = static_cast<int>(cfg_.oversample_h);
+        const int ov = static_cast<int>(cfg_.oversample_v);
 
-        stbtt_MakeGlyphBitmapSubpixelPrefilter(
+        int x0o, y0o, x1o, y1o;
+        stbtt_GetGlyphBitmapBoxSubpixel(
+            info, glyph_index,
+            scale_x, scale_y,
+            0.f, 0.f,
+            &x0o, &y0o, &x1o, &y1o
+        );
+
+        const int src_w = x1o - x0o;
+        const int src_h = y1o - y0o;
+
+        if (src_w <= 0 || src_h <= 0) {
+            e.visible = false;
+            return e;
+        }
+
+        private_buffer2_.assign(
+            static_cast<std::size_t>(src_w) * static_cast<std::size_t>(src_h),
+            0u
+        );
+
+        stbtt_MakeGlyphBitmapSubpixel(
             info,
-            pixel_data,
-            width - blur_size * 2, height - blur_size * 2,
-            width * sizeof(std::uint8_t), /* stride */
-            scale, scale,
-            0.f, 0.f, /* shift */
-            static_cast<int>(cfg_.oversample_h), 
-            static_cast<int>(cfg_.oversample_v),
-            &sub_x, &sub_y,
+            private_buffer2_.data(),
+            src_w, src_h,
+            src_w * static_cast<int>(sizeof(std::uint8_t)),
+            scale_x, scale_y,
+            0.f, 0.f,
             glyph_index
         );
-        e.x0 += sub_x / static_cast<float>(cfg_.oversample_h);
-        e.y0 += sub_y / static_cast<float>(cfg_.oversample_v);
-        e.x1 += sub_x / static_cast<float>(cfg_.oversample_h);
-        e.y1 += sub_y / static_cast<float>(cfg_.oversample_v);
+
+        const int x0b = floor_div(x0o, oh);
+        const int y0b = floor_div(y0o, ov);
+        const int x1b = ceil_div(x1o, oh);
+        const int y1b = ceil_div(y1o, ov);
+
+        const int over_w2 = x1b - x0b;
+        const int over_h2 = y1b - y0b;
+
+        const int width2 = over_w2 + blur_size * 2;
+        const int height2 = over_h2 + blur_size * 2;
+
+        if (width2 <= 0 || height2 <= 0) {
+            e.visible = false;
+            return e;
+        }
+
+        x0 = x0b; y0 = y0b; x1 = x1b; y1 = y1b;
+
+        e.x0 = static_cast<float>(x0);
+        e.x1 = static_cast<float>(x1);
+        e.y0 = static_cast<float>(y0) + baseline_px;
+        e.y1 = static_cast<float>(y1) + baseline_px;
+
+        private_buffer_.assign(
+            static_cast<std::size_t>(width2) * static_cast<std::size_t>(height2), 
+            0u
+        );
+        std::uint8_t* const pixel_data = private_buffer_.data() + blur_size * width2 + blur_size;
+
+        const int dx = (x0b * oh) - x0o;
+        const int dy = (y0b * ov) - y0o;
+
+        box_downsample_u8(
+            private_buffer2_.data(), src_w, src_h, src_w,
+            pixel_data, over_w2, over_h2, width2,
+            oh, ov,
+            dx, dy
+        );
     }
 
     if (blurred) {

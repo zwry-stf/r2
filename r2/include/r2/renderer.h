@@ -64,7 +64,7 @@ public:
 #endif
 
 public:
-    void init(const context_init_data& init_data);
+    void init(const platform_init_data& pinit, const backend_init_data& binit);
     void init(context* ctx);
     void destroy();
 

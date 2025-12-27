@@ -82,26 +82,30 @@ int __stdcall WinMain(HINSTANCE /* instance */,
 {
 #endif
 
-    if (!create_window("vane - v3"))
+    if (!create_window("r2"))
         show_error_and_exit("failed to create window");
 
     if (!initialize_backend())
         show_error_and_exit("failed to initialize backend");
 
-    // vane
+    // r2
 #if defined(R2_BACKEND_D3D11)
-    r2::context_init_data init_data(g_data.render_data.swapchain.get());
+    r2::backend_init_data binit(g_data.render_data.swapchain.get());
 #elif defined(R2_BACKEND_OPENGL)
-    r2::context_init_data init_data(glfwGetWin32Window(g_data.window_data.window));
+    r2::backend_init_data binit;
+#endif
+
+#if defined(R2_PLATFORM_WINDOWS)
+    r2::platform_init_data pinit(glfwGetWin32Window(g_data.window_data.window));
 #endif
 
     try {
-        g_renderer.init(init_data);
+        g_renderer.init(pinit, binit);
 
         r2::font_cfg fcfg{};
-        fcfg.size = 50u;
-        fcfg.oversample_h = 2;
-        fcfg.oversample_v = 2;
+        fcfg.size = 20u;
+        fcfg.oversample_h = 2u;
+        fcfg.oversample_v = 2u;
         fcfg.glow_radius = 10u;
         fcfg.glow_strength = 2.f;
         auto* f = g_renderer.add_font(fcfg);
@@ -283,7 +287,7 @@ void show_error_and_exit(std::format_string<Args...> f, Args && ...args)
     std::string msg = std::format(f, std::forward<Args>(args)...);
 
 #if defined(R2_PLATFORM_WINDOWS)
-    MessageBoxA(NULL, msg.c_str(), "Vane - Error", MB_OK | MB_ICONERROR);
+    MessageBoxA(NULL, msg.c_str(), "r2 - error", MB_OK | MB_ICONERROR);
 #endif
 
     std::abort();

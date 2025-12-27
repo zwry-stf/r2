@@ -169,6 +169,8 @@ void gl_inputlayout::link(buffer* buffer)
 
         clear_gl_errors();
 
+        GLint prev_vao = 0;
+        glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prev_vao);
         glBindVertexArray(vao_);
 
         GLuint stride = static_cast<GLuint>(buffer->desc().vb_stride);
@@ -195,7 +197,7 @@ void gl_inputlayout::link(buffer* buffer)
 
         GLenum gl_err = drain_gl_errors();
 
-        glBindVertexArray(0);
+        glBindVertexArray(prev_vao);
 
         if (gl_err != GL_NO_ERROR) {
             set_error(

@@ -27,21 +27,21 @@ class context : public object<void> {
 protected:
     std::unique_ptr<texture2d> backbuffer_;
 
+#if defined(R2_PLATFORM_WINDOWS)
+    HWND__* hwnd_;
+#endif // R2_PLATFORM_WINDOWS
+
 protected:
-    context() = default;
+    explicit context(const platform_init_data& pinit);
 
 public:
-    static std::unique_ptr<context> make_context(const context_init_data& data, bool common_origin = true);
+    static std::unique_ptr<context> make_context(const platform_init_data& pinit, const backend_init_data& binit, bool common_origin = true);
 
 public:
     void release_backbuffer();
     virtual void acquire_backbuffer() = 0;
 
     /// get
-    // immediate
-    virtual rect get_scissor_rect() const noexcept = 0;
-    virtual primitive_topology get_primitive_topology() const noexcept = 0;
-    virtual viewport get_viewport() const noexcept = 0;
     virtual void copy_subresource(framebuffer* dst, const framebuffer* src,
                                   const rect& src_rect, const rect& dst_rect) = 0;
     virtual void resolve_subresource(framebuffer* dst, const framebuffer* src, std::optional<texture_format> format,
@@ -97,6 +97,12 @@ public:
     [[nodiscard]] auto* get_backbuffer() const noexcept {
         return backbuffer_.get();
     }
+
+#if defined(R2_PLATFORM_WINDOWS)
+    [[nodiscard]] auto* get_hwnd() const noexcept {
+        return hwnd_;
+    }
+#endif // R2_PLATFORM_WINDOWS
 };
 
 r2_end_

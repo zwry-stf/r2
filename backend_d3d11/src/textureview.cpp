@@ -76,7 +76,7 @@ d3d11_textureview::d3d11_textureview(d3d11_context* ctx, d3d11_texture2d* tex, c
         }
     }
 
-    else if (desc_.usage & view_usage::render_target) {
+    if (desc_.usage & view_usage::render_target) {
         assert(td.usage & texture_usage::render_target);
 
         D3D11_RENDER_TARGET_VIEW_DESC rd{};
@@ -107,7 +107,7 @@ d3d11_textureview::d3d11_textureview(d3d11_context* ctx, d3d11_texture2d* tex, c
         }
     }
 
-    else if (desc_.usage & view_usage::depth_stencil) {
+    if (desc_.usage & view_usage::depth_stencil) {
         assert(td.usage & texture_usage::depth_stencil);
 
         D3D11_DEPTH_STENCIL_VIEW_DESC dd{};

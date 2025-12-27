@@ -95,8 +95,9 @@ struct backup_render_data {
     GLuint     last_uniform_buffer_0;
 };
 
-gl_context::gl_context(const context_init_data& init_data, bool common_origin)
-    : common_origin_(common_origin)
+gl_context::gl_context(const platform_init_data& pinit, bool common_origin)
+    : r2::context(pinit),
+      common_origin_(common_origin)
 {
     glewExperimental = true;
     GLenum res = glewInit();
@@ -113,73 +114,9 @@ gl_context::gl_context(const context_init_data& init_data, bool common_origin)
     glGetIntegerv(GL_MINOR_VERSION, &minor_);
 
     backup_data_ = std::make_unique<backup_render_data>();
-
-#if defined(R2_PLATFORM_WINDOWS)
-    hwnd_ = init_data.hwnd;
-#endif
 }
 
 /// get
-
-rect gl_context::get_scissor_rect() const noexcept
-{
-    GLint box[4] = { 0, 0, 0, 0 };
-    glGetIntegerv(GL_SCISSOR_BOX, box);
-
-    const GLint x = box[0];
-    const GLint y = box[1];
-    const GLint w = box[2];
-    const GLint h = box[3];
-
-    rect r{};
-    r.left = static_cast<std::int32_t>(x);
-    r.right = static_cast<std::int32_t>(x + w);
-
-    if (common_origin_) {
-        const std::int32_t bottom = current_render_height_ - static_cast<std::int32_t>(y);
-        r.bottom = bottom;
-        r.top = bottom - static_cast<std::int32_t>(h);
-    }
-    else {
-        r.top = static_cast<std::int32_t>(y);
-        r.bottom = static_cast<std::int32_t>(y + h);
-    }
-
-    return r;
-}
-
-primitive_topology gl_context::get_primitive_topology() const noexcept
-{
-    switch (current_topology_) {
-    case GL_TRIANGLES: return primitive_topology::triangle_list;
-    case GL_LINES:     return primitive_topology::line_list;
-    case GL_POINTS:    return primitive_topology::point_list;
-    default:           return primitive_topology::triangle_list;
-    }
-}
-
-viewport gl_context::get_viewport() const noexcept
-{
-    GLint vp[4] = { 0, 0, 0, 0 };
-    glGetIntegerv(GL_VIEWPORT, vp);
-
-    GLfloat depth_range[2] = { 0.0f, 1.0f };
-    glGetFloatv(GL_DEPTH_RANGE, depth_range);
-
-    viewport v{};
-    v.top_left_x = static_cast<float>(vp[0]);
-    v.width      = static_cast<float>(vp[2]);
-    v.height     = static_cast<float>(vp[3]);
-
-    v.top_left_y = common_origin_ ? static_cast<float>(
-        static_cast<GLint>(current_render_height_) - (vp[1] + vp[3])) :
-        static_cast<float>(vp[1]);
-
-    v.min_depth = static_cast<float>(depth_range[0]);
-    v.max_depth = static_cast<float>(depth_range[1]);
-
-    return v;
-}
 
 void gl_context::copy_subresource(framebuffer* dst, const framebuffer* src,
                                   const rect& src_rect, const rect& dst_rect)
@@ -197,9 +134,6 @@ void gl_context::copy_subresource(framebuffer* dst, const framebuffer* src,
     assert(gl_view_src != nullptr);
     assert(gl_view_dst != nullptr);
 
-    const auto& ddesc = gl_view_src->resource()->desc();
-    const auto& sdesc = gl_view_dst->resource()->desc();
-
     if (gl_view_src->texture() == 0u ||
         !has_version(4, 3)) {
         resolve_subresource(
@@ -209,15 +143,27 @@ void gl_context::copy_subresource(framebuffer* dst, const framebuffer* src,
         );
     }
     else {
+        const auto* ddesc = &gl_view_dst->resource()->desc();
+        const auto* sdesc = &gl_view_src->resource()->desc();
+
+        assert(gl_src->fbo() != gl_dst->fbo());
+
+        if (gl_dst->fbo() == 0) {
+            ddesc = &get_backbuffer()->desc();
+        }
+        else if (gl_src->fbo() == 0) {
+            sdesc = &get_backbuffer()->desc();
+        }
+
         const GLint src_level = 0;
         const GLint dst_level = 0;
 
         const GLint src_x = static_cast<GLint>(src_rect.left);
-        const GLint src_y = static_cast<GLint>(sdesc.height - src_rect.bottom); // note bottom
+        const GLint src_y = static_cast<GLint>(sdesc->height - src_rect.bottom); // note bottom
         const GLint src_z = 0;
 
         const GLint dst_x = static_cast<GLint>(dst_rect.left);
-        const GLint dst_y = static_cast<GLint>(ddesc.height - dst_rect.bottom); // note bottom
+        const GLint dst_y = static_cast<GLint>(ddesc->height - dst_rect.bottom); // note bottom
         const GLint dst_z = 0;
 
         const GLsizei w = static_cast<GLsizei>(src_rect.right - src_rect.left);
@@ -247,13 +193,15 @@ void gl_context::resolve_subresource(framebuffer* dst, const framebuffer* src, s
     assert(gl_src != nullptr);
     assert(gl_dst != nullptr);
 
+    assert(gl_src->fbo() != gl_dst->fbo());
+
     const auto* gl_view_src = to_native(gl_src->desc().color_attachment.view);
     auto* gl_view_dst = to_native(gl_dst->desc().color_attachment.view);
     assert(gl_view_src != nullptr);
     assert(gl_view_dst != nullptr);
 
-    const auto& ddesc = gl_view_dst->resource()->desc();
-    const auto& sdesc = gl_view_src->resource()->desc();
+    const auto* ddesc = &gl_view_dst->resource()->desc();
+    const auto* sdesc = &gl_view_src->resource()->desc();
 
     GLboolean scissors_was_enabled;
     glGetBooleanv(GL_SCISSOR_TEST, &scissors_was_enabled);
@@ -262,14 +210,24 @@ void gl_context::resolve_subresource(framebuffer* dst, const framebuffer* src, s
     gl_call(glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_src->fbo()));
     gl_call(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gl_dst->fbo()));
 
-    if (gl_dst->fbo() != 0)
-        gl_call(glDrawBuffer(GL_COLOR_ATTACHMENT0));
-    else
+    if (gl_dst->fbo() == 0) {
         gl_call(glDrawBuffer(GL_BACK));
+        ddesc = &get_backbuffer()->desc();
+    }
+    else {
+        gl_call(glDrawBuffer(GL_COLOR_ATTACHMENT0));
+    }
+    if (gl_src->fbo() == 0) {
+        gl_call(glReadBuffer(GL_BACK));
+        sdesc = &get_backbuffer()->desc();
+    }
+    else {
+        gl_call(glReadBuffer(GL_COLOR_ATTACHMENT0));
+    }
 
     gl_call(glBlitFramebuffer(
-        src_rect.left, sdesc.height - src_rect.top, src_rect.right, sdesc.height - src_rect.bottom,
-        dst_rect.left, ddesc.height - dst_rect.top, dst_rect.right, ddesc.height - dst_rect.bottom,
+        src_rect.left, sdesc->height - src_rect.top, src_rect.right, sdesc->height - src_rect.bottom,
+        dst_rect.left, ddesc->height - dst_rect.top, dst_rect.right, ddesc->height - dst_rect.bottom,
         GL_COLOR_BUFFER_BIT, GL_NEAREST)
     );
 
@@ -535,24 +493,23 @@ void gl_context::set_framebuffer(const framebuffer* fb)
 
     gl_call(glBindFramebuffer(GL_FRAMEBUFFER, fbo));
 
-    if (fbo == 0) { // backbuffer
-        current_render_height_ = static_cast<std::int32_t>(render_height_);
+    const texture_desc* td;
+    if (fbo == 0) {
+        td = &get_backbuffer()->desc();
     }
+    else {
+        auto* grtv = to_native(fb->desc().color_attachment.view);
+        auto* res = grtv->resource();
+        td = &res->desc();
+    }
+    current_render_height_ = td->height;
 
-    glViewport(0,
+    glViewport(
+        0,
         static_cast<GLint>(current_render_height_) - static_cast<GLint>(render_height_),
         static_cast<GLint>(render_width_),
         static_cast<GLint>(render_height_)
     );
-
-    if (fbo == 0) { // backbuffer
-        return;
-    }
-
-    auto* grtv = to_native(fb->desc().color_attachment.view);
-    auto* res = grtv->resource();
-    const auto& td = res->desc();
-    current_render_height_ = static_cast<std::int32_t>(td.height);
 }
 
 void gl_context::clear_framebuffer(const framebuffer* fb)
@@ -560,24 +517,26 @@ void gl_context::clear_framebuffer(const framebuffer* fb)
     assert(fb != nullptr);
     auto fbo = to_native(fb)->fbo();
 
+    const texture_desc* d;
+
     if (fbo == 0) {
-        const GLsizei width = static_cast<GLsizei>(render_width_);
-        const GLsizei height = static_cast<GLsizei>(render_height_);
-        glViewport(0, 0, width, height);
-        glScissor(0, 0, width, height);
+        d = &get_backbuffer()->desc();
     }
     else {
-        auto& desc = to_native(fb->desc().color_attachment.view)->resource()->desc();
+        d = &to_native(fb->desc().color_attachment.view)->resource()->desc();
 
-        glViewport(0, 0,
-            static_cast<GLsizei>(desc.width),
-            static_cast<GLsizei>(desc.height)
-        );
-        glScissor(0, 0,
-            static_cast<GLsizei>(desc.width),
-            static_cast<GLsizei>(desc.height)
-        );
     }
+
+    glViewport(
+        0, 0,
+        static_cast<GLsizei>(d->width),
+        static_cast<GLsizei>(d->height)
+    );
+    glScissor(
+        0, 0,
+        static_cast<GLsizei>(d->width),
+        static_cast<GLsizei>(d->height)
+    );
 
     GLint prev_fbo = 0;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
@@ -588,6 +547,50 @@ void gl_context::clear_framebuffer(const framebuffer* fb)
     glClearBufferfv(GL_COLOR, 0, &ccolor[0]);
 
     glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo);
+}
+
+void gl_context::apply_viewport_if_dirty()
+{
+    if (!raster_.viewport_set)
+        return;
+
+    const auto& v = raster_.viewport;
+    const GLint x = (GLint)v.top_left_x;
+
+    GLint y;
+    if (common_origin_) {
+        y = (GLint)(current_render_height_ - (v.top_left_y + v.height));
+    }
+    else {
+        y = (GLint)v.top_left_y;
+    }
+
+    glViewport(x, y, (GLsizei)v.width, (GLsizei)v.height);
+    glDepthRangef((GLclampf)v.min_depth, (GLclampf)v.max_depth);
+
+    raster_.viewport_set = false;
+}
+
+void gl_context::apply_scissor_if_dirty()
+{
+    if (!raster_.scissor_set)
+        return;
+
+    const auto& r = raster_.scissor;
+    const GLint x = (GLint)r.left;
+    const GLsizei w = (GLsizei)(r.right - r.left);
+    const GLsizei h = (GLsizei)(r.bottom - r.top);
+
+    GLint y;
+    if (common_origin_) {
+        y = (GLint)(current_render_height_ - r.bottom);
+    }
+    else {
+        y = (GLint)r.top;
+    }
+
+    glScissor(x, y, w, h);
+    raster_.scissor_set = false;
 }
 
 void gl_context::draw(std::uint32_t count, std::uint32_t vertex_start)
@@ -635,15 +638,8 @@ void gl_context::set_scissor_rect(const rect& r)
     assert(r.left <= r.right);
     assert(r.top <= r.bottom);
 
-    const GLint x = static_cast<GLint>(r.left);
-    const GLsizei w = static_cast<GLsizei>(r.right - r.left);
-    const GLsizei h = static_cast<GLsizei>(r.bottom - r.top);
-
-    const GLint y = common_origin_ ?
-        static_cast<GLint>(current_render_height_ - r.bottom) :
-        static_cast<GLint>(r.top);
-
-    glScissor(x, y, w, h);
+    raster_.scissor = r;
+    raster_.scissor_set = true;
 }
 
 void gl_context::set_primitive_topology(primitive_topology t)
@@ -663,20 +659,8 @@ void gl_context::set_primitive_topology(primitive_topology t)
 
 void gl_context::set_viewport(const viewport& v)
 {
-    const GLint x = static_cast<GLint>(v.top_left_x);
-    const GLint y = common_origin_ ? 
-        static_cast<GLint>(current_render_height_ - (v.top_left_y + v.height)) :
-        static_cast<GLint>(v.top_left_y);
-
-    glViewport(x, y,
-        static_cast<GLsizei>(v.width),
-        static_cast<GLsizei>(v.height)
-    );
-
-    glDepthRangef(
-        static_cast<GLclampf>(v.min_depth),
-        static_cast<GLclampf>(v.max_depth)
-    );
+    raster_.viewport = v;
+    raster_.viewport_set = true;
 }
 
 void gl_context::backup_render_state()
