@@ -251,6 +251,30 @@ public:
     }
 };
 
+class rectf {
+public:
+    float x, y, w, h;
+
+public:
+    v_always_inline constexpr rectf() noexcept
+        : x(0.f), y(0.f), w(0.f), h(0.f) { }
+    v_always_inline constexpr rectf(float x, float y, float w, float h) noexcept
+        : x(x), y(y), w(w), h(h) { }
+
+public:
+    [[nodiscard]] v_always_inline bool operator==(const rectf& v) const noexcept {
+        return x == v.x && y == v.y && w == v.w && h == v.h;
+    }
+
+    [[nodiscard]] v_always_inline vec4 to_vec4() const noexcept {
+        return vec4(
+            x, y,
+            x + w,
+            y + h
+        );
+    }
+};
+
 struct vertex {
     vec2 pos; // position
     vec2 uv;  // tex coord

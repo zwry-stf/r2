@@ -37,7 +37,6 @@ void renderer2d::init(r2::context* ctx)
     do_init();
 }
 
-
 void renderer2d::do_init()
 {
     render_data_ = std::make_unique<render_data>();
@@ -625,6 +624,13 @@ void renderer2d::font_update_thread()
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+}
+
+texture_handle renderer2d::font_texture() const noexcept
+{
+    assert(render_data_);
+    assert(render_data_->font_view);
+    return render_data_->font_view->native_texture_handle();
 }
 
 r2_end_

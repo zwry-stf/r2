@@ -20,12 +20,12 @@ namespace unicode {
 
     template <typename S>
     using get_char_t = std::remove_cv_t<
-        std::remove_reference_t<decltype(std::declval<S&>()[0])>
+        std::remove_reference_t<decltype(std::declval<const S&>()[0])>
     >;
 
     template <typename S>
     concept string_like =
-        requires(S s, std::uint32_t i) {
+        requires(const S& s, std::uint32_t i) {
             { s.length() } -> std::convertible_to<std::size_t>;
             { s.empty() } -> std::convertible_to<bool>;
             { s[i] };

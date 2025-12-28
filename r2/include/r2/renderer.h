@@ -186,6 +186,7 @@ public:
     [[nodiscard]] auto* font_atlas() const noexcept {
         return font_atlas_.get();
     }
+    [[nodiscard]] texture_handle font_texture() const noexcept;
 };
 
 r2_end_
