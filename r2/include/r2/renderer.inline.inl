@@ -204,6 +204,24 @@ inline void renderer2d::add_line(const vec2& start, const vec2& end, color_u32 c
     aa_side(end - n, start - n, backup + 3u, backup + 0u, col_no_alpha);
 }
 
+inline void renderer2d::prim_rect(const vec2& min, const vec2& max, color_u32 col)
+{
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    const vec2& uv = shared_data_.uv_white_px;
+    vertices_.emplace_back(vec2{ min.x, min.y }, uv, col);
+    vertices_.emplace_back(vec2{ min.x, max.y }, uv, col);
+    vertices_.emplace_back(vec2{ max.x, max.y }, uv, col);
+    vertices_.emplace_back(vec2{ max.x, min.y }, uv, col);
+
+    vertex_ptr_ += 4u;
+}
+
 inline void renderer2d::add_rect(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding, e_rounding_flags flags, float corner_step)
 {
     const bool odd = (static_cast<int>(std::round(line_width)) & 1) != 0;
@@ -231,23 +249,135 @@ inline void renderer2d::add_rect_filled(const vec2& min, const vec2& max, color_
 {
     if (rounding < 0.5f ||
         flags == e_rounding_flags::rounding_none) {
-        indices_.push_back(vertex_ptr_ + 0u);
-        indices_.push_back(vertex_ptr_ + 1u);
-        indices_.push_back(vertex_ptr_ + 2u);
-        indices_.push_back(vertex_ptr_ + 0u);
-        indices_.push_back(vertex_ptr_ + 2u);
-        indices_.push_back(vertex_ptr_ + 3u);
-
-        vertex_ptr_ += 4u;
-
-        vertices_.emplace_back(min, shared_data_.uv_white_px, col);
-        vertices_.emplace_back(vec2(min.x, max.y), shared_data_.uv_white_px, col);
-        vertices_.emplace_back(max, shared_data_.uv_white_px, col);
-        vertices_.emplace_back(vec2(max.x, min.y), shared_data_.uv_white_px, col);
+        prim_rect(min, max, col);
     }
     else {
         path_rect(min, max, rounding, flags, corner_step);
         path_fill_convex(col);
+    }
+}
+
+inline void renderer2d::add_rect_filled_faded(const vec2& min, const vec2& max, color_u32 col, color_u32 faded_col, float fade_start, float fade_end)
+{
+    const float delta = fade_end - fade_start;
+    const bool draw_if_faded = (faded_col & color::alpha_mask) != 0u;
+    const bool draw_no_fade = (col & color::alpha_mask) != 0u;
+    assert(fade_start <= fade_end);
+
+    if (!draw_if_faded &&
+        !draw_no_fade) [[unlikely]]
+        return;
+
+    if (fade_end <= min.x) {
+        if (draw_if_faded) {
+            prim_rect(min, max, faded_col);
+        }
+    }
+    else if (fade_start >= max.x) {
+        if (draw_no_fade) {
+            prim_rect(min, max, col);
+        }
+    }
+    else {
+        if (delta < 1e-3f) [[unlikely]] {
+            if (draw_no_fade) {
+                prim_rect(min, vec2(fade_start, max.y), col);
+            }
+            if (draw_if_faded) {
+                prim_rect(vec2(fade_start, min.y), max, faded_col);
+            }
+            return;
+        }
+
+        const vec2& uv = shared_data_.uv_white_px;
+        if (fade_start > min.x) {
+            if (draw_no_fade) {
+                prim_rect(min, vec2(fade_start, max.y), col);
+            }
+
+            if (fade_end < max.x) {
+                indices_.emplace_back(vertex_ptr_ + 0u);
+                indices_.emplace_back(vertex_ptr_ + 1u);
+                indices_.emplace_back(vertex_ptr_ + 2u);
+                indices_.emplace_back(vertex_ptr_ + 0u);
+                indices_.emplace_back(vertex_ptr_ + 2u);
+                indices_.emplace_back(vertex_ptr_ + 3u);
+
+                vertices_.emplace_back(vec2{ fade_start, min.y }, uv, col);
+                vertices_.emplace_back(vec2{ fade_end, min.y }, uv, faded_col);
+                vertices_.emplace_back(vec2{ fade_end, max.y }, uv, faded_col);
+                vertices_.emplace_back(vec2{ fade_start, max.y }, uv, col);
+
+                vertex_ptr_ += 4u;
+
+                if (draw_if_faded) {
+                    prim_rect(vec2(fade_end, min.y), max, faded_col);
+                }
+            }
+            else {
+                indices_.emplace_back(vertex_ptr_ + 0u);
+                indices_.emplace_back(vertex_ptr_ + 1u);
+                indices_.emplace_back(vertex_ptr_ + 2u);
+                indices_.emplace_back(vertex_ptr_ + 0u);
+                indices_.emplace_back(vertex_ptr_ + 2u);
+                indices_.emplace_back(vertex_ptr_ + 3u);
+
+                const float t = (max.x - fade_start) / delta;
+                const color_u32 interp_col =
+                    color(col).interp(color(faded_col), t);
+
+                vertices_.emplace_back(vec2{ fade_start, min.y }, uv, col);
+                vertices_.emplace_back(vec2{ max.x, min.y }, uv, interp_col);
+                vertices_.emplace_back(vec2{ max.x, max.y }, uv, interp_col);
+                vertices_.emplace_back(vec2{ fade_start, max.y }, uv, col);
+
+                vertex_ptr_ += 4u;
+            }
+        }
+        else {
+            const float t_left_raw = (min.x - fade_start) / delta;
+            const float t_right_raw = (max.x - fade_start) / delta;
+
+            const float t_left = std::clamp(t_left_raw, 0.f, 1.f);
+            const float t_right = std::clamp(t_right_raw, 0.f, 1.f);
+
+            const color_u32 col_left = color(col).interp(color(faded_col), t_left);
+
+            if (fade_end < max.x) {
+                indices_.emplace_back(vertex_ptr_ + 0u);
+                indices_.emplace_back(vertex_ptr_ + 1u);
+                indices_.emplace_back(vertex_ptr_ + 2u);
+                indices_.emplace_back(vertex_ptr_ + 0u);
+                indices_.emplace_back(vertex_ptr_ + 2u);
+                indices_.emplace_back(vertex_ptr_ + 3u);
+
+                vertices_.emplace_back(min, uv, col_left);
+                vertices_.emplace_back(vec2{ fade_end, min.y }, uv, faded_col);
+                vertices_.emplace_back(vec2{ fade_end, max.y }, uv, faded_col);
+                vertices_.emplace_back(vec2{ min.x, max.y }, uv, col_left);
+
+                vertex_ptr_ += 4u;
+
+                prim_rect(vec2(fade_end, min.y), vec2(max.x, max.y), faded_col);
+            }
+            else {
+                const color_u32 col_right = color(col).interp(color(faded_col), t_right);
+
+                indices_.emplace_back(vertex_ptr_ + 0u);
+                indices_.emplace_back(vertex_ptr_ + 1u);
+                indices_.emplace_back(vertex_ptr_ + 2u);
+                indices_.emplace_back(vertex_ptr_ + 0u);
+                indices_.emplace_back(vertex_ptr_ + 2u);
+                indices_.emplace_back(vertex_ptr_ + 3u);
+
+                vertices_.emplace_back(min, uv, col_left);
+                vertices_.emplace_back(vec2{ max.x, min.y }, uv, col_right);
+                vertices_.emplace_back(vec2{ max.x, max.y }, uv, col_right);
+                vertices_.emplace_back(vec2{ min.x, max.y }, uv, col_left);
+
+                vertex_ptr_ += 4u;
+            }
+        }
     }
 }
 
