@@ -363,7 +363,7 @@
     <ClInclude Include="include\r2\renderer.h" />
     <ClInclude Include="include\r2\renderer.inline.inl" />
     <ClInclude Include="include\r2\renderer_definitions.h" />
-    <ClInclude Include="src\font\font_atlas.h" />
+    <ClInclude Include="include\r2\font\font_atlas.h" />
     <ClInclude Include="src\internal.h" />
     <ClInclude Include="src\render_data.h" />
     <ClInclude Include="src\shader.h" />

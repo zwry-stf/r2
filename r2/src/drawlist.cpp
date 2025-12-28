@@ -1,7 +1,7 @@
 #include <r2/renderer.h>
 #include <algorithm>
 #include "internal.h"
-#include <font/font_atlas.h>
+#include <r2/font/font_atlas.h>
 
 
 r2_begin_

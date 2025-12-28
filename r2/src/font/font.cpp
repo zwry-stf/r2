@@ -2,7 +2,7 @@
 #include <r2/font/unicode.h>
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
-#include "font_atlas.h"
+#include <r2/font/font_atlas.h>
 #include <algorithm>
 #include <limits>
 

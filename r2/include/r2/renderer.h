@@ -183,6 +183,9 @@ public:
     [[nodiscard]] const auto& get_render_size() const noexcept {
         return display_size_;
     }
+    [[nodiscard]] auto* font_atlas() const noexcept {
+        return font_atlas_.get();
+    }
 };
 
 r2_end_
