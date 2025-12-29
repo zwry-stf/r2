@@ -796,15 +796,19 @@ inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
     }
 }
 
-template<unicode::string_like String>
-inline float renderer2d::get_text_width(const String& str, std::uint32_t offset)
+template<unicode::string_like String, std::integral T>
+inline float renderer2d::get_text_width(const String& text, T offset, std::optional<T> count)
 {
-    const std::uint32_t length = static_cast<std::uint32_t>(str.length());
+    std::uint32_t length = static_cast<std::uint32_t>(text.length());
+    if (count.has_value() &&
+        static_cast<std::uint32_t>(*count) < length) {
+        length = static_cast<std::uint32_t>(*count);
+    }
 
     float ret = 0.f;
     std::uint32_t s = offset;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(str, length, s);
+        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -826,16 +830,20 @@ inline float renderer2d::get_text_width(const String& str, std::uint32_t offset)
     return ret;
 }
 
-template<unicode::string_like String>
-inline vec2 renderer2d::get_text_size(const String& str, std::uint32_t offset)
+template<unicode::string_like String, std::integral T>
+inline vec2 renderer2d::get_text_size(const String& text, T offset, std::optional<T> count)
 {
-    const std::uint32_t length = static_cast<std::uint32_t>(str.length());
+    std::uint32_t length = static_cast<std::uint32_t>(text.length());
+    if (count.has_value() &&
+        static_cast<std::uint32_t>(*count) < length) {
+        length = static_cast<std::uint32_t>(*count);
+    }
     const float line_height = static_cast<float>(current_font_->cfg().size);
 
     vec2 ret;
     std::uint32_t s = offset;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(str, length, s);
+        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -860,15 +868,19 @@ inline vec2 renderer2d::get_text_size(const String& str, std::uint32_t offset)
     return ret;
 }
 
-template<unicode::string_like String>
-inline bool renderer2d::get_text_width_strict(const String& str, float& out, std::uint32_t offset)
+template<unicode::string_like String, std::integral T>
+inline bool renderer2d::get_text_width_strict(const String& text, float& out, T offset, std::optional<T> count)
 {
-    const std::uint32_t length = static_cast<std::uint32_t>(str.length());
+    std::uint32_t length = static_cast<std::uint32_t>(text.length());
+    if (count.has_value() &&
+        static_cast<std::uint32_t>(*count) < length) {
+        length = static_cast<std::uint32_t>(*count);
+    }
 
     out = 0.f;
     std::uint32_t s = offset;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(str, length, s);
+        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -890,16 +902,20 @@ inline bool renderer2d::get_text_width_strict(const String& str, float& out, std
     return true;
 }
 
-template<unicode::string_like String>
-inline bool renderer2d::get_text_size_strict(const String& str, vec2& out, std::uint32_t offset)
+template<unicode::string_like String, std::integral T>
+inline bool renderer2d::get_text_size_strict(const String& text, vec2& out, T offset, std::optional<T> count)
 {
-    const std::uint32_t length = static_cast<std::uint32_t>(str.length());
+    std::uint32_t length = static_cast<std::uint32_t>(text.length());
+    if (count.has_value() &&
+        static_cast<std::uint32_t>(*count) < length) {
+        length = static_cast<std::uint32_t>(*count);
+    }
     const float line_height = static_cast<float>(current_font_->cfg().size);
 
     out = vec2(0.f);
     std::uint32_t s = offset;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(str, length, s);
+        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 

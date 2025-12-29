@@ -135,23 +135,23 @@ public:
     // Calculates text width using the same glyph resolution logic as rendering.
     // Missing glyphs may be skipped.
     // Text may *not* contain new line characters
-    template <unicode::string_like String>
-    float get_text_width(const String& text, std::uint32_t offset = 0u);
+    template <unicode::string_like String, std::integral T = std::uint32_t>
+    float get_text_width(const String& text, T offset = 0u, std::optional<T> count = std::nullopt);
     // Calculates text size using the same glyph resolution logic as rendering.
     // Missing glyphs may be skipped.
-    template <unicode::string_like String>
-    vec2 get_text_size(const String& text, std::uint32_t offset = 0u);
+    template <unicode::string_like String, std::integral T = std::uint32_t>
+    vec2 get_text_size(const String& text, T offset = 0u, std::optional<T> count = std::nullopt);
     // Attempts to calculate the width of the text using *only* loaded glyphs.
     // Returns false immediately if any character is missing.
     // May be used for valid caching.
     // Text may *not* contain new line characters
-    template <unicode::string_like String>
-    bool get_text_width_strict(const String& text, float& out, std::uint32_t offset = 0u);
+    template <unicode::string_like String, std::integral T = std::uint32_t>
+    bool get_text_width_strict(const String& text, float& out, T offset = 0u, std::optional<T> count = std::nullopt);
     // Attempts to calculate the size of the text using *only* loaded glyphs.
     // Returns false immediately if any character is missing.
     // May be used for valid caching.
-    template <unicode::string_like String>
-    bool get_text_size_strict(const String& text, vec2& out, std::uint32_t offset = 0u);
+    template <unicode::string_like String, std::integral T = std::uint32_t>
+    bool get_text_size_strict(const String& text, vec2& out, T offset = 0u, std::optional<T> count = std::nullopt);
 
     /// path
     void path_clear();
