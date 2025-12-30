@@ -112,7 +112,7 @@ public:
     void add_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding = 0.f,
                          e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
     void add_rect_filled_multicolor(const vec2& min, const vec2& max,
-                                    color_u32 col_tl, color_u32 col_tr, color_u32 col_bl, color_u32 col_br);
+                                    color_u32 col_tl, color_u32 col_tr, color_u32 col_br, color_u32 col_bl);
     void add_rect_filled_faded(const vec2& min, const vec2& max, color_u32 col, color_u32 faded_col, 
                                float fade_start, float fade_end);
     void add_shadow_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding = 0.f, float shadow_size = 50.f,

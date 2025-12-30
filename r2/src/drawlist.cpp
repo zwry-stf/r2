@@ -267,9 +267,6 @@ void renderer2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
         (col & color::alpha_mask) == 0u)
         return;
 
-    if (line_width == 0.f)
-        return;
-
     assert(line_width >= 0.f && "line_width should not be negative");
 
     const vec2 opaque_uv = shared_data_.uv_white_px;

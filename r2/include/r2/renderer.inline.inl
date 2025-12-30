@@ -252,7 +252,7 @@ inline void renderer2d::add_rect_inner(const vec2& min, const vec2& max, color_u
 }
 
 inline void renderer2d::add_rect_filled_multicolor(const vec2& min, const vec2& max,
-                                                   color_u32 col_tl, color_u32 col_tr, color_u32 col_bl, color_u32 col_br)
+                                                   color_u32 col_tl, color_u32 col_tr, color_u32 col_br, color_u32 col_bl)
 {
     indices_.emplace_back(vertex_ptr_ + 0u);
     indices_.emplace_back(vertex_ptr_ + 1u);
@@ -560,7 +560,13 @@ inline void renderer2d::path_rect(const vec2& min, const vec2& max, float roundi
     float width = max.x - min.x;
     float height = max.y - min.y;
 
-    rounding = (std::min)(rounding, 0.5f * (std::min)(width, height));
+    assert(width >= 0.f);
+    assert(height >= 0.f);
+
+    rounding = (std::min)(rounding, width * (flags & e_rounding_flags::rounding_top ||
+        flags & e_rounding_flags::rounding_bottom ? 0.5f : 1.f) - 1.f);
+    rounding = (std::min)(rounding, height * (flags & e_rounding_flags::rounding_left ||
+        flags & e_rounding_flags::rounding_right ? 0.5f : 1.f) - 1.f);
 
     if (rounding < 0.5f ||
         flags == e_rounding_flags::rounding_none) {
