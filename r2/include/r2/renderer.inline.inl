@@ -940,4 +940,108 @@ inline bool renderer2d::get_text_size_strict(const String& text, vec2& out, T of
     return true;
 }
 
+template<bool center, unicode::string_like String>
+inline std::uint32_t renderer2d::get_char_at_pos(const String& text, float pos)
+{
+    if (pos <= 0.f)
+        return 0u;
+
+    const std::uint32_t length = static_cast<std::uint32_t>(text.length());
+
+    std::uint32_t s = 0u;
+    float x = 0.f;
+    float prev_width = 0.f;
+    while (s < length) {
+        const std::uint32_t start = s;
+        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        if (cp == unicode::codepoint_invalid)
+            continue;
+
+        if (cp < 0x20u) {
+            assert(cp != U'\n');
+            if (cp == U'\r')
+                continue;
+
+            continue;
+        }
+
+        const auto* glyph = current_font_->find_glyph_no_fallback(cp);
+        if (glyph == nullptr)
+            continue;
+
+        if constexpr (center) {
+            const float curr_center = x - glyph->advance_x * 0.5f;
+            const float prev_center = (x - prev_width * 0.5f - glyph->advance_x);
+            if (pos >= prev_center && pos < curr_center) {
+                return start;
+            }
+        }
+        else {
+            if (pos >= x &&
+                pos < x + glyph->advance_x) {
+                return start;
+            }
+        }
+        x += glyph->advance_x;
+        prev_width = glyph->advance_x;
+    }
+
+    return length;
+}
+
+template<bool center, unicode::string_like String>
+inline bool renderer2d::get_char_at_pos_strict(const String& text, float pos, std::uint32_t& index)
+{
+    if (pos <= 0.f) {
+        index = 0u;
+        return true;
+    }
+
+    const std::uint32_t length = static_cast<std::uint32_t>(text.length());
+
+    std::uint32_t s = 0u;
+    float x = 0.f;
+    float prev_width = 0.f;
+    while (s < length) {
+        const std::uint32_t start = s;
+        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        if (cp == unicode::codepoint_invalid)
+            continue;
+
+        if (cp < 0x20u) {
+            assert(cp != U'\n');
+            if (cp == U'\r')
+                continue;
+
+            continue;
+        }
+
+        const auto* glyph = current_font_->find_glyph_no_fallback(cp);
+        if (glyph == nullptr)
+            return false;
+
+        if constexpr (center) {
+            const float curr_center = x - glyph->advance_x * 0.5f;
+            const float prev_center = (x - prev_width * 0.5f - glyph->advance_x);
+            if (pos >= prev_center && pos < curr_center) {
+                index = start;
+                return true;
+            }
+        }
+        else {
+            if (pos >= x &&
+                pos < x + glyph->advance_x) {
+                index = start;
+                return true;
+            }
+        }
+        x += glyph->advance_x;
+        prev_width = glyph->advance_x;
+    }
+
+    index = length;
+
+    return true;
+}
+
 r2_end_
