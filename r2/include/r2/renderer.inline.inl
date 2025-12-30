@@ -169,6 +169,9 @@ inline void renderer2d::aa_side(const vec2& start, const vec2& end, std::uint32_
 
 inline void renderer2d::add_line(const vec2& start, const vec2& end, color_u32 col, float line_width)
 {
+    if ((col & color::alpha_mask) == 0u) [[unlikely]]
+        return;
+
     assert(path_.empty());
 
     const vec2 d = (end - start);
@@ -222,8 +225,12 @@ inline void renderer2d::prim_rect(const vec2& min, const vec2& max, color_u32 co
     vertex_ptr_ += 4u;
 }
 
-inline void renderer2d::add_rect(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding, e_rounding_flags flags, float corner_step)
+inline void renderer2d::add_rect(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding,
+                                 e_rounding_flags flags, float corner_step)
 {
+    if ((col & color::alpha_mask) == 0u) [[unlikely]]
+        return;
+
     const bool odd = (static_cast<int>(std::round(line_width)) & 1) != 0;
     const vec2 offset = vec2(odd ? 0.5f : 0.f);
 
@@ -237,8 +244,12 @@ inline void renderer2d::add_rect(const vec2& min, const vec2& max, color_u32 col
     path_stroke(col, line_width, true);
 }
 
-inline void renderer2d::add_rect_inner(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding, e_rounding_flags flags, float corner_step)
+inline void renderer2d::add_rect_inner(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding,
+                                       e_rounding_flags flags, float corner_step)
 {
+    if ((col & color::alpha_mask) == 0u) [[unlikely]]
+        return;
+
     const vec2 offset = vec2(line_width * 0.5f);
 
     path_rect(
@@ -274,6 +285,9 @@ inline void renderer2d::add_rect_filled_multicolor(const vec2& min, const vec2& 
 inline void renderer2d::add_rect_filled(const vec2& min, const vec2& max, color_u32 col,
                                         float rounding, e_rounding_flags flags, float corner_step)
 {
+    if ((col & color::alpha_mask) == 0u) [[unlikely]]
+        return;
+
     if (rounding < 0.5f ||
         flags == e_rounding_flags::rounding_none) {
         prim_rect(min, max, col);
@@ -411,6 +425,9 @@ inline void renderer2d::add_rect_filled_faded(const vec2& min, const vec2& max, 
 inline void renderer2d::add_shadow_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding,
                                                float shadow_size, e_rounding_flags flags, float corner_step)
 {
+    if ((col & color::alpha_mask) == 0u) [[unlikely]]
+        return;
+
     path_rect(min, max, rounding, flags, corner_step);
     add_shadow_convex_filled(path_.data(), static_cast<std::uint32_t>(path_.size()), col, shadow_size);
     path_clear();
@@ -418,6 +435,9 @@ inline void renderer2d::add_shadow_rect_filled(const vec2& min, const vec2& max,
 
 inline void renderer2d::add_quad_filled(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, color_u32 col)
 {
+    if ((col & color::alpha_mask) == 0u) [[unlikely]]
+        return;
+
     assert(path_.empty());
 
     path_add_point(p1);
@@ -448,8 +468,12 @@ inline void renderer2d::add_quad_filled_multicolor(const vec2& p1, const vec2& p
     vertex_ptr_ += 4u;
 }
 
-inline void renderer2d::add_image(texture_handle texture, const vec2& min, const vec2& max, color_u32 col, const vec2& uv_min, const vec2& uv_max)
+inline void renderer2d::add_image(texture_handle texture, const vec2& min, const vec2& max, color_u32 col,
+                                  const vec2& uv_min, const vec2& uv_max)
 {
+    if ((col & color::alpha_mask) == 0u) [[unlikely]]
+        return;
+
     push_texture_id(texture);
 
     indices_.emplace_back(vertex_ptr_ + 0u);
@@ -472,6 +496,9 @@ inline void renderer2d::add_image(texture_handle texture, const vec2& min, const
 inline void renderer2d::add_image_rounded(texture_handle texture, const vec2& min, const vec2& max, float rounding, color_u32 col,
                                           const vec2& uv_min, const vec2& uv_max)
 {
+    if ((col & color::alpha_mask) == 0u) [[unlikely]]
+        return;
+
     push_texture_id(texture);
 
     const auto backup = vertex_ptr_;
@@ -560,9 +587,6 @@ inline void renderer2d::path_rect(const vec2& min, const vec2& max, float roundi
     float width = max.x - min.x;
     float height = max.y - min.y;
 
-    assert(width >= 0.f);
-    assert(height >= 0.f);
-
     rounding = (std::min)(rounding, width * (flags & e_rounding_flags::rounding_top ||
         flags & e_rounding_flags::rounding_bottom ? 0.5f : 1.f) - 1.f);
     rounding = (std::min)(rounding, height * (flags & e_rounding_flags::rounding_left ||
@@ -616,6 +640,11 @@ inline void renderer2d::path_rect(const vec2& min, const vec2& max, float roundi
 
 inline void renderer2d::path_fill_convex(color_u32 col)
 {
+    if ((col & color::alpha_mask) == 0u) [[unlikely]] {
+        path_clear();
+        return;
+    }
+
     add_convex_filled(
         path_.data(), 
         static_cast<std::uint32_t>(path_.size()),
@@ -627,6 +656,11 @@ inline void renderer2d::path_fill_convex(color_u32 col)
 
 inline void renderer2d::path_stroke(color_u32 col, float line_width, bool closed)
 {
+    if ((col & color::alpha_mask) == 0u) [[unlikely]] {
+        path_clear();
+        return;
+    }
+
     add_lines(
         path_.data(),
         static_cast<std::uint32_t>(path_.size()),
