@@ -1021,6 +1021,7 @@ inline std::uint32_t renderer2d::get_char_at_pos(const String& text, float pos)
         if (glyph == nullptr)
             continue;
 
+        x += glyph->advance_x;
         if constexpr (center) {
             const float curr_center = x - glyph->advance_x * 0.5f;
             const float prev_center = (x - prev_width * 0.5f - glyph->advance_x);
@@ -1034,7 +1035,6 @@ inline std::uint32_t renderer2d::get_char_at_pos(const String& text, float pos)
                 return start;
             }
         }
-        x += glyph->advance_x;
         prev_width = glyph->advance_x;
     }
 
