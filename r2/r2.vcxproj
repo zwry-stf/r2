@@ -365,7 +365,7 @@
     <ClInclude Include="include\r2\renderer_definitions.h" />
     <ClInclude Include="include\r2\font\font_atlas.h" />
     <ClInclude Include="src\internal.h" />
-    <ClInclude Include="src\render_data.h" />
+    <ClInclude Include="include\r2\render_data.h" />
     <ClInclude Include="src\shader.h" />
   </ItemGroup>
   <ItemGroup>

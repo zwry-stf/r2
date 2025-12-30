@@ -383,7 +383,7 @@ void render_frame()
 
     if (GetAsyncKeyState(VK_F7) & 0x8000) {
         g_renderer.add_text(
-            r2::vec2(700.f, 200.f),
+            r2::vec2(750.f, 200.f),
             r2::color::yellow(),
             std::u8string_view(u8"→😭😂🤓😘→")
         );
@@ -391,7 +391,7 @@ void render_frame()
 
     if (GetAsyncKeyState(VK_F8) & 0x8000) {
         g_renderer.add_text(
-            r2::vec2(700.f, 200.f),
+            r2::vec2(750.f, 200.f),
             r2::color::yellow(),
             std::u8string_view(u8"💔💔🤑🐒")
         );

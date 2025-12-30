@@ -200,6 +200,9 @@ public:
     [[nodiscard]] auto* font_atlas() const noexcept {
         return font_atlas_.get();
     }
+    [[nodiscard]] const auto* render_data() const noexcept {
+        return render_data_.get();
+    }
     [[nodiscard]] texture_handle font_texture() const noexcept;
 };
 

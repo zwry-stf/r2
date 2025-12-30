@@ -9,7 +9,7 @@ inline const font_glyph* font::find_glyph(wchar c)
     if (c >= static_cast<wchar>(glyph_lookup_.size()))
         return fallback_glyph_;
     auto& i = glyph_lookup_[c];
-    if (i.index == glyph_lookup_data::kInvalidIndex) {
+    if (i.index == glyph_lookup_data::kInvalidIndex) [[unlikely]] {
         if (i.supported == 1u) {
             // queue for load
             if (i.loading == 0u) {
@@ -30,7 +30,7 @@ inline const font_glyph* font::find_glyph_blurred(wchar c)
     if (c >= static_cast<wchar>(glyph_lookup_blurred_.size()))
         return fallback_glyph_;
     auto& i = glyph_lookup_blurred_[c];
-    if (i.index == glyph_lookup_data::kInvalidIndex) {
+    if (i.index == glyph_lookup_data::kInvalidIndex) [[unlikely]] {
         if (i.supported == 1u) {
             // queue for load
             if (i.loading == 0u) {
@@ -51,7 +51,7 @@ inline const font_glyph* font::find_glyph_no_fallback(wchar c)
     if (c >= static_cast<wchar>(glyph_lookup_.size()))
         return nullptr;
     auto& i = glyph_lookup_[c];
-    if (i.index == glyph_lookup_data::kInvalidIndex) {
+    if (i.index == glyph_lookup_data::kInvalidIndex) [[unlikely]] {
         if (i.supported == 1u) {
             // queue for load
             if (i.loading == 0u) {

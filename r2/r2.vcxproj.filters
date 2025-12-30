@@ -51,7 +51,7 @@
     <ClInclude Include="src\internal.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="src\render_data.h">
+    <ClInclude Include="include\r2\render_data.h">
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\shader.h">

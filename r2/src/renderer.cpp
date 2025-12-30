@@ -1,5 +1,5 @@
 #include <r2/renderer.h>
-#include "render_data.h"
+#include <r2/render_data.h>
 #include <r2/error.h>
 #include <r2/font/font_atlas.h>
 
@@ -39,7 +39,7 @@ void renderer2d::init(r2::context* ctx)
 
 void renderer2d::do_init()
 {
-    render_data_ = std::make_unique<render_data>();
+    render_data_ = std::make_unique<r2::render_data>();
     font_atlas_ = std::make_unique<r2::font_atlas>(this);
 
     backup_render_state();
