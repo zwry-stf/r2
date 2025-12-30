@@ -352,6 +352,93 @@ void render_frame()
     g_renderer.reset_render_data();
     g_renderer.setup_render_state();
 
+    // test
+    {
+        {
+            g_renderer.push_clip_rect(
+                r2::rect(
+                    1000, 200,
+                    1200,
+                    static_cast<std::int32_t>(g_renderer.get_render_size().y)
+                )
+            );
+
+            g_renderer.add_quad_filled_multicolor(
+                r2::vec2{ 800.f, 100.f },
+                r2::vec2{ 800.f, 500.f },
+                r2::vec2{ 1300.f, 500.f },
+                r2::vec2{ 1300.f, 100.f },
+                r2::color::white(),
+                r2::color::red(),
+                r2::color::blue(),
+                r2::color::blue()
+            );
+
+            g_renderer.pop_clip_rect();
+        }
+
+        g_renderer.add_line(r2::vec2(200.f, 200.f), r2::vec2(700.f, 600.f), r2::color::black(), 6.f);
+        g_renderer.add_line(r2::vec2(200.f, 200.f), r2::vec2(700.f, 600.f), r2::color::white(), 4.f);
+
+        g_renderer.add_line(r2::vec2(200.f, 200.f), r2::vec2(200.f, 600.f), r2::color::black(), 3.f);
+        g_renderer.add_line(r2::vec2(200.f, 200.f), r2::vec2(200.f, 600.f), r2::color::white(), 1.f);
+
+        const r2::vec2 points[] = {
+            r2::vec2(500.f, 500.f),
+            r2::vec2(800.f, 450.f),
+            r2::vec2(780.f, 200.f),
+            r2::vec2(600.f, 130.f),
+            r2::vec2(450.f, 240.f),
+        };
+
+        g_renderer.add_convex_filled(
+            points, sizeof(points) / sizeof(points[0]),
+            r2::color::cyan().interp(r2::color::black(), 0.5f).interp(r2::color::white(), 0.3f)
+        );
+
+        g_renderer.add_shadow_rect_filled(
+            r2::vec2(600.f, 400.f),
+            r2::vec2(900.f, 600.f),
+            r2::color::white(),
+            20.f
+        );
+
+        g_renderer.add_rect(
+            r2::vec2(600.f, 700.f),
+            r2::vec2(900.f, 900.f),
+            r2::color::white().interp(r2::color::black(), 0.5f),
+            2.f,
+            20.f,
+            r2::e_rounding_flags::rounding_top | r2::e_rounding_flags::rounding_bottomright
+        );
+
+        g_renderer.add_quad_filled(
+            r2::vec2(300.f, 300.f),
+            r2::vec2(400.f, 700.f),
+            r2::vec2(1000.f, 800.f),
+            r2::vec2(900.f, 400.f),
+            (r2::color::green() + r2::color::blue()).interp(r2::color::black(), 0.5f).alpha(0.2f)
+        );
+
+        auto test_str = std::u8string_view(u8"Hello World! abcikawhfioawhf");
+        float width = g_renderer.get_text_width(test_str);
+        (void)width;
+        g_renderer.add_text_faded(
+            r2::vec2(500.f, 300.f),
+            r2::color::blue().interp(r2::color::white(), 0.4f).interp(r2::color::green(), 0.3f),
+            r2::color::red(),
+            500.f, 800.f,
+            test_str,
+            true
+        );
+
+        g_renderer.add_text(
+            r2::vec2(300.f, 300.f),
+            r2::color::blue().interp(r2::color::white(), 0.4f).interp(r2::color::green(), 0.3f),
+            std::u8string_view(u8"Ä*+**''Ä")
+        );
+    }
+
     // fps 
     {
         constexpr float kUpdateTime = 0.5f;

@@ -227,7 +227,13 @@ inline void renderer2d::add_rect(const vec2& min, const vec2& max, color_u32 col
     const bool odd = (static_cast<int>(std::round(line_width)) & 1) != 0;
     const vec2 offset = vec2(odd ? 0.5f : 0.f);
 
-    path_rect(min + offset, max - offset, rounding, flags, corner_step);
+    path_rect(
+        min + offset,
+        max - offset, 
+        rounding, 
+        flags, 
+        corner_step
+    );
     path_stroke(col, line_width, true);
 }
 
@@ -239,9 +245,30 @@ inline void renderer2d::add_rect_inner(const vec2& min, const vec2& max, color_u
         min + offset,
         max - offset,
         rounding, 
-        flags, corner_step
+        flags,
+        corner_step
     );
     path_stroke(col, line_width, true);
+}
+
+inline void renderer2d::add_rect_filled_multicolor(const vec2& min, const vec2& max,
+                                                   color_u32 col_tl, color_u32 col_tr, color_u32 col_bl, color_u32 col_br)
+{
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    const auto& uv = shared_data_.uv_white_px;
+
+    vertices_.emplace_back(min, uv, col_tl);
+    vertices_.emplace_back(vec2{ min.x, max.y }, uv, col_bl);
+    vertices_.emplace_back(max, uv, col_br);
+    vertices_.emplace_back(vec2{ max.x, min.y }, uv, col_tr);
+
+    vertex_ptr_ += 4u;
 }
 
 inline void renderer2d::add_rect_filled(const vec2& min, const vec2& max, color_u32 col,
@@ -401,6 +428,26 @@ inline void renderer2d::add_quad_filled(const vec2& p1, const vec2& p2, const ve
     path_fill_convex(col);
 }
 
+inline void renderer2d::add_quad_filled_multicolor(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, 
+                                                   color_u32 col1, color_u32 col2, color_u32 col3, color_u32 col4)
+{
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    const auto& uv = shared_data_.uv_white_px;
+
+    vertices_.emplace_back(p1, uv, col1);
+    vertices_.emplace_back(p2, uv, col2);
+    vertices_.emplace_back(p3, uv, col3);
+    vertices_.emplace_back(p4, uv, col4);
+
+    vertex_ptr_ += 4u;
+}
+
 inline void renderer2d::add_image(texture_handle texture, const vec2& min, const vec2& max, color_u32 col, const vec2& uv_min, const vec2& uv_max)
 {
     push_texture_id(texture);
@@ -510,6 +557,11 @@ inline void renderer2d::path_arc_to(const vec2& center, float radius, float step
 
 inline void renderer2d::path_rect(const vec2& min, const vec2& max, float rounding, e_rounding_flags flags, float corner_step)
 {
+    float width = max.x - min.x;
+    float height = max.y - min.y;
+
+    rounding = (std::min)(rounding, 0.5f * (std::min)(width, height));
+
     if (rounding < 0.5f ||
         flags == e_rounding_flags::rounding_none) {
         path_add_point(min);
