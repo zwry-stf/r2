@@ -1,0 +1,108 @@
+#pragma once
+#include <backend/object.h>
+#include <memory>
+#include <optional>
+
+// 
+#include <backend/blendstate.h>
+#include <backend/buffer.h>
+#include <backend/depthstencilstate.h>
+#include <backend/inputlayout.h>
+#include <backend/pixelshader.h>
+#include <backend/rasterizerstate.h>
+#include <backend/sampler.h>
+#include <backend/shaderprogram.h>
+#include <backend/texture2d.h>
+#include <backend/textureview.h>
+#include <backend/vertexshader.h>
+#include <backend/compiled_shader.h>
+#include <backend/framebuffer.h>
+
+#include "context.inline.inl"
+
+
+r2_begin_
+
+class context : public object<void> {
+protected:
+    std::unique_ptr<texture2d> backbuffer_;
+
+#if defined(R2_PLATFORM_WINDOWS)
+    HWND__* hwnd_;
+#endif // R2_PLATFORM_WINDOWS
+
+protected:
+    explicit context(const platform_init_data& pinit);
+
+public:
+    static std::unique_ptr<context> make_context(const platform_init_data& pinit, const backend_init_data& binit, bool common_origin = true);
+
+public:
+    void release_backbuffer();
+    virtual void acquire_backbuffer() = 0;
+
+    /// get
+    virtual void copy_subresource(framebuffer* dst, const framebuffer* src,
+                                  const rect& src_rect, const rect& dst_rect) = 0;
+    virtual void resolve_subresource(framebuffer* dst, const framebuffer* src, std::optional<texture_format> format,
+                                     const rect& src_rect, const rect& dst_rect) = 0;
+
+    /// create
+    virtual std::unique_ptr<blendstate> create_blendstate(const blendstate_desc& desc) = 0;
+    virtual std::unique_ptr<buffer> create_buffer(const buffer_desc& desc, const void* initial_data = nullptr) = 0;
+    virtual std::unique_ptr<depthstencilstate> create_depthstencilstate(const depthstencilstate_desc& desc) = 0;
+    virtual std::unique_ptr<rasterizerstate> create_rasterizerstate(const rasterizerstate_desc& desc) = 0;
+    virtual std::unique_ptr<sampler> create_sampler(const sampler_desc& desc) = 0;
+    virtual std::unique_ptr<compiled_shader> compile_vertexshader(const char* source, std::size_t length) = 0;
+    virtual std::unique_ptr<vertexshader> create_vertexshader(compiled_shader* shader_data) = 0;
+    virtual std::unique_ptr<vertexshader> create_vertexshader(const void* data, std::size_t size_bytes) = 0;
+    virtual std::unique_ptr<compiled_shader> compile_pixelshader(const char* source, std::size_t length) = 0;
+    virtual std::unique_ptr<pixelshader> create_pixelshader(compiled_shader* shader_data) = 0;
+    virtual std::unique_ptr<pixelshader> create_pixelshader(const void* data, std::size_t size_bytes) = 0;
+    virtual std::unique_ptr<shaderprogram> create_shaderprogram(vertexshader* vs, pixelshader* ps) = 0;
+    virtual std::unique_ptr<inputlayout> create_inputlayout(const vertex_attribute_desc* desc, std::uint32_t count,
+                                                            const void* vs_data, std::size_t vs_data_size) = 0;
+    virtual std::unique_ptr<texture2d> create_texture2d(const texture_desc& desc, const void* initial_data = nullptr) = 0;
+    virtual std::unique_ptr<textureview> create_textureview(texture2d* tex, const textureview_desc& desc) = 0;
+    virtual std::unique_ptr<framebuffer> create_framebuffer(const framebuffer_desc& desc) = 0;
+
+    /// bind
+    virtual void set_blendstate(const blendstate* bs, const float(&factor)[4] = { 0.f, 0.f, 0.f, 0.f },
+                                std::uint32_t sample_mask = 0xffffffffu) = 0;
+    virtual void set_depthstencilstate(const depthstencilstate* ds, std::uint32_t stencil_ref = 0u) = 0;
+    virtual void set_inputlayout(const inputlayout* il) = 0;
+    virtual void set_rasterizerstate(const rasterizerstate* rs) = 0;
+    virtual void set_shaderprogram(const shaderprogram* s) = 0;
+    virtual void set_vertex_buffer(const buffer* vb, std::uint32_t slot = 0u) = 0;
+    virtual void set_index_buffer(const buffer* ib) = 0;
+    virtual void set_uniform_buffer(const buffer* ub, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) = 0;
+    virtual void set_texture(const textureview* srv, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) = 0;
+    virtual void set_texture_native(void* handle, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) = 0;
+    virtual void set_sampler(const sampler* s, shader_bind_type stage = shader_bind_type::ps, std::uint32_t slot = 0u) = 0;
+    virtual void set_framebuffer(const framebuffer* fb) = 0;
+    virtual void clear_framebuffer(const framebuffer* fb) = 0;
+
+    // immediate
+    virtual void draw(std::uint32_t count, std::uint32_t vertex_start = 0u) = 0;
+    virtual void draw_indexed(std::uint32_t count, std::uint32_t index_start = 0u, std::uint32_t vertex_start = 0u) = 0;
+    virtual void set_scissor_rect(const rect& rect) = 0;
+    virtual void set_primitive_topology(primitive_topology t) = 0;
+    virtual void set_viewport(const viewport& v) = 0;
+
+    //
+    virtual void backup_render_state() = 0;
+    virtual void restore_render_state() = 0;
+    virtual void setup_render_state() = 0;
+
+    [[nodiscard]] auto* get_backbuffer() const noexcept {
+        return backbuffer_.get();
+    }
+
+#if defined(R2_PLATFORM_WINDOWS)
+    [[nodiscard]] auto* get_hwnd() const noexcept {
+        return hwnd_;
+    }
+#endif // R2_PLATFORM_WINDOWS
+};
+
+r2_end_

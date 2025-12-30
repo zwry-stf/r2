@@ -1,0 +1,12 @@
+#pragma once
+#include <backend/object.h>
+
+
+r2_begin_
+
+class shaderprogram : public object<void> {
+protected:
+    using object<void>::object;
+};
+
+r2_end_

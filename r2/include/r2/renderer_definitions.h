@@ -348,7 +348,7 @@ v_always_inline e_rounding_flags operator|(const e_rounding_flags& a, const e_ro
 }
 
 v_always_inline bool operator&(const e_rounding_flags& a, const e_rounding_flags& b) {
-    return (std::to_underlying(a) & std::to_underlying(b)) != 0u;
+    return (std::to_underlying(a) & std::to_underlying(b)) == std::to_underlying(b);
 }
 
 r2_end_
