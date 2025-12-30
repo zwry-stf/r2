@@ -191,12 +191,13 @@ bool renderer2d::is_initialized()
     return is_initialized_;
 }
 
-void renderer2d::on_frame()
+void renderer2d::update_fonts_on_frame()
 {
     assert(render_data_);
     assert(render_data_->font_texture);
 
-    bool update_tex = false;
+    bool update_tex = atlas_update_queued_;
+    atlas_update_queued_ = false;
     for (auto& font : fonts_)
         if (font->update_on_render())
             update_tex = true;

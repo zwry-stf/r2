@@ -26,6 +26,7 @@ private:
 
     renderer_flags flags_{};
 
+    bool atlas_update_queued_{ false };
     std::vector<rect> clip_rect_stack_;
     std::vector<texture_handle> texture_stack_;
     std::vector<font*> font_stack_;
@@ -82,7 +83,7 @@ public:
 
 public:
     /// frame
-    void on_frame();
+    void update_fonts_on_frame();
     void setup_render_state();
     void backup_render_state();
     void restore_render_state();
@@ -204,6 +205,10 @@ public:
         return render_data_.get();
     }
     [[nodiscard]] texture_handle font_texture() const noexcept;
+
+    void queue_atlas_update() noexcept {
+        atlas_update_queued_ = true;
+    }
 };
 
 r2_end_

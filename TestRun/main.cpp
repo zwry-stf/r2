@@ -349,8 +349,6 @@ bool resize(int width, int height)
 
 void render_frame()
 {
-    g_renderer.on_frame();
-
     g_renderer.reset_render_data();
     g_renderer.setup_render_state();
 
@@ -398,6 +396,8 @@ void render_frame()
     }
 
     g_renderer.render();
+
+    g_renderer.update_fonts_on_frame();
 }
 
 void render_thread()
