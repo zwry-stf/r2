@@ -208,6 +208,9 @@ public:
     [[nodiscard]] const auto* render_data() const noexcept {
         return render_data_.get();
     }
+    [[nodiscard]] const auto& cmd_header() const noexcept {
+        return header_;
+    }
     [[nodiscard]] texture_handle font_texture() const noexcept;
 
     void queue_atlas_update() noexcept {
