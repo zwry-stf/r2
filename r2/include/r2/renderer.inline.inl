@@ -517,6 +517,8 @@ inline void renderer2d::add_image_rounded(texture_handle texture, const vec2& mi
 inline void renderer2d::shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max,
                                           const vec2& uv_min, const vec2& uv_max)
 {
+    assert(vtx_start <= vtx_end);
+
     const vec2 d_pos = max - min;
     if (d_pos == vec2(0.f))
         return;
@@ -527,7 +529,7 @@ inline void renderer2d::shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t
     const auto& curr_cmd = cmds_.back();
 
     for (std::uint32_t i = curr_cmd.vertex_start + vtx_start;
-        i < curr_cmd.vertex_start + vtx_end; i++) {
+         i < curr_cmd.vertex_start + vtx_end; i++) {
         auto& vtx = vertices_[i];
 
         vec2 d = (vtx.pos - min) * inv_d_pos;
@@ -536,6 +538,35 @@ inline void renderer2d::shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t
         d.y = std::clamp(d.y, 0.f, 1.f);
 
         vtx.uv = uv_min + d_uv * d;
+    }
+}
+
+inline void renderer2d::shade_vertices_col(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
+                                           const color& col_tl, const color& col_tr, const color& col_br, const color& col_bl)
+{
+    assert(vtx_start <= vtx_end);
+
+    const vec2 d_pos = max - min;
+    if (d_pos == vec2(0.f))
+        return;
+
+    const vec2 inv_d_pos = vec2(1.f) / d_pos;
+
+    const auto& curr_cmd = cmds_.back();
+
+    for (std::uint32_t i = curr_cmd.vertex_start + vtx_start;
+         i < curr_cmd.vertex_start + vtx_end; i++) {
+        auto& vtx = vertices_[i];
+
+        vec2 d = (vtx.pos - min) * inv_d_pos;
+        // clamp
+        d.x = std::clamp(d.x, 0.f, 1.f);
+        d.y = std::clamp(d.y, 0.f, 1.f);
+
+        const color a = col_tl.interp(col_tr, d.x);
+        const color b = col_bl.interp(col_br, d.x);
+
+        vtx.col = a.interp(b, d.y);
     }
 }
 
@@ -741,6 +772,9 @@ inline void renderer2d::add_text(const vec2& pos, color_u32 col, const String& s
 template<unicode::string_like String>
 inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32 faded_col, float fade_start, float fade_end, const String& str, bool blurred)
 {
+    if (col == faded_col) [[unlikely]]
+        return add_text<String>(pos, col, str, blurred);
+
     assert(current_font_ != nullptr);
 
     const bool draw_no_fade = (col & color::alpha_mask) != 0u;

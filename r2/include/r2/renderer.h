@@ -131,6 +131,8 @@ public:
                            const vec2& uv_min = vec2(0.f), const vec2& uv_max = vec2(1.f));
     void shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
                            const vec2& uv_min, const vec2& uv_max);
+    void shade_vertices_col(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
+                           const color& col_tl, const color& col_tr, const color& col_br, const color& col_bl);
 
     /// text
     template <unicode::string_like String>
@@ -178,6 +180,9 @@ public:
                    e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
     void path_fill_convex(color_u32 col);
     void path_stroke(color_u32 col, float line_width, bool closed = false);
+    [[nodiscard]] auto& path() noexcept {
+        return path_;
+    }
 
 private:
     void do_init();
@@ -193,6 +198,9 @@ private:
     void aa_side(const vec2& start, const vec2& end, std::uint32_t vtx_start, std::uint32_t vtx_end, color_u32 col);
 
 public:
+    [[nodiscard]] std::uint32_t vertex_ptr() const noexcept {
+        return vertex_ptr_;
+    }
     [[nodiscard]] auto* context() const noexcept {
         return context_.get();
     }

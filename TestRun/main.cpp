@@ -396,20 +396,42 @@ void render_frame()
             r2::color::cyan().interp(r2::color::black(), 0.5f).interp(r2::color::white(), 0.3f)
         );
 
+        auto vtx_index = g_renderer.vertex_ptr();
         g_renderer.add_shadow_rect_filled(
             r2::vec2(600.f, 400.f),
             r2::vec2(900.f, 600.f),
             r2::color::white(),
             20.f
         );
+        g_renderer.shade_vertices_col(
+            vtx_index,
+            g_renderer.vertex_ptr(),
+            r2::vec2(500.f, 300.f),
+            r2::vec2(1000.f, 700.f),
+            r2::color::white(),
+            r2::color::blue(),
+            r2::color::cyan(),
+            r2::color::purple()
+        );
 
+        vtx_index = g_renderer.vertex_ptr();
         g_renderer.add_rect(
             r2::vec2(600.f, 700.f),
             r2::vec2(900.f, 900.f),
-            r2::color::white().interp(r2::color::black(), 0.5f),
+            r2::color::white(),
             2.f,
             20.f,
             r2::e_rounding_flags::rounding_top | r2::e_rounding_flags::rounding_bottomright
+        );
+        g_renderer.shade_vertices_col(
+            vtx_index,
+            g_renderer.vertex_ptr(),
+            r2::vec2(500.f, 600.f),
+            r2::vec2(1000.f, 1000.f),
+            r2::color::white(),
+            r2::color::blue(),
+            r2::color::cyan(),
+            r2::color::purple()
         );
 
         g_renderer.add_quad_filled(
