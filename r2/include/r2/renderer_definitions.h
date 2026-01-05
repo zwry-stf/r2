@@ -36,39 +36,39 @@ public:
         : x(v), y(v) { }
 
 public:
-    [[nodiscard]] v_always_inline vec2 operator+(const vec2& v) const noexcept {
+    [[nodiscard]] v_always_inline constexpr vec2 operator+(const vec2& v) const noexcept {
         return vec2(x + v.x, y + v.y);
     }
-    [[nodiscard]] v_always_inline vec2 operator-(const vec2& v) const noexcept {
+    [[nodiscard]] v_always_inline constexpr vec2 operator-(const vec2& v) const noexcept {
         return vec2(x - v.x, y - v.y);
     }
-    [[nodiscard]] v_always_inline vec2 operator*(const vec2& v) const noexcept {
+    [[nodiscard]] v_always_inline constexpr vec2 operator*(const vec2& v) const noexcept {
         return vec2(x * v.x, y * v.y);
     }
-    [[nodiscard]] v_always_inline vec2 operator/(const vec2& v) const noexcept {
+    [[nodiscard]] v_always_inline constexpr vec2 operator/(const vec2& v) const noexcept {
         assert(v.x != 0.f && v.y != 0.f);
         return vec2(x / v.x, y / v.y);
     }
-    v_always_inline vec2& operator+=(const vec2& v) noexcept {
+    v_always_inline constexpr vec2& operator+=(const vec2& v) noexcept {
         *this = *this + v;
         return *this;
     }
-    v_always_inline vec2& operator-=(const vec2& v) noexcept {
+    v_always_inline constexpr vec2& operator-=(const vec2& v) noexcept {
         *this = *this - v;
         return *this;
     }
-    v_always_inline vec2& operator*=(const vec2& v) noexcept {
+    v_always_inline constexpr vec2& operator*=(const vec2& v) noexcept {
         *this = *this * v;
         return *this;
     }
-    v_always_inline vec2& operator/=(const vec2& v) noexcept {
+    v_always_inline constexpr vec2& operator/=(const vec2& v) noexcept {
         *this = *this / v;
         return *this;
     }
-    [[nodiscard]] v_always_inline vec2 operator-() const noexcept {
+    [[nodiscard]] v_always_inline constexpr vec2 operator-() const noexcept {
         return vec2(-x, -y);
     }
-    [[nodiscard]] v_always_inline bool operator==(const vec2& v) const noexcept {
+    [[nodiscard]] v_always_inline constexpr bool operator==(const vec2& v) const noexcept {
         return x == v.x && y == v.y;
     }
 
@@ -138,47 +138,47 @@ public:
             ) { }
 
 public:
-    v_always_inline static color red()    noexcept { return color(1.f, 0.f, 0.f, 1.f); }
-    v_always_inline static color green()  noexcept { return color(0.f, 1.f, 0.f, 1.f); }
-    v_always_inline static color blue()   noexcept { return color(0.f, 0.f, 1.f, 1.f); }
-    v_always_inline static color yellow() noexcept { return color(1.f, 1.f, 0.f, 1.f); }
-    v_always_inline static color cyan()   noexcept { return color(0.f, 1.f, 1.f, 1.f); }
-    v_always_inline static color purple() noexcept { return color(1.f, 0.f, 1.f, 1.f); }
-    v_always_inline static color white()  noexcept { return color(1.f, 1.f, 1.f, 1.f); }
-    v_always_inline static color black()  noexcept { return color(0.f, 0.f, 0.f, 1.f); }
+    v_always_inline constexpr static color red()    noexcept { return color(1.f, 0.f, 0.f, 1.f); }
+    v_always_inline constexpr static color green()  noexcept { return color(0.f, 1.f, 0.f, 1.f); }
+    v_always_inline constexpr static color blue()   noexcept { return color(0.f, 0.f, 1.f, 1.f); }
+    v_always_inline constexpr static color yellow() noexcept { return color(1.f, 1.f, 0.f, 1.f); }
+    v_always_inline constexpr static color cyan()   noexcept { return color(0.f, 1.f, 1.f, 1.f); }
+    v_always_inline constexpr static color purple() noexcept { return color(1.f, 0.f, 1.f, 1.f); }
+    v_always_inline constexpr static color white()  noexcept { return color(1.f, 1.f, 1.f, 1.f); }
+    v_always_inline constexpr static color black()  noexcept { return color(0.f, 0.f, 0.f, 1.f); }
 
 public:
-    [[nodiscard]] v_always_inline color operator+(const color& c) const noexcept {
+    [[nodiscard]] v_always_inline constexpr color operator+(const color& c) const noexcept {
         return color(r + c.r, g + c.g, b + c.b, a + c.a);
     }
-    [[nodiscard]] v_always_inline color operator-(const color& c) const noexcept {
+    [[nodiscard]] v_always_inline constexpr color operator-(const color& c) const noexcept {
         return color(r - c.r, g - c.g, b - c.b, a - c.a);
     }
-    [[nodiscard]] v_always_inline color operator*(const color& c) const noexcept {
+    [[nodiscard]] v_always_inline constexpr color operator*(const color& c) const noexcept {
         return color(r * c.r, g * c.g, b * c.b, a * c.a);
     }
-    [[nodiscard]] v_always_inline color operator/(const color& c) const noexcept {
+    [[nodiscard]] v_always_inline constexpr color operator/(const color& c) const noexcept {
         return color(r / c.r, g / c.g, b / c.b, a / c.a);
     }
 
 public:
-    [[nodiscard]] v_always_inline color alpha(float m) const noexcept {
+    [[nodiscard]] v_always_inline constexpr color alpha(float m) const noexcept {
         return color(r, g, b, a * m);
     }
-    [[nodiscard]] v_always_inline color transparent() const noexcept {
+    [[nodiscard]] v_always_inline constexpr color transparent() const noexcept {
         return color(r, g, b, 0.f);
     }
-    [[nodiscard]] v_always_inline color opague() const noexcept {
+    [[nodiscard]] v_always_inline constexpr color opague() const noexcept {
         return color(r, g, b, 1.f);
     }
-    [[nodiscard]] v_always_inline color interp(const color& v, float t) const noexcept {
+    [[nodiscard]] v_always_inline constexpr color interp(const color& v, float t) const noexcept {
         return color(
             (v.r - r) * t + r,
             (v.g - g) * t + g, 
             (v.b - b) * t + b,
             (v.a - a) * t + a);
     }
-    [[nodiscard]] v_always_inline operator color_u32() const noexcept {
+    [[nodiscard]] v_always_inline constexpr operator color_u32() const noexcept {
         return static_cast<color_u32>(r * 255.f) << (0u * 8u) |
                static_cast<color_u32>(g * 255.f) << (1u * 8u) |
                static_cast<color_u32>(b * 255.f) << (2u * 8u) |
@@ -199,39 +199,39 @@ public:
         : x(v), y(v), z(v), w(v) { }
 
 public:
-    [[nodiscard]] v_always_inline vec4 operator+(const vec4& v) const noexcept {
+    [[nodiscard]] v_always_inline constexpr vec4 operator+(const vec4& v) const noexcept {
         return vec4(x + v.x, y + v.y, z + v.z, w + v.w);
     }
-    [[nodiscard]] v_always_inline vec4 operator-(const vec4& v) const noexcept {
+    [[nodiscard]] v_always_inline constexpr vec4 operator-(const vec4& v) const noexcept {
         return vec4(x - v.x, y - v.y, z - v.z, w - v.w);
     }
-    [[nodiscard]] v_always_inline vec4 operator*(const vec4& v) const noexcept {
+    [[nodiscard]] v_always_inline constexpr vec4 operator*(const vec4& v) const noexcept {
         return vec4(x * v.x, y * v.y, z * v.z, w * v.w);
     }
-    [[nodiscard]] v_always_inline vec4 operator/(const vec4& v) const noexcept {
+    [[nodiscard]] v_always_inline constexpr vec4 operator/(const vec4& v) const noexcept {
         assert(v.x != 0.f && v.y != 0.f && v.z != 0.f && v.w != 0.f);
         return vec4(x / v.x, y / v.y, z / v.z, w / v.w);
     }
-    v_always_inline vec4& operator+=(const vec4& v) noexcept {
+    v_always_inline constexpr vec4& operator+=(const vec4& v) noexcept {
         *this = *this + v;
         return *this;
     }
-    v_always_inline vec4& operator-=(const vec4& v) noexcept {
+    v_always_inline constexpr vec4& operator-=(const vec4& v) noexcept {
         *this = *this - v;
         return *this;
     }
-    v_always_inline vec4& operator*=(const vec4& v) noexcept {
+    v_always_inline constexpr vec4& operator*=(const vec4& v) noexcept {
         *this = *this * v;
         return *this;
     }
-    v_always_inline vec4& operator/=(const vec4& v) noexcept {
+    v_always_inline constexpr vec4& operator/=(const vec4& v) noexcept {
         *this = *this / v;
         return *this;
     }
-    [[nodiscard]] v_always_inline vec4 operator-() const noexcept {
+    [[nodiscard]] v_always_inline constexpr vec4 operator-() const noexcept {
         return vec4(-x, -y, -z, -w);
     }
-    [[nodiscard]] v_always_inline bool operator==(const vec4& v) const noexcept {
+    [[nodiscard]] v_always_inline constexpr bool operator==(const vec4& v) const noexcept {
         return x == v.x && y == v.y && z == v.z && w == v.w;
     }
 
@@ -262,11 +262,11 @@ public:
         : x(x), y(y), w(w), h(h) { }
 
 public:
-    [[nodiscard]] v_always_inline bool operator==(const rectf& v) const noexcept {
+    [[nodiscard]] v_always_inline constexpr bool operator==(const rectf& v) const noexcept {
         return x == v.x && y == v.y && w == v.w && h == v.h;
     }
 
-    [[nodiscard]] v_always_inline vec4 to_vec4() const noexcept {
+    [[nodiscard]] v_always_inline constexpr vec4 to_vec4() const noexcept {
         return vec4(
             x, y,
             x + w,

@@ -704,7 +704,7 @@ inline void renderer2d::path_stroke(color_u32 col, float line_width, bool closed
 }
 
 template <unicode::string_like String>
-inline void renderer2d::add_text(const vec2& pos, color_u32 col, const String& str, bool blurred)
+inline void renderer2d::add_text(const vec2& pos, color_u32 col, const String& text, bool blurred)
 {
     assert(current_font_ != nullptr);
 
@@ -712,13 +712,13 @@ inline void renderer2d::add_text(const vec2& pos, color_u32 col, const String& s
         return;
 
     const float line_height = static_cast<float>(current_font_->cfg().size);
-    const std::uint32_t length = static_cast<std::uint32_t>(str.length());
+    const std::uint32_t length = static_cast<std::uint32_t>(text.length());
 
     std::uint32_t s = 0u;
     float x = pos.x;
     float y = pos.y;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(str, length, s);
+        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -770,10 +770,11 @@ inline void renderer2d::add_text(const vec2& pos, color_u32 col, const String& s
 }
 
 template<unicode::string_like String>
-inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32 faded_col, float fade_start, float fade_end, const String& str, bool blurred)
+inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32 faded_col,
+                                       float fade_start, float fade_end, const String& text, bool blurred)
 {
     if (col == faded_col) [[unlikely]]
-        return add_text<String>(pos, col, str, blurred);
+        return add_text<String>(pos, col, text, blurred);
 
     assert(current_font_ != nullptr);
 
@@ -784,7 +785,7 @@ inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
         return;
 
     const float line_height = static_cast<float>(current_font_->cfg().size);
-    const std::uint32_t length = static_cast<std::uint32_t>(str.length());
+    const std::uint32_t length = static_cast<std::uint32_t>(text.length());
 
     const bool do_fade = (fade_end > fade_start);
     if (!do_fade &&
@@ -798,7 +799,7 @@ inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
     float x = pos.x;
     float y = pos.y;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(str, length, s);
+        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 

@@ -142,7 +142,8 @@ public:
     template <unicode::string_like String>
     void add_text(const vec2& pos, color_u32 col, const String& text, bool blurred = false);
     template <unicode::string_like String>
-    void add_text_faded(const vec2& pos, color_u32 col, color_u32 faded_col, float fade_start, float fade_end, const String& text, bool blurred = false);
+    void add_text_faded(const vec2& pos, color_u32 col, color_u32 faded_col, 
+                        float fade_start, float fade_end, const String& text, bool blurred = false);
     // Calculates text width using the same glyph resolution logic as rendering.
     // Missing glyphs may be skipped.
     // Text may *not* contain new line characters
