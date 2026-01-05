@@ -5,6 +5,7 @@
 #include <vector>
 #include <thread>
 #include <atomic>
+#include <mutex>
 
 
 r2_begin_
@@ -30,6 +31,7 @@ private:
     std::vector<rect> clip_rect_stack_;
     std::vector<texture_handle> texture_stack_;
     std::vector<font*> font_stack_;
+    std::mutex font_mutex_;
     std::vector<std::unique_ptr<font>> fonts_;
     font* current_font_{ nullptr };
 
@@ -78,6 +80,7 @@ public:
     void set_flags(renderer_flags f);
 
     font* add_font(const font_cfg& cfg);
+    void remove_font(font* font);
 
     [[nodiscard]] bool is_initialized();
 
@@ -219,6 +222,9 @@ public:
     }
     [[nodiscard]] const auto& cmd_header() const noexcept {
         return header_;
+    }
+    [[nodiscard]] auto* release_context() noexcept {
+        return context_.release();
     }
     [[nodiscard]] texture_handle font_texture() const noexcept;
 

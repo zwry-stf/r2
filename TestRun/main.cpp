@@ -59,6 +59,7 @@ struct GlobalData
 inline static GlobalData g_data;
 
 inline static r2::renderer2d g_renderer;
+inline static r2::font* g_font;
 
 
 // function def
@@ -109,7 +110,7 @@ int __stdcall WinMain(HINSTANCE /* instance */,
         fcfg.glow_radius = 10u;
         fcfg.glow_strength = 2.f;
         auto* f = g_renderer.add_font(fcfg);
-
+        g_font = f;
         f->add_font(NotoSans_Medium, NotoSans_Medium_size);
         f->add_font(MPLUSRounded1c_Medium, MPLUSRounded1c_Medium_size);
         f->add_font(NotoEmoji_Medium, NotoEmoji_Medium_size);
@@ -349,6 +350,27 @@ bool resize(int width, int height)
 
 void render_frame()
 {
+    static bool changed = false;
+    static bool change_font = false;
+    if (!changed && change_font) {
+        g_renderer.remove_font(g_font);
+
+        changed = true;
+        r2::font_cfg fcfg{};
+        fcfg.size = 50u;
+        fcfg.oversample_h = 2u;
+        fcfg.oversample_v = 2u;
+        fcfg.glow_radius = 10u;
+        fcfg.glow_strength = 2.f;
+        auto* f = g_renderer.add_font(fcfg);
+
+        f->add_font(NotoSans_Medium, NotoSans_Medium_size);
+        f->add_font(MPLUSRounded1c_Medium, MPLUSRounded1c_Medium_size);
+        f->add_font(NotoEmoji_Medium, NotoEmoji_Medium_size);
+
+        f->build();
+    }
+
     g_renderer.reset_render_data();
     g_renderer.setup_render_state();
 
@@ -502,6 +524,7 @@ void render_frame()
             r2::color::yellow(),
             std::u8string_view(u8"💔💔🤑🐒")
         );
+        change_font = true;
     }
 
     g_renderer.render();

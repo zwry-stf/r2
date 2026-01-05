@@ -97,6 +97,7 @@ public:
     bool update_on_render();
     void update_worker();
     bool build();
+    void destroy();
 
     // Adds font data to the font instance.
     // The order of added fonts matters. Only TTF format is supported.

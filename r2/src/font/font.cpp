@@ -157,6 +157,18 @@ bool font::build()
     return true;
 }
 
+void font::destroy()
+{
+    for (auto& glyph : glyphs_) {
+        if (glyph.visible) {
+            atlas_->remove_rect(glyph.rect_id);
+        }
+    }
+    glyphs_.clear();
+    glyph_lookup_.clear();
+    glyph_lookup_blurred_.clear();
+}
+
 bool font::add_font(const std::uint8_t* data, std::size_t data_size)
 {
     std::vector<font_range> ranges;

@@ -76,7 +76,8 @@ void renderer2d::destroy()
     is_initialized_ = true;
     destroyed_.store(true, std::memory_order_release);
 
-    context_->release_backbuffer();
+    if (context_)
+        context_->release_backbuffer();
 
     render_data_.reset();
     context_.reset();
@@ -176,14 +177,47 @@ void renderer2d::set_flags(renderer_flags f)
 
 font* renderer2d::add_font(const font_cfg& cfg)
 {
-    fonts_.push_back(std::make_unique<font>(font_atlas_.get(), cfg));
+#if defined(_DEBUG)
+    assert_render_thread();
+#endif
+    {
+        std::lock_guard<std::mutex> lock(font_mutex_);
+        fonts_.push_back(std::make_unique<font>(font_atlas_.get(), cfg));
+    }
 
-    if (current_font_ == nullptr)
-        current_font_ = fonts_.back().get();
-    if (font_stack_.empty())
+    if (font_stack_.empty()) {
         font_stack_.push_back(fonts_.back().get());
+    }
+    if (current_font_ == nullptr) {
+        current_font_ = fonts_.back().get();
+    }
 
     return fonts_.back().get();
+}
+
+void renderer2d::remove_font(font* font)
+{
+#if defined(_DEBUG)
+    assert_render_thread();
+#endif
+    for (auto it = fonts_.begin(); it != fonts_.end(); it++) {
+        if (it->get() == font) {
+            std::lock_guard<std::mutex> lock(font_mutex_);
+            it->get()->destroy();
+            fonts_.erase(it);
+            break;
+        }
+    }
+
+    // clear font_stack and current font
+    if (current_font_ == font)
+        current_font_ = nullptr;
+    for (auto it = font_stack_.begin(); it != font_stack_.end();) {
+        if (*it == font)
+            it = font_stack_.erase(it);
+        else
+            it++;
+    }
 }
 
 bool renderer2d::is_initialized()
@@ -193,6 +227,9 @@ bool renderer2d::is_initialized()
 
 void renderer2d::update_fonts_on_frame()
 {
+#if defined(_DEBUG)
+    assert_render_thread();
+#endif
     assert(render_data_);
     assert(render_data_->font_texture);
 
@@ -213,6 +250,9 @@ void renderer2d::update_fonts_on_frame()
 
 void renderer2d::setup_render_state()
 {
+#if defined(_DEBUG)
+    assert_render_thread();
+#endif
     assert(context_);
     assert(render_data_);
 
@@ -233,17 +273,27 @@ void renderer2d::setup_render_state()
 
 void renderer2d::backup_render_state()
 {
+#if defined(_DEBUG)
+    assert_render_thread();
+#endif
     context_->backup_render_state();
 }
 
 void renderer2d::restore_render_state()
 {
+#if defined(_DEBUG)
+    assert_render_thread();
+#endif
     context_->restore_render_state();
 }
 
 void renderer2d::reset_render_data()
 {
+#if defined(_DEBUG)
+    assert_render_thread();
+#endif
     assert(render_data_->font_view);
+    assert(!fonts_.empty());
 
     aa_scale_ = 1.f;
 
@@ -252,6 +302,7 @@ void renderer2d::reset_render_data()
     cmds_.clear();
     clip_rect_stack_.clear();
     texture_stack_.clear();
+    font_stack_.clear();
 
     add_draw_cmd();
     push_clip_rect(
@@ -265,12 +316,17 @@ void renderer2d::reset_render_data()
     push_texture_id(
         render_data_->font_view.get()
     );
+    push_font(fonts_[0].get());
 }
 
 void renderer2d::render()
 {
+#if defined(_DEBUG)
+    assert_render_thread();
+#endif
     assert(clip_rect_stack_.size() == 1u);
     assert(texture_stack_.size() == 1u);
+    assert(font_stack_.size() == 1u);
 
     if (indices_.empty())
         return;
@@ -505,8 +561,11 @@ void renderer2d::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_ve
 void renderer2d::font_update_thread()
 {
     while (!destroyed_.load(std::memory_order_acquire)) {
-        for (auto& font : fonts_) {
-            font->update_worker();
+        {
+            std::lock_guard<std::mutex> lock(font_mutex_);
+            for (auto& font : fonts_) {
+                font->update_worker();
+            }
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
