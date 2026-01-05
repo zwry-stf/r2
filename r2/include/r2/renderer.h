@@ -89,6 +89,7 @@ public:
     void restore_render_state();
     void reset_render_data();
     void render();
+    void set_multisampled(bool multisample);
 
     /// states
     void set_clip_rect(const rect& r);

@@ -540,9 +540,6 @@ void d3d11_context::draw_indexed(std::uint32_t count, std::uint32_t index_start,
 
 void d3d11_context::set_scissor_rect(const rect& rect)
 {
-    assert(rect.left <= rect.right);
-    assert(rect.top <= rect.bottom);
-
     D3D11_RECT r{
         static_cast<LONG>(rect.left),
         static_cast<LONG>(rect.top),

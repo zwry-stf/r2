@@ -635,9 +635,6 @@ void gl_context::draw_indexed(std::uint32_t count, std::uint32_t index_start, st
 
 void gl_context::set_scissor_rect(const rect& r)
 {
-    assert(r.left <= r.right);
-    assert(r.top <= r.bottom);
-
     raster_.scissor = r;
     raster_.scissor_set = true;
 }

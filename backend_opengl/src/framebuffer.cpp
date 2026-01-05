@@ -45,6 +45,7 @@ gl_framebuffer::gl_framebuffer(gl_context* ctx, const framebuffer_desc& desc)
         auto* res = rtv->resource();
         const auto& td = res->desc();
 
+        (void)td;
         assert(td.usage & texture_usage::render_target);
 
         glFramebufferTexture2D(

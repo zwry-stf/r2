@@ -301,6 +301,10 @@ void renderer2d::render()
         const auto& cmd = cmds_[i];
         assert(cmd.texture != nullptr);
 
+        if (cmd.clip_rect.left >= cmd.clip_rect.right ||
+            cmd.clip_rect.top >= cmd.clip_rect.bottom) [[unlikely]]
+            continue;
+
         const bool end = i == cmds_.size() - 1;
         const std::uint32_t index_end = end ?
             static_cast<std::uint32_t>(indices_.size()) : cmds_[i + 1].index_start;
@@ -326,6 +330,13 @@ void renderer2d::render()
             cmd.vertex_start
         );
     }
+}
+
+void renderer2d::set_multisampled(bool multisample)
+{
+    multisample ?
+        context_->set_rasterizerstate(render_data_->rasterizer_state_ms.get()) :
+        context_->set_rasterizerstate(render_data_->rasterizer_state.get());
 }
 
 #include "shader.h"
