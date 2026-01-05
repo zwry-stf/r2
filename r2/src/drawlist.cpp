@@ -116,8 +116,8 @@ void renderer2d::add_shadow_convex_filled(const vec2* points, std::uint32_t num_
     const std::uint32_t num_edges = num_points;
 
     shared_data_.temp_buffer.resize(num_edges);
-    auto* edge_size_scales = reinterpret_cast<float*>(alloca(num_edges * sizeof(float)));
-
+    shared_data_.temp_buffer2.resize(num_edges);
+    auto* edge_size_scales = shared_data_.temp_buffer2.data();
     vec2* edge_normals = shared_data_.temp_buffer.data();
 
     for (std::uint32_t edge_index = 0u; edge_index < num_edges; edge_index++) {
