@@ -273,17 +273,11 @@ void renderer2d::setup_render_state()
 
 void renderer2d::backup_render_state()
 {
-#if defined(_DEBUG)
-    assert_render_thread();
-#endif
     context_->backup_render_state();
 }
 
 void renderer2d::restore_render_state()
 {
-#if defined(_DEBUG)
-    assert_render_thread();
-#endif
     context_->restore_render_state();
 }
 
