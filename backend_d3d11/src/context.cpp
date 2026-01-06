@@ -95,6 +95,11 @@ void d3d11_context::copy_subresource(framebuffer* dst, const framebuffer* src,
     assert(src_texture != nullptr);
     assert(dst_texture != nullptr);
 
+    assert(src_rect.right <= static_cast<std::int32_t>(src_texture->resource()->desc().width));
+    assert(src_rect.bottom <= static_cast<std::int32_t>(src_texture->resource()->desc().height));
+    assert(src_rect.right <= static_cast<std::int32_t>(dst_texture->resource()->desc().width));
+    assert(src_rect.bottom <= static_cast<std::int32_t>(dst_texture->resource()->desc().height));
+
     D3D11_BOX box{ 
         static_cast<UINT>(src_rect.left), 
         static_cast<UINT>(src_rect.top),
@@ -104,12 +109,13 @@ void d3d11_context::copy_subresource(framebuffer* dst, const framebuffer* src,
         1u /* back */
     };
     context_->CopySubresourceRegion(
-        dst_texture->resource()->texture(), 0u,
+        dst_texture->resource()->texture(),
+        0u, /* sub resource */
         static_cast<UINT>(dst_rect.left),
         static_cast<UINT>(dst_rect.top),
         0u, /* dst z */
         src_texture->resource()->texture(),
-        0u,
+        0u, /* sub resource */
         &box
     );
 }
@@ -151,6 +157,11 @@ void d3d11_context::resolve_subresource(framebuffer* dst, const framebuffer* src
     auto* dst_texture = to_native(dst->desc().color_attachment.view);
     assert(src_texture != nullptr);
     assert(dst_texture != nullptr);
+
+    assert(src_rect.right <= static_cast<std::int32_t>(src_texture->resource()->desc().width));
+    assert(src_rect.bottom <= static_cast<std::int32_t>(src_texture->resource()->desc().height));
+    assert(src_rect.right <= static_cast<std::int32_t>(dst_texture->resource()->desc().width));
+    assert(src_rect.bottom <= static_cast<std::int32_t>(dst_texture->resource()->desc().height));
 
     DXGI_FORMAT fmt;
     if (!format.has_value()) {
