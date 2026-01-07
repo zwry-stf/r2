@@ -566,7 +566,7 @@ inline void renderer2d::shade_vertices_col(std::uint32_t vtx_start, std::uint32_
         const color a = col_tl.interp(col_tr, d.x);
         const color b = col_bl.interp(col_br, d.x);
 
-        vtx.col = a.interp(b, d.y);
+        vtx.col = a.interp(b, d.y).alpha((vtx.col >> (3u * 8u)) & 0xFFu);
     }
 }
 

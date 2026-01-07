@@ -165,6 +165,10 @@ public:
     [[nodiscard]] v_always_inline constexpr color alpha(float m) const noexcept {
         return color(r, g, b, a * m);
     }
+    template <std::integral T>
+    [[nodiscard]] v_always_inline constexpr color alpha(T m) const noexcept {
+        return color(r, g, b, a * static_cast<float>(m) * kIntToFloat);
+    }
     [[nodiscard]] v_always_inline constexpr color transparent() const noexcept {
         return color(r, g, b, 0.f);
     }
