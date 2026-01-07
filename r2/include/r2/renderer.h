@@ -98,6 +98,10 @@ public:
     void set_clip_rect(const rect& r);
     void push_clip_rect(const vec2& min, const vec2& max, bool intersect_current = false);
     void push_clip_rect(const rect& r, bool intersect_current = false);
+    void modify_clip_rect_x(std::int32_t min, std::int32_t max);
+    void modify_clip_rect_x(float min, float max);
+    void modify_clip_rect_y(std::int32_t min, std::int32_t max);
+    void modify_clip_rect_y(float min, float max);
     void pop_clip_rect();
     void set_current_texture(texture_handle texture);
     void push_texture_id(texture_handle texture);

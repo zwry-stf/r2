@@ -81,6 +81,46 @@ inline void renderer2d::push_clip_rect(const rect& r, bool intersect_current)
     set_clip_rect(rect);
 }
 
+inline void renderer2d::modify_clip_rect_x(std::int32_t min, std::int32_t max)
+{
+    rect rect = header_.clip_rect;
+    if (min > header_.clip_rect.left)
+        rect.left = min;
+    if (max > header_.clip_rect.right)
+        rect.right = max;
+
+    clip_rect_stack_.push_back(rect);
+    set_clip_rect(rect);
+}
+
+inline void renderer2d::modify_clip_rect_x(float min, float max)
+{
+    modify_clip_rect_x(
+        static_cast<std::int32_t>(min),
+        static_cast<std::int32_t>(max)
+    );
+}
+
+inline void renderer2d::modify_clip_rect_y(std::int32_t min, std::int32_t max)
+{
+    rect rect = header_.clip_rect;
+    if (min > header_.clip_rect.top)
+        rect.top = min;
+    if (max > header_.clip_rect.bottom)
+        rect.bottom = max;
+
+    clip_rect_stack_.push_back(rect);
+    set_clip_rect(rect);
+}
+
+inline void renderer2d::modify_clip_rect_y(float min, float max)
+{
+    modify_clip_rect_y(
+        static_cast<std::int32_t>(min),
+        static_cast<std::int32_t>(max)
+    );
+}
+
 inline void renderer2d::pop_clip_rect()
 {
     assert(clip_rect_stack_.size() > 1u);
