@@ -126,7 +126,7 @@ public:
                                     color_u32 col1, color_u32 col2, color_u32 col3, color_u32 col4);
     void add_line(const vec2& start, const vec2& end, color_u32 col, float line_width);
     void add_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col);
-    void add_shadow_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col, float shadow_size, bool filled = true);
+    void add_shadow_convex(const vec2* points, std::uint32_t num_points, color_u32 col, float shadow_size, bool filled = true);
     void add_lines(const vec2* points, std::uint32_t num_points, color_u32 col, float line_width, bool closed = false);
 
     void add_image(texture_handle texture, const vec2& min, const vec2& max, color_u32 col = color::white(),

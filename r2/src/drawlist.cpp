@@ -82,7 +82,7 @@ void renderer2d::add_convex_filled(const vec2* points, std::uint32_t num_points,
     }
 }
 
-void renderer2d::add_shadow_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col, float shadow_size, bool filled)
+void renderer2d::add_shadow_convex(const vec2* points, std::uint32_t num_points, color_u32 col, float shadow_size, bool filled)
 {
     if (num_points < 3u ||
         (col & color::alpha_mask) == 0u)
@@ -92,8 +92,7 @@ void renderer2d::add_shadow_convex_filled(const vec2* points, std::uint32_t num_
         ((points[0].x * (points[1].y - points[2].y)) + 
             (points[1].x * (points[2].y - points[0].y)) + 
             (points[2].x * (points[0].y - points[1].y))) < 0.0f) ? -1 : 1;
-
-    const bool use_inset_distance = flags_.anti_aliased_fill;
+    const bool use_inset_distance = flags_.anti_aliased_fill && !filled;
     const vec2 inset_distance = vec2(0.5f);
 
     const vec4 shadow_uvs = shared_data_.shadow_uvs;
@@ -103,10 +102,9 @@ void renderer2d::add_shadow_convex_filled(const vec2* points, std::uint32_t num_
         static_cast<float>(font_atlas_->get_height())
     );
     const vec2 inv_tex_size = vec2(1.f) / tex_size;
-    const vec2 half_texel = inv_tex_size * vec2(0.5f);
 
-    const vec2 uv_min_in = vec2(shadow_uvs.x, shadow_uvs.y) + half_texel;
-    const vec2 uv_max_in = vec2(shadow_uvs.z, shadow_uvs.w) - half_texel;
+    const vec2 uv_min_in = vec2(shadow_uvs.x, shadow_uvs.y);
+    const vec2 uv_max_in = vec2(shadow_uvs.z, shadow_uvs.w);
 
     const vec2 solid_uv = uv_max_in;
     const vec2 edge_uv = vec2(uv_min_in.x, uv_max_in.y);
@@ -169,7 +167,7 @@ void renderer2d::add_shadow_convex_filled(const vec2* points, std::uint32_t num_
 
             for (std::uint32_t step = 0u; step < num_steps; step++) {
                 if (num_steps > 1u) {
-                    if (step == 0)
+                    if (step == 0u)
                         edge_normal = (edge_normal + prev_edge_normal).normalize();
                     else
                         edge_normal = edge_normals[edge_index];
@@ -200,14 +198,9 @@ void renderer2d::add_shadow_convex_filled(const vec2* points, std::uint32_t num_
                 const vec2 outer_edge_start = edge_start + (prev_edge_normal * expanded_thickness);
                 const vec2 outer_edge_end = edge_start + (edge_normal * expanded_thickness);
 
-                const float size_scale_prev = edge_size_scales[(edge_index + num_edges - 1u) % num_edges];
-
-                const vec2 uv_curr = solid_uv + (edge_uv - solid_uv) * vec2(size_scale_start);
-                const vec2 uv_prev = solid_uv + (edge_uv - solid_uv) * vec2(size_scale_prev);
-
                 vertices_.emplace_back(edge_start, solid_uv, col);
-                vertices_.emplace_back(outer_edge_end, uv_curr, col);
-                vertices_.emplace_back(outer_edge_start, uv_prev, col);
+                vertices_.emplace_back(outer_edge_end, expanded_edge_uv, col);
+                vertices_.emplace_back(outer_edge_start, other_edge_uv, col);
 
                 indices_.emplace_back(vertex_ptr_ + 0u);
                 indices_.emplace_back(vertex_ptr_ + 1u);
@@ -264,7 +257,7 @@ void renderer2d::add_shadow_convex_filled(const vec2* points, std::uint32_t num_
 void renderer2d::add_lines(const vec2* points, std::uint32_t num_points, color_u32 col, float line_width, bool closed)
 {
     if (num_points < 2u ||
-        (col & color::alpha_mask) == 0u)
+        (col & color::alpha_mask) == 0u) [[unlikely]]
         return;
 
     assert(line_width >= 0.f && "line_width should not be negative");

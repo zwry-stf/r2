@@ -415,14 +415,14 @@ void render_frame()
 
         g_renderer.add_convex_filled(
             points, sizeof(points) / sizeof(points[0]),
-            r2::color::cyan().interp(r2::color::black(), 0.5f).interp(r2::color::white(), 0.3f)
+            r2::color::cyan().interp(r2::color::black(), 0.5f).interp(r2::color::white(), 0.3f).alpha(0.3f)
         );
 
         auto vtx_index = g_renderer.vertex_ptr();
         g_renderer.add_shadow_rect_filled(
             r2::vec2(600.f, 400.f),
             r2::vec2(900.f, 600.f),
-            r2::color::white(),
+            r2::color::white().alpha(0.5f),
             20.f
         );
         g_renderer.shade_vertices_col(

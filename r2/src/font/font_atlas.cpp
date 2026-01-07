@@ -171,8 +171,9 @@ void font_atlas::add_tex_lines()
 
 void font_atlas::add_shadow_tex()
 {
+    constexpr std::uint32_t kPadding = 1u;
     constexpr std::uint32_t kShadowTexSize = 32u;
-    const std::uint32_t shadow_convex_size = kShadowTexSize;
+    const std::uint32_t shadow_convex_size = kShadowTexSize + kPadding;
     auto rect_id = register_rect(shadow_convex_size, shadow_convex_size);
 
     constexpr float kShadowFallowPower = 3.f;
@@ -181,15 +182,13 @@ void font_atlas::add_shadow_tex()
     std::vector<std::uint8_t> data(shadow_convex_size * shadow_convex_size);
 
 
-    const vec2 target_point = vec2(static_cast<float>(shadow_convex_size));
+    const vec2 target_point = vec2(static_cast<float>(shadow_convex_size - kPadding));
 
     // calculate highest value for scale
-    const float scale_dist = (vec2(static_cast<float>(shadow_convex_size - 1u)) - target_point).length();
-
-    float scale = 1.0f - std::min(
-        std::max(static_cast<float>(scale_dist) + kShadowDistanceFieldOffset, 0.0f) /
+    float scale = 1.f - std::min(
+        std::max(0.f + kShadowDistanceFieldOffset, 0.f) /
         std::max(static_cast<float>(shadow_convex_size) + kShadowDistanceFieldOffset, 0.001f),
-        1.0f
+        1.f
     );
     scale = std::pow(scale, kShadowFallowPower);
     scale = 1.f / scale;
@@ -197,12 +196,18 @@ void font_atlas::add_shadow_tex()
     // build
     for (std::uint32_t y = 0u; y < shadow_convex_size; y++) {
         for (std::uint32_t x = 0u; x < shadow_convex_size; x++) {
-            const float dist = (vec2(static_cast<float>(x), static_cast<float>(y)) - target_point).length();
+            const std::uint32_t clamped_x = std::clamp(x, kPadding, shadow_convex_size - kPadding);
+            const std::uint32_t clamped_y = std::clamp(y, kPadding, shadow_convex_size - kPadding);
 
-            float alpha = 1.0f - std::min(
-                std::max(static_cast<float>(dist) + kShadowDistanceFieldOffset, 0.0f) /
+            const float dist = (vec2(
+                static_cast<float>(clamped_x),
+                static_cast<float>(clamped_y)
+            ) - target_point).length();
+
+            float alpha = 1.f - std::min(
+                std::max(static_cast<float>(dist) + kShadowDistanceFieldOffset, 0.f) /
                 std::max(static_cast<float>(shadow_convex_size) + kShadowDistanceFieldOffset, 0.001f),
-                1.0f
+                1.f
             );
             alpha = std::pow(alpha, kShadowFallowPower);
             alpha *= scale;
@@ -215,9 +220,14 @@ void font_atlas::add_shadow_tex()
     vec2 uv_min, uv_max;
     get_rect_uv(rect_id, uv_min, uv_max);
 
+    const vec2 offset = vec2(
+        static_cast<float>(kPadding) * 1.f / static_cast<float>(width_),
+        static_cast<float>(kPadding) * 1.f / static_cast<float>(height_)
+    );
+
     renderer_->shared_data_.shadow_uvs = vec4(
-        uv_min.x, uv_min.y,
-        uv_max.x, uv_max.y
+        uv_min.x + offset.x, uv_min.y + offset.y,
+        uv_max.x - offset.x, uv_max.y - offset.y
     );
 }
 
