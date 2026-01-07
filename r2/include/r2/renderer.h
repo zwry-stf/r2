@@ -113,6 +113,7 @@ public:
                   e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
     void add_rect_inner(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding = 0.f,
                         e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
+    void add_rect_inner_fast(const vec2& min, const vec2& max, color_u32 col, float line_width);
     void add_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding = 0.f,
                          e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
     void add_rect_filled_multicolor(const vec2& min, const vec2& max,

@@ -262,6 +262,74 @@ inline void renderer2d::add_rect_inner(const vec2& min, const vec2& max, color_u
     path_stroke(col, line_width, true);
 }
 
+inline void renderer2d::add_rect_inner_fast(const vec2& min, const vec2& max, color_u32 col, float line_width)
+{
+    if ((col & color::alpha_mask) == 0u) [[unlikely]]
+        return;
+
+    // top
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    const auto& uv = shared_data_.uv_white_px;
+
+    vertices_.emplace_back(min, uv, col);
+    vertices_.emplace_back(min + vec2(line_width), uv, col);
+    vertices_.emplace_back(vec2(max.x - line_width, min.y + line_width), uv, col);
+    vertices_.emplace_back(vec2(max.x, min.y), uv, col);
+
+    vertex_ptr_ += 4u;
+
+    // bottom
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    vertices_.emplace_back(vec2(min.x, max.y), uv, col);
+    vertices_.emplace_back(max, uv, col);
+    vertices_.emplace_back(vec2(max.x - line_width, max.y - line_width), uv, col);
+    vertices_.emplace_back(vec2(min.x + line_width, max.y - line_width), uv, col);
+
+    vertex_ptr_ += 4u;
+
+    // left
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    vertices_.emplace_back(min, uv, col);
+    vertices_.emplace_back(vec2(min.x, max.y), uv, col);
+    vertices_.emplace_back(vec2(min.x + line_width, max.y - line_width), uv, col);
+    vertices_.emplace_back(vec2(min.x + line_width, min.y + line_width), uv, col);
+
+    vertex_ptr_ += 4u;
+
+    // right
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    vertices_.emplace_back(vec2(max.x, min.y), uv, col);
+    vertices_.emplace_back(vec2(max.x - line_width, min.y + line_width), uv, col);
+    vertices_.emplace_back(vec2(max.x - line_width, max.y - line_width), uv, col);
+    vertices_.emplace_back(max, uv, col);
+
+    vertex_ptr_ += 4u;
+}
+
 inline void renderer2d::add_rect_filled_multicolor(const vec2& min, const vec2& max,
                                                    color_u32 col_tl, color_u32 col_tr, color_u32 col_br, color_u32 col_bl)
 {
