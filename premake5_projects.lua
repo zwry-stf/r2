@@ -7,6 +7,7 @@ local function r2_join(base_path, rel)
 end
 
 function r2_define_projects(base_path, build_root, int_root, backends, backend_name)
+    local function P(rel) return r2_join(base_path, rel) end
 project "backend"
     kind "StaticLib"
     targetname "%{prj.name}_%{cfg.buildcfg}_%{cfg.platform}"
