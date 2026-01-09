@@ -39,8 +39,10 @@ void renderer2d::init(r2::context* ctx)
 
 void renderer2d::do_init()
 {
+    assert((bool)!render_data_);
     render_data_ = std::make_unique<r2::render_data>();
-    font_atlas_ = std::make_unique<r2::font_atlas>(this);
+    if (!font_atlas_)
+        font_atlas_ = std::make_unique<r2::font_atlas>(this);
 
     backup_render_state();
 
@@ -72,8 +74,15 @@ void renderer2d::do_init()
 
 void renderer2d::destroy()
 {
+    destroy_render();
+    
+    font_atlas_.reset();
+}
+
+void renderer2d::destroy_render()
+{
     resources_created_ = false;
-    is_initialized_ = true;
+    is_initialized_ = false;
     destroyed_.store(true, std::memory_order_release);
 
     if (context_)
@@ -84,8 +93,6 @@ void renderer2d::destroy()
 
     if (update_thread_.joinable())
         update_thread_.join();
-    
-    font_atlas_.reset();
 }
 
 void renderer2d::build_fonts()

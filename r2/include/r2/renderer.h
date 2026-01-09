@@ -70,6 +70,7 @@ public:
     void init(const platform_init_data& pinit, const backend_init_data& binit);
     void init(context* ctx);
     void destroy();
+    void destroy_render();
 
     void build_fonts();
     void create_font_texture();
