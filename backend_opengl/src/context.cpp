@@ -604,6 +604,9 @@ void gl_context::apply_scissor_if_dirty()
 
 void gl_context::draw(std::uint32_t count, std::uint32_t vertex_start)
 {
+    apply_viewport_if_dirty();
+    apply_scissor_if_dirty();
+
     assert(current_topology_ != static_cast<GLenum>(-1));
 
     gl_call(glDrawArrays(
@@ -615,6 +618,9 @@ void gl_context::draw(std::uint32_t count, std::uint32_t vertex_start)
 
 void gl_context::draw_indexed(std::uint32_t count, std::uint32_t index_start, std::uint32_t vertex_start)
 {
+    apply_viewport_if_dirty();
+    apply_scissor_if_dirty();
+
     assert(current_index_type_ != static_cast<GLenum>(-1));
     assert(current_topology_   != static_cast<GLenum>(-1));
 
