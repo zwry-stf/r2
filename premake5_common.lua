@@ -1,4 +1,3 @@
-
 function r2_define_common()
     flags { "MultiProcessorCompile" }
     warnings "Extra"
@@ -8,10 +7,10 @@ function r2_define_common()
         buildoptions { "/sdl" }
     filter {}
     
-    filter "configurations:Debug_*"
+    filter "configurations:Debug*"
         symbols "On"
         defines { "_DEBUG" }
-    filter "configurations:Release_*"
+    filter "configurations:Release*"
         optimize "On"
         intrinsics "On"
         linktimeoptimization "On"
@@ -33,9 +32,9 @@ function r2_define_common()
     filter {}
     
     -- backend
-    filter { "configurations:*_d3d11" }
+    filter { "options:backend=d3d11" }
         defines { "R2_BACKEND_D3D11" }
-    filter { "configurations:*_opengl" }
+    filter { "options:backend=opengl" }
         defines { "R2_BACKEND_OPENGL" }
     filter {}
 end

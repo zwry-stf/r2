@@ -6,8 +6,7 @@ local function r2_join(base_path, rel)
     return path.join(base, rel)
 end
 
-function r2_define_projects(base_path, build_root, int_root)
-    local function P(rel) return r2_join(base_path, rel) end
+function r2_define_projects(base_path, build_root, int_root, backends, backend_name)
 project "backend"
     kind "StaticLib"
     targetname "%{prj.name}_%{cfg.buildcfg}_%{cfg.platform}"
@@ -26,9 +25,9 @@ project "backend"
         P("backend/include")
     }
     
-    filter { "configurations:*_d3d11" }
+    filter { "options:backend=d3d11" }
         includedirs { P("backend_d3d11/include") }
-    filter { "configurations:*_opengl" }
+    filter { "options:backend=opengl" }
         includedirs {
             P("backend_opengl/include"),
             P("backend_opengl/ext")
@@ -55,7 +54,7 @@ project "backend_d3d11"
         P("backend/include")
     }
     
-    filter "configurations:*_opengl"
+    filter { "options:backend=opengl" }
         removefiles { "**" }
         flags { "ExcludeFromBuild" }
     filter {}
@@ -83,7 +82,7 @@ project "backend_opengl"
 
     defines { "GLEW_STATIC" }
     
-    filter "configurations:*_d3d11"
+    filter { "options:backend=d3d11" }
         removefiles { "**" }
         flags { "ExcludeFromBuild" }
     filter {}

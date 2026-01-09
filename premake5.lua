@@ -1,9 +1,19 @@
 workspace "r2"
-    configurations { "Debug_d3d11", "Debug_opengl", "Release_d3d11", "Release_opengl" }
+    configurations { "Debug", "Release" }
     platforms { "x86", "x64" }
     language "C++"
     cppdialect "C++23"
     staticruntime "Off"
+    
+    newoption {
+        trigger     = "backend",
+        value       = "API",
+        description = "Rendering backend",
+        allowed = {
+            { "d3d11",  "Direct3D 11" },
+            { "opengl", "OpenGL" }
+        }
+    }
 
     filter "platforms:x86"
         architecture "x86"
@@ -22,11 +32,12 @@ workspace "r2"
         
     location ("out/" .. action .. "/" .. host)
     
+    local backends = dofile("backends.lua")
 dofile("premake5_common.lua")
-r2_define_common();
+r2_define_common(backends, );
     
 dofile("premake5_projects.lua")
-r2_define_projects(nil, build_root, int_root)
+r2_define_projects(nil, build_root, int_root, backends)
 
 project "TestRun"
     kind "WindowedApp"
@@ -55,17 +66,16 @@ project "TestRun"
     filter { "system:windows", "platforms:x86" }
         links { "TestRun/ext/GLFW/windows/x86/glfw3" }
     filter { }
-    
-    filter { "configurations:*_opengl", "system:windows", "platforms:x64" }
+    filter { "options:backend=opengl", "system:windows", "platforms:x64" }
         links { "TestRun/ext/gl/windows/x64/glew32s" }
-    filter { "configurations:*_opengl", "system:windows", "platforms:x86" }
+    filter { "options:backend=opengl", "system:windows", "platforms:x86" }
         links { "TestRun/ext/gl/windows/x86/glew32s" }
     filter { }
     
-    filter { "configurations:*_d3d11" }
+    filter { "options:backend=d3d11" }
         links { "backend_d3d11", "d3d11", "d3dcompiler" }
     filter { }
     
-    filter { "configurations:*_opengl" }
+    filter { "options:backend=opengl" }
         links { "backend_opengl", "opengl32" }
     filter { }
