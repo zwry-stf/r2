@@ -36,5 +36,7 @@ function r2_define_common(backend_name)
         defines { "R2_BACKEND_D3D11" }
     elseif backend_name == "opengl" then
         defines { "R2_BACKEND_OPENGL" }
+    else
+        error("no valid backend found.")
     end
 end
