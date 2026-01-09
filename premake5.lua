@@ -63,3 +63,45 @@ workspace "r2"
     
 dofile("premake5_projects.lua")
 r2_define_projects()
+
+project "TestRun"
+    kind "WindowedApp"
+    targetname "%{prj.name}_%{cfg.buildcfg}_%{cfg.platform}"
+    targetdir (build_root)
+    objdir    (int_root)
+    location "TestRun"
+
+    files {
+        "TestRun/**.h",
+        "TestRun/**.cpp"
+    }
+
+    includedirs {
+        "TestRun/ext",
+        "r2/include",
+        "backend/include",
+        "backend_d3d11/include"
+    }
+
+    dependson { "r2" }
+    links     { "r2", "backend" }
+
+    filter { "system:windows", "platforms:x64" }
+        links { "TestRun/ext/GLFW/windows/x64/glfw3" }
+    filter { "system:windows", "platforms:x86" }
+        links { "TestRun/ext/GLFW/windows/x86/glfw3" }
+    filter { }
+    
+    filter { "configurations:*_opengl", "system:windows", "platforms:x64" }
+        links { "TestRun/ext/gl/windows/x64/glew32s" }
+    filter { "configurations:*_opengl", "system:windows", "platforms:x86" }
+        links { "TestRun/ext/gl/windows/x86/glew32s" }
+    filter { }
+    
+    filter { "configurations:*_d3d11" }
+        links { "backend_d3d11", "d3d11", "d3dcompiler" }
+    filter { }
+    
+    filter { "configurations:*_opengl" }
+        links { "backend_opengl", "opengl32" }
+    filter { }
