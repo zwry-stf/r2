@@ -197,7 +197,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\r2\bin\x86\Debug_d3d11\r2_Debug_d3d11_x86.lib;..\backend\bin\x86\Debug_d3d11\backend_Debug_d3d11_x86.lib;..\backend_d3d11\bin\x86\Debug_d3d11\backend_d3d11_Debug_x86.lib;ext\GLFW\windows\x86\glfw3.lib;d3d11.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\build\r2\r2_Debug_d3d11_x86.lib;..\build\backend\backend_Debug_d3d11_x86.lib;..\build\backend_d3d11\backend_d3d11_Debug_x86.lib;ext\GLFW\windows\x86\glfw3.lib;d3d11.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
@@ -222,7 +222,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\r2\bin\x64\Debug_d3d11\r2_Debug_d3d11_x64.lib;..\backend\bin\x64\Debug_d3d11\backend_Debug_d3d11_x64.lib;..\backend_d3d11\bin\x64\Debug_d3d11\backend_d3d11_Debug_x64.lib;ext\GLFW\windows\x64\glfw3.lib;d3d11.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\build\r2\r2_Debug_d3d11_x64.lib;..\build\backend\backend_Debug_d3d11_x64.lib;..\build\backend_d3d11\backend_d3d11_Debug_x64.lib;ext\GLFW\windows\x64\glfw3.lib;d3d11.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
@@ -247,7 +247,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\r2\bin\x86\Debug_opengl\r2_Debug_opengl_x86.lib;..\backend\bin\x86\Debug_opengl\backend_Debug_opengl_x86.lib;..\backend_opengl\bin\x86\Debug_opengl\backend_opengl_Debug_x86.lib;ext\GLFW\windows\x86\glfw3.lib;ext\gl\windows\x86\glew32s.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\build\r2\r2_Debug_opengl_x86.lib;..\build\backend\backend_Debug_opengl_x86.lib;..\build\backend_opengl\backend_opengl_Debug_x86.lib;ext\GLFW\windows\x86\glfw3.lib;ext\gl\windows\x86\glew32s.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
@@ -272,7 +272,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\r2\bin\x64\Debug_opengl\r2_Debug_opengl_x64.lib;..\backend\bin\x64\Debug_opengl\backend_Debug_opengl_x64.lib;..\backend_opengl\bin\x64\Debug_opengl\backend_opengl_Debug_x64.lib;ext\GLFW\windows\x64\glfw3.lib;ext\gl\windows\x64\glew32s.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\build\r2\r2_Debug_opengl_x64.lib;..\build\backend\backend_Debug_opengl_x64.lib;..\build\backend_opengl\backend_opengl_Debug_x64.lib;ext\GLFW\windows\x64\glfw3.lib;ext\gl\windows\x64\glew32s.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
@@ -301,7 +301,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <AdditionalDependencies>..\r2\bin\x86\Release_d3d11\r2_Release_d3d11_x86.lib;..\backend\bin\x86\Release_d3d11\backend_Release_d3d11_x86.lib;..\backend_d3d11\bin\x86\Release_d3d11\backend_d3d11_Release_x86.lib;ext\GLFW\windows\x86\glfw3.lib;d3d11.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\build\r2\r2_Release_d3d11_x86.lib;..\build\backend\backend_Release_d3d11_x86.lib;..\build\backend_d3d11\backend_d3d11_Release_x86.lib;ext\GLFW\windows\x86\glfw3.lib;d3d11.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
@@ -330,7 +330,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <AdditionalDependencies>..\r2\bin\x64\Release_d3d11\r2_Release_d3d11_x64.lib;..\backend\bin\x64\Release_d3d11\backend_Release_d3d11_x64.lib;..\backend_d3d11\bin\x64\Release_d3d11\backend_d3d11_Release_x64.lib;ext\GLFW\windows\x64\glfw3.lib;d3d11.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\build\r2\r2_Release_d3d11_x64.lib;..\build\backend\backend_Release_d3d11_x64.lib;..\build\backend_d3d11\backend_d3d11_Release_x64.lib;ext\GLFW\windows\x64\glfw3.lib;d3d11.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
@@ -359,7 +359,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <AdditionalDependencies>..\r2\bin\x86\Release_opengl\r2_Release_opengl_x86.lib;..\backend\bin\x86\Release_opengl\backend_Release_opengl_x86.lib;..\backend_opengl\bin\x86\Release_opengl\backend_opengl_Release_x86.lib;ext\GLFW\windows\x86\glfw3.lib;ext\gl\windows\x86\glew32s.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\build\r2\r2_Release_opengl_x86.lib;..\build\backend\backend_Release_opengl_x86.lib;..\build\backend_opengl\backend_opengl_Release_x86.lib;ext\GLFW\windows\x86\glfw3.lib;ext\gl\windows\x86\glew32s.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
@@ -388,7 +388,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <AdditionalDependencies>..\r2\bin\x64\Release_opengl\r2_Release_opengl_x64.lib;..\backend\bin\x64\Release_opengl\backend_Release_opengl_x64.lib;..\backend_opengl\bin\x64\Release_opengl\backend_opengl_Release_x64.lib;ext\GLFW\windows\x64\glfw3.lib;ext\gl\windows\x64\glew32s.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\build\r2\r2_Release_opengl_x64.lib;..\build\backend\backend_Release_opengl_x64.lib;..\build\backend_opengl\backend_opengl_Release_x64.lib;ext\GLFW\windows\x64\glfw3.lib;ext\gl\windows\x64\glew32s.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>

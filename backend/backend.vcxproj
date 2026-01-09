@@ -123,50 +123,50 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_d3d11|Win32'">
-    <OutDir>$(ProjectDir)bin\x86\Debug_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)obj\x86\Debug_d3d11\</IntDir>
+    <OutDir>$(ProjectDir)..\build\backend\</OutDir>
+    <IntDir>$(ProjectDir)..\build\backend\Debug_d3d11\x86\</IntDir>
     <TargetName>backend_Debug_d3d11_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_d3d11|x64'">
-    <OutDir>$(ProjectDir)bin\x64\Debug_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)obj\x64\Debug_d3d11\</IntDir>
+    <OutDir>$(ProjectDir)..\build\backend\</OutDir>
+    <IntDir>$(ProjectDir)..\build\backend\Debug_d3d11\x64\</IntDir>
     <TargetName>backend_Debug_d3d11_x64</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_opengl|Win32'">
-    <OutDir>$(ProjectDir)bin\x86\Debug_opengl\</OutDir>
-    <IntDir>$(ProjectDir)obj\x86\Debug_opengl\</IntDir>
+    <OutDir>$(ProjectDir)..\build\backend\</OutDir>
+    <IntDir>$(ProjectDir)..\build\backend\Debug_opengl\x86\</IntDir>
     <TargetName>backend_Debug_opengl_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_opengl|x64'">
-    <OutDir>$(ProjectDir)bin\x64\Debug_opengl\</OutDir>
-    <IntDir>$(ProjectDir)obj\x64\Debug_opengl\</IntDir>
+    <OutDir>$(ProjectDir)..\build\backend\</OutDir>
+    <IntDir>$(ProjectDir)..\build\backend\Debug_opengl\x64\</IntDir>
     <TargetName>backend_Debug_opengl_x64</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_d3d11|Win32'">
-    <OutDir>$(ProjectDir)bin\x86\Release_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)obj\x86\Release_d3d11\</IntDir>
+    <OutDir>$(ProjectDir)..\build\backend\</OutDir>
+    <IntDir>$(ProjectDir)..\build\backend\Release_d3d11\x86\</IntDir>
     <TargetName>backend_Release_d3d11_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_d3d11|x64'">
-    <OutDir>$(ProjectDir)bin\x64\Release_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)obj\x64\Release_d3d11\</IntDir>
+    <OutDir>$(ProjectDir)..\build\backend\</OutDir>
+    <IntDir>$(ProjectDir)..\build\backend\Release_d3d11\x64\</IntDir>
     <TargetName>backend_Release_d3d11_x64</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_opengl|Win32'">
-    <OutDir>$(ProjectDir)bin\x86\Release_opengl\</OutDir>
-    <IntDir>$(ProjectDir)obj\x86\Release_opengl\</IntDir>
+    <OutDir>$(ProjectDir)..\build\backend\</OutDir>
+    <IntDir>$(ProjectDir)..\build\backend\Release_opengl\x86\</IntDir>
     <TargetName>backend_Release_opengl_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_opengl|x64'">
-    <OutDir>$(ProjectDir)bin\x64\Release_opengl\</OutDir>
-    <IntDir>$(ProjectDir)obj\x64\Release_opengl\</IntDir>
+    <OutDir>$(ProjectDir)..\build\backend\</OutDir>
+    <IntDir>$(ProjectDir)..\build\backend\Release_opengl\x64\</IntDir>
     <TargetName>backend_Release_opengl_x64</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>

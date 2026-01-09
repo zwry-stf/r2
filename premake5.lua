@@ -62,7 +62,7 @@ workspace "r2"
     filter {}
     
 dofile("premake5_projects.lua")
-r2_define_projects()
+r2_define_projects(nil, build_root, int_root)
 
 project "TestRun"
     kind "WindowedApp"

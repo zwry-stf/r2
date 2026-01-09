@@ -1,42 +1,37 @@
-function r2_location(subdir, base_path)
+local function r2_join(base_path, rel)
     local base = base_path or ""
-    local sub  = subdir or ""
-
     if base == "" then
-        return sub
+        return rel
     end
-
-    return path.join(base, sub)
+    return path.join(base, rel)
 end
 
-function r2_define_projects(base_path)
-    local p = base_path or ""
+function r2_define_projects(base_path, build_root, int_root)
+    local function P(rel) return r2_join(base_path, rel) end
 project "backend"
     kind "StaticLib"
     targetname "%{prj.name}_%{cfg.buildcfg}_%{cfg.platform}"
     targetdir (build_root)
     objdir    (int_root)
-    location (r2_location("backend", base_path))
+    location (P("backend"))
 
     files {
-        "backend/include/**.h",
-        "backend/include/**.inl",
-        "backend/src/**.h",
-        "backend/src/**.cpp"
+        P("backend/include/**.h"),
+        P("backend/include/**.inl"),
+        P("backend/src/**.h"),
+        P("backend/src/**.cpp")
     }
 
     includedirs {
-        "backend/include"
+        P("backend/include")
     }
     
     filter { "configurations:*_d3d11" }
-        includedirs {
-            "backend_d3d11/include"
-        }
+        includedirs { P("backend_d3d11/include") }
     filter { "configurations:*_opengl" }
         includedirs {
-            "backend_opengl/include",
-            "backend_opengl/ext"
+            P("backend_opengl/include"),
+            P("backend_opengl/ext")
         }
         defines { "GLEW_STATIC" }
     filter {}
@@ -46,18 +41,18 @@ project "backend_d3d11"
     targetname "%{prj.name}_%{cfg.buildcfg:match('^[^_]+')}_%{cfg.platform}"
     targetdir (build_root)
     objdir    (int_root)
-    location (r2_location("backend_d3d11", base_path))
+    location (P("backend_d3d11"))
 
     files {
-        "backend_d3d11/include/**.h",
-        "backend_d3d11/include/**.inl",
-        "backend_d3d11/src/**.h",
-        "backend_d3d11/src/**.cpp"
+        P("backend_d3d11/include/**.h"),
+        P("backend_d3d11/include/**.inl"),
+        P("backend_d3d11/src/**.h"),
+        P("backend_d3d11/src/**.cpp")
     }
 
     includedirs {
-        "backend_d3d11/include",
-        "backend/include"
+        P("backend_d3d11/include"),
+        P("backend/include")
     }
     
     filter "configurations:*_opengl"
@@ -70,20 +65,20 @@ project "backend_opengl"
     targetname "%{prj.name}_%{cfg.buildcfg:match('^[^_]+')}_%{cfg.platform}"
     targetdir (build_root)
     objdir    (int_root)
-    location (r2_location("backend_opengl", base_path))
+    location (P("backend_opengl"))
 
     files {
-        "backend_opengl/include/**.h",
-        "backend_opengl/include/**.inl",
-        "backend_opengl/src/**.h",
-        "backend_opengl/src/**.cpp",
-        "backend_opengl/ext/**.h"
+        P("backend_opengl/include/**.h"),
+        P("backend_opengl/include/**.inl"),
+        P("backend_opengl/src/**.h"),
+        P("backend_opengl/src/**.cpp"),
+        P("backend_opengl/ext/**.h")
     }
 
     includedirs {
-        "backend_opengl/include",
-        "backend_opengl/ext",
-        "backend/include"
+        P("backend_opengl/include"),
+        P("backend_opengl/ext"),
+        P("backend/include")
     }
 
     defines { "GLEW_STATIC" }
@@ -98,22 +93,22 @@ project "r2"
     targetname "%{prj.name}_%{cfg.buildcfg}_%{cfg.platform}"
     targetdir (build_root)
     objdir    (int_root)
-    location (r2_location("r2", base_path))
+    location (P("r2"))
     
     files {
-        "r2/include/**.h",
-        "r2/include/**.inl",
-        "r2/src/**.h",
-        "r2/src/**.cpp",
-        "r2/src/**.inl",
-        "r2/ext/**.h"
+        P("r2/include/**.h"),
+        P("r2/include/**.inl"),
+        P("r2/src/**.h"),
+        P("r2/src/**.cpp"),
+        P("r2/src/**.inl"),
+        P("r2/ext/**.h")
     }
 
     includedirs {
-        "backend/include",
-        "r2/include",
-        "r2/src",
-        "r2/ext"
+        P("backend/include"),
+        P("r2/include"),
+        P("r2/src"),
+        P("r2/ext")
     }
     
     dependson { "backend", "backend_d3d11", "backend_opengl" }
