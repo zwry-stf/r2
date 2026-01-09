@@ -4,7 +4,7 @@ workspace "r2"
     language "C++"
     cppdialect "C++23"
     staticruntime "Off"
-    
+
     newoption {
         trigger     = "backend",
         value       = "API",
@@ -32,12 +32,11 @@ workspace "r2"
         
     location ("out/" .. action .. "/" .. host)
     
-    local backends = dofile("backends.lua")
 dofile("premake5_common.lua")
-r2_define_common(backends, );
+r2_define_common(_OPTIONS["backend"]);
     
 dofile("premake5_projects.lua")
-r2_define_projects(nil, build_root, int_root, backends)
+r2_define_projects(nil, build_root, int_root, _OPTIONS["backend"])
 
 project "TestRun"
     kind "WindowedApp"

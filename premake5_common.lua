@@ -1,4 +1,4 @@
-function r2_define_common()
+function r2_define_common(backend_name)
     flags { "MultiProcessorCompile" }
     warnings "Extra"
     fatalwarnings { "All" }
@@ -32,9 +32,9 @@ function r2_define_common()
     filter {}
     
     -- backend
-    filter { "options:backend=d3d11" }
+    if backend_name == "d3d11" then
         defines { "R2_BACKEND_D3D11" }
-    filter { "options:backend=opengl" }
+    elseif backend_name == "opengl" then
         defines { "R2_BACKEND_OPENGL" }
-    filter {}
+    end
 end
