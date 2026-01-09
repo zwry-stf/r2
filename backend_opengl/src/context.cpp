@@ -347,6 +347,8 @@ std::unique_ptr<framebuffer> gl_context::create_framebuffer(const framebuffer_de
     return std::make_unique<gl_framebuffer>(this, desc);
 }
 
+/// bind
+
 void gl_context::set_blendstate(const blendstate* bs, const float(&factor)[4], std::uint32_t sample_mask)
 {
     if (bs != nullptr) {
@@ -395,8 +397,6 @@ void gl_context::set_shaderprogram(const shaderprogram* s)
     const auto program = s == nullptr ? 0u : to_native(s)->program();
     gl_call(glUseProgram(program));
 }
-
-/// bind
 
 void gl_context::set_vertex_buffer(const buffer* vb, std::uint32_t slot)
 {
@@ -555,18 +555,27 @@ void gl_context::apply_viewport_if_dirty()
         return;
 
     const auto& v = raster_.viewport;
-    const GLint x = (GLint)v.top_left_x;
+    const GLint x = static_cast<GLint>(v.top_left_x);
 
     GLint y;
     if (common_origin_) {
-        y = (GLint)(current_render_height_ - (v.top_left_y + v.height));
+        y = static_cast<GLint>(
+            current_render_height_ - (v.top_left_y + v.height)
+        );
     }
     else {
-        y = (GLint)v.top_left_y;
+        y = static_cast<GLint>(v.top_left_y);
     }
 
-    glViewport(x, y, (GLsizei)v.width, (GLsizei)v.height);
-    glDepthRangef((GLclampf)v.min_depth, (GLclampf)v.max_depth);
+    glViewport(
+        x, y,
+        static_cast<GLsizei>(v.width), 
+        static_cast<GLsizei>(v.height)
+    );
+    glDepthRangef(
+        static_cast<GLclampf>(v.min_depth),
+        static_cast<GLclampf>(v.max_depth)
+    );
 
     raster_.viewport_set = false;
 }
@@ -577,16 +586,16 @@ void gl_context::apply_scissor_if_dirty()
         return;
 
     const auto& r = raster_.scissor;
-    const GLint x = (GLint)r.left;
-    const GLsizei w = (GLsizei)(r.right - r.left);
-    const GLsizei h = (GLsizei)(r.bottom - r.top);
+    const GLint x = static_cast<GLint>(r.left);
+    const GLsizei w = static_cast<GLsizei>(r.right - r.left);
+    const GLsizei h = static_cast<GLsizei>(r.bottom - r.top);
 
     GLint y;
     if (common_origin_) {
-        y = (GLint)(current_render_height_ - r.bottom);
+        y = static_cast<GLint>(current_render_height_ - r.bottom);
     }
     else {
-        y = (GLint)r.top;
+        y = static_cast<GLint>(r.top);
     }
 
     glScissor(x, y, w, h);
@@ -595,6 +604,9 @@ void gl_context::apply_scissor_if_dirty()
 
 void gl_context::draw(std::uint32_t count, std::uint32_t vertex_start)
 {
+    apply_viewport_if_dirty();
+    apply_scissor_if_dirty();
+
     assert(current_topology_ != static_cast<GLenum>(-1));
 
     gl_call(glDrawArrays(
@@ -606,6 +618,9 @@ void gl_context::draw(std::uint32_t count, std::uint32_t vertex_start)
 
 void gl_context::draw_indexed(std::uint32_t count, std::uint32_t index_start, std::uint32_t vertex_start)
 {
+    apply_viewport_if_dirty();
+    apply_scissor_if_dirty();
+
     assert(current_index_type_ != static_cast<GLenum>(-1));
     assert(current_topology_   != static_cast<GLenum>(-1));
 

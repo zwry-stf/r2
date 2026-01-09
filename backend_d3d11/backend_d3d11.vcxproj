@@ -123,50 +123,50 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_d3d11|Win32'">
-    <OutDir>$(ProjectDir)..\build\backend_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend_d3d11\Debug_d3d11\x86\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\build\backend_d3d11\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\build\backend_d3d11\Debug_d3d11\x86\</IntDir>
     <TargetName>backend_d3d11_Debug_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_d3d11|x64'">
-    <OutDir>$(ProjectDir)..\build\backend_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend_d3d11\Debug_d3d11\x64\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\build\backend_d3d11\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\build\backend_d3d11\Debug_d3d11\x64\</IntDir>
     <TargetName>backend_d3d11_Debug_x64</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_opengl|Win32'">
-    <OutDir>$(ProjectDir)..\build\backend_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend_d3d11\Debug_opengl\x86\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\build\backend_d3d11\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\build\backend_d3d11\Debug_opengl\x86\</IntDir>
     <TargetName>backend_d3d11_Debug_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_opengl|x64'">
-    <OutDir>$(ProjectDir)..\build\backend_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend_d3d11\Debug_opengl\x64\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\build\backend_d3d11\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\build\backend_d3d11\Debug_opengl\x64\</IntDir>
     <TargetName>backend_d3d11_Debug_x64</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_d3d11|Win32'">
-    <OutDir>$(ProjectDir)..\build\backend_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend_d3d11\Release_d3d11\x86\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\build\backend_d3d11\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\build\backend_d3d11\Release_d3d11\x86\</IntDir>
     <TargetName>backend_d3d11_Release_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_d3d11|x64'">
-    <OutDir>$(ProjectDir)..\build\backend_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend_d3d11\Release_d3d11\x64\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\build\backend_d3d11\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\build\backend_d3d11\Release_d3d11\x64\</IntDir>
     <TargetName>backend_d3d11_Release_x64</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_opengl|Win32'">
-    <OutDir>$(ProjectDir)..\build\backend_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend_d3d11\Release_opengl\x86\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\build\backend_d3d11\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\build\backend_d3d11\Release_opengl\x86\</IntDir>
     <TargetName>backend_d3d11_Release_x86</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_opengl|x64'">
-    <OutDir>$(ProjectDir)..\build\backend_d3d11\</OutDir>
-    <IntDir>$(ProjectDir)..\build\backend_d3d11\Release_opengl\x64\</IntDir>
+    <OutDir>$(ProjectDir)..\..\..\build\backend_d3d11\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\build\backend_d3d11\Release_opengl\x64\</IntDir>
     <TargetName>backend_d3d11_Release_x64</TargetName>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
@@ -175,7 +175,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>_DEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;R2_BACKEND_D3D11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;R2_BACKEND_D3D11;VOID_HAS_GLFW;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>include;..\backend\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -196,7 +196,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>_DEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;R2_BACKEND_D3D11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;R2_BACKEND_D3D11;VOID_HAS_GLFW;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>include;..\backend\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -217,7 +217,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>_DEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;R2_BACKEND_OPENGL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;R2_BACKEND_OPENGL;VOID_HAS_GLFW;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>include;..\backend\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -238,7 +238,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>_DEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;R2_BACKEND_OPENGL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;R2_BACKEND_OPENGL;VOID_HAS_GLFW;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>include;..\backend\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -259,7 +259,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>NDEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;R2_BACKEND_D3D11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;R2_BACKEND_D3D11;VOID_HAS_GLFW;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>include;..\backend\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -284,7 +284,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>NDEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;R2_BACKEND_D3D11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;R2_BACKEND_D3D11;VOID_HAS_GLFW;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>include;..\backend\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -309,7 +309,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>NDEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;R2_BACKEND_OPENGL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;R2_BACKEND_OPENGL;VOID_HAS_GLFW;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>include;..\backend\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -334,7 +334,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>NDEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;R2_BACKEND_OPENGL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;R2_BACKEND_OPENGL;VOID_HAS_GLFW;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>include;..\backend\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
