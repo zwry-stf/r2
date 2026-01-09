@@ -1,11 +1,22 @@
+function r2_location(subdir, base_path)
+    local base = base_path or ""
+    local sub  = subdir or ""
 
-function r2_define_projects()
+    if base == "" then
+        return sub
+    end
+
+    return path.join(base, sub)
+end
+
+function r2_define_projects(base_path)
+    local p = base_path or ""
 project "backend"
     kind "StaticLib"
     targetname "%{prj.name}_%{cfg.buildcfg}_%{cfg.platform}"
     targetdir (build_root)
     objdir    (int_root)
-    location "backend"
+    location (r2_location("backend", base_path))
 
     files {
         "backend/include/**.h",
@@ -35,7 +46,7 @@ project "backend_d3d11"
     targetname "%{prj.name}_%{cfg.buildcfg:match('^[^_]+')}_%{cfg.platform}"
     targetdir (build_root)
     objdir    (int_root)
-    location "backend_d3d11"
+    location (r2_location("backend_d3d11", base_path))
 
     files {
         "backend_d3d11/include/**.h",
@@ -59,7 +70,7 @@ project "backend_opengl"
     targetname "%{prj.name}_%{cfg.buildcfg:match('^[^_]+')}_%{cfg.platform}"
     targetdir (build_root)
     objdir    (int_root)
-    location "backend_opengl"
+    location (r2_location("backend_opengl", base_path))
 
     files {
         "backend_opengl/include/**.h",
@@ -87,7 +98,7 @@ project "r2"
     targetname "%{prj.name}_%{cfg.buildcfg}_%{cfg.platform}"
     targetdir (build_root)
     objdir    (int_root)
-    location "r2"
+    location (r2_location("r2", base_path))
     
     files {
         "r2/include/**.h",
