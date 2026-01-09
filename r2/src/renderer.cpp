@@ -12,6 +12,9 @@ renderer2d::renderer2d()
 
 renderer2d::~renderer2d()
 {
+    destroyed_.store(true, std::memory_order_release);
+    if (update_thread_.joinable())
+        update_thread_.join();
 }
 
 void renderer2d::init(const platform_init_data& pinit, const backend_init_data& binit)
