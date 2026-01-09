@@ -422,7 +422,7 @@ void render_frame()
         g_renderer.add_shadow_rect_filled(
             r2::vec2(600.f, 400.f),
             r2::vec2(900.f, 600.f),
-            r2::color::white().alpha(0.5f),
+            r2::color::white(),
             20.f
         );
         g_renderer.shade_vertices_col(
