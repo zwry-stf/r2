@@ -47,15 +47,21 @@ void renderer2d::do_init()
     if (!font_atlas_)
         font_atlas_ = std::make_unique<r2::font_atlas>(this);
 
+    // d3d11 does not require any bidning during resource creation
+#if defined(R2_BACKEND_OPENGL)
     backup_render_state();
+#endif // R2_BACKEND_OPENGL
 
     context_->acquire_backbuffer();
     if (context_->has_error())
         throw error(error_code::blend_state_create,
             context_->get_error(), context_->get_detail());
 
+#if defined(R2_BACKEND_OPENGL)
     try {
+#endif // R2_BACKEND_OPENGL
         create_resources();
+#if defined(R2_BACKEND_OPENGL)
     }
     catch (const error& e) {
         restore_render_state();
@@ -63,6 +69,7 @@ void renderer2d::do_init()
     }
 
     restore_render_state();
+#endif // R2_BACKEND_OPENGL
 
     destroyed_.store(false, std::memory_order_release);
     update_thread_ = std::thread([this]()
