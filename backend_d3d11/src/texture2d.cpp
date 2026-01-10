@@ -117,7 +117,7 @@ d3d11_texture2d::~d3d11_texture2d()
     texture_.reset();
 }
 
-std::unique_ptr<d3d11_texture2d> d3d11_texture2d::from_existing(d3d11_context* ctx, ID3D11Texture2D* tex)
+std::unique_ptr<d3d11_texture2d> d3d11_texture2d::from_existing(d3d11_context* ctx, ID3D11Texture2D* tex, bool is_backbuffer)
 {
     assert(tex != nullptr);
 
@@ -140,6 +140,8 @@ std::unique_ptr<d3d11_texture2d> d3d11_texture2d::from_existing(d3d11_context* c
     d.mip_levels = static_cast<std::uint32_t>(sd.MipLevels);
     d.sample_desc.count = static_cast<std::uint32_t>(sd.SampleDesc.Count);
     d.sample_desc.quality = static_cast<std::uint32_t>(sd.SampleDesc.Quality);
+    if (is_backbuffer)
+        d.format = texture_format::backbuffer;
 
     if (sd.BindFlags & D3D11_BIND_SHADER_RESOURCE)
         d.usage = d.usage | texture_usage::shader_resource;

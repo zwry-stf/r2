@@ -290,7 +290,11 @@ void d3d11_context::acquire_backbuffer()
         return;
     }
 
-    backbuffer_ = d3d11_texture2d::from_existing(this, back_buffer.get());
+    backbuffer_ = d3d11_texture2d::from_existing(
+        this,
+        back_buffer.get(), 
+        true /* backbuffer */
+    );
     if (backbuffer_->has_error()) {
         set_error(
             std::to_underlying(d3d11_context_error::backbuffer),

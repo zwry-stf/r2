@@ -21,7 +21,7 @@ public:
     d3d11_texture2d(d3d11_context* ctx, const texture_desc& desc, ID3D11Texture2D* tex);
     ~d3d11_texture2d();
 
-    static std::unique_ptr<d3d11_texture2d> from_existing(d3d11_context* ctx, ID3D11Texture2D* tex);
+    static std::unique_ptr<d3d11_texture2d> from_existing(d3d11_context* ctx, ID3D11Texture2D* tex, bool is_backbuffer);
 
 public:
     virtual void update(const void* data, std::uint32_t row_pitch) override;
