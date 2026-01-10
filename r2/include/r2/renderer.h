@@ -142,7 +142,7 @@ public:
     void shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
                            const vec2& uv_min, const vec2& uv_max);
     void shade_vertices_col(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
-                           const color& col_tl, const color& col_tr, const color& col_br, const color& col_bl);
+                            const color& col_tl, const color& col_tr, const color& col_br, const color& col_bl);
 
     /// text
     template <unicode::string_like String>
@@ -150,6 +150,9 @@ public:
     template <unicode::string_like String>
     void add_text_faded(const vec2& pos, color_u32 col, color_u32 faded_col, 
                         float fade_start, float fade_end, const String& text, bool blurred = false);
+    template <unicode::string_like String>
+    void add_text_outlined(const vec2& pos, color_u32 col, const String& text, 
+                           const color_u32 outline_col = r2::color::black(), float outline_width = 1.f, bool blurred = false);
     // Calculates text width using the same glyph resolution logic as rendering.
     // Missing glyphs may be skipped.
     // Text may *not* contain new line characters

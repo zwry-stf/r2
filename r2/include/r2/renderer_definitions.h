@@ -112,7 +112,7 @@ private:
 public:
     float r, g, b, a;
 
-    inline static constexpr color_u32 alpha_mask = 0xFF000000u;
+    inline static constexpr color_u32 alpha_mask = 0x000000FFu;
 public:
     v_always_inline constexpr color() noexcept
         : r(0.f), g(0.f), b(0.f), a(0.f) { }

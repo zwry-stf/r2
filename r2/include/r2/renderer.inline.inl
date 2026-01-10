@@ -1039,6 +1039,141 @@ inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
     }
 }
 
+template<unicode::string_like String>
+inline void renderer2d::add_text_outlined(const vec2& pos, color_u32 col, const String& text,
+                                          const color_u32 outline_col, float outline_width, bool blurred)
+{
+    assert(current_font_ != nullptr);
+
+    const bool draw_no_outline = (col & ~color::alpha_mask) != 0u;
+    const bool draw_outline = (outline_col & ~color::alpha_mask) != 0u;
+    if (!draw_no_outline &&
+        !draw_outline) [[unlikely]]
+        return;
+
+    const float line_height = static_cast<float>(current_font_->cfg().size);
+    const std::uint32_t length = static_cast<std::uint32_t>(text.length());
+
+    std::uint32_t s = 0u;
+    float x = pos.x;
+    float y = pos.y;
+    while (s < length) {
+        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        if (cp == unicode::codepoint_invalid)
+            continue;
+
+        if (cp < 0x20u) {
+            if (cp == U'\n') {
+                x = pos.x;
+                y += line_height;
+                continue;
+            }
+            if (cp == U'\r')
+                continue;
+
+            continue;
+        }
+
+        const auto* glyph = blurred ?
+            current_font_->find_glyph_blurred(cp) : current_font_->find_glyph(cp);
+        if (glyph == nullptr)
+            continue;
+
+        if (glyph->visible) {
+            const float x0 = x + glyph->x0;
+            const float x1 = x + glyph->x1;
+            const float y0 = y + glyph->y0;
+            const float y1 = y + glyph->y1;
+
+            if (x0 - outline_width <= header_.clip_rect.right &&
+                x1 + outline_width >= header_.clip_rect.left &&
+                y0 - outline_width <= header_.clip_rect.bottom &&
+                y1 + outline_width >= header_.clip_rect.top) {
+
+                if (draw_outline) {
+                    // left
+                    indices_.emplace_back(vertex_ptr_ + 0u);
+                    indices_.emplace_back(vertex_ptr_ + 1u);
+                    indices_.emplace_back(vertex_ptr_ + 2u);
+                    indices_.emplace_back(vertex_ptr_ + 0u);
+                    indices_.emplace_back(vertex_ptr_ + 2u);
+                    indices_.emplace_back(vertex_ptr_ + 3u);
+
+                    vertices_.emplace_back(vec2{ x0 - outline_width, y0 }, glyph->uv_min, outline_col);
+                    vertices_.emplace_back(vec2{ x0 - outline_width, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
+                    vertices_.emplace_back(vec2{ x1 - outline_width, y1 }, glyph->uv_max, outline_col);
+                    vertices_.emplace_back(vec2{ x1 - outline_width, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
+
+                    vertex_ptr_ += 4u;
+
+                    // right
+                    indices_.emplace_back(vertex_ptr_ + 0u);
+                    indices_.emplace_back(vertex_ptr_ + 1u);
+                    indices_.emplace_back(vertex_ptr_ + 2u);
+                    indices_.emplace_back(vertex_ptr_ + 0u);
+                    indices_.emplace_back(vertex_ptr_ + 2u);
+                    indices_.emplace_back(vertex_ptr_ + 3u);
+
+                    vertices_.emplace_back(vec2{ x0 + outline_width, y0 }, glyph->uv_min, outline_col);
+                    vertices_.emplace_back(vec2{ x0 + outline_width, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
+                    vertices_.emplace_back(vec2{ x1 + outline_width, y1 }, glyph->uv_max, outline_col);
+                    vertices_.emplace_back(vec2{ x1 + outline_width, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
+
+                    vertex_ptr_ += 4u;
+
+                    // top
+                    indices_.emplace_back(vertex_ptr_ + 0u);
+                    indices_.emplace_back(vertex_ptr_ + 1u);
+                    indices_.emplace_back(vertex_ptr_ + 2u);
+                    indices_.emplace_back(vertex_ptr_ + 0u);
+                    indices_.emplace_back(vertex_ptr_ + 2u);
+                    indices_.emplace_back(vertex_ptr_ + 3u);
+
+                    vertices_.emplace_back(vec2{ x0, y0 - outline_width }, glyph->uv_min, outline_col);
+                    vertices_.emplace_back(vec2{ x0, y1 - outline_width }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
+                    vertices_.emplace_back(vec2{ x1, y1 - outline_width }, glyph->uv_max, outline_col);
+                    vertices_.emplace_back(vec2{ x1, y0 - outline_width }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
+
+                    vertex_ptr_ += 4u;
+
+                    // bottom
+                    indices_.emplace_back(vertex_ptr_ + 0u);
+                    indices_.emplace_back(vertex_ptr_ + 1u);
+                    indices_.emplace_back(vertex_ptr_ + 2u);
+                    indices_.emplace_back(vertex_ptr_ + 0u);
+                    indices_.emplace_back(vertex_ptr_ + 2u);
+                    indices_.emplace_back(vertex_ptr_ + 3u);
+
+                    vertices_.emplace_back(vec2{ x0, y0 + outline_width }, glyph->uv_min, outline_col);
+                    vertices_.emplace_back(vec2{ x0, y1 + outline_width }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
+                    vertices_.emplace_back(vec2{ x1, y1 + outline_width }, glyph->uv_max, outline_col);
+                    vertices_.emplace_back(vec2{ x1, y0 + outline_width }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
+
+                    vertex_ptr_ += 4u;
+                }
+
+                if (draw_no_outline) {
+                    indices_.emplace_back(vertex_ptr_ + 0u);
+                    indices_.emplace_back(vertex_ptr_ + 1u);
+                    indices_.emplace_back(vertex_ptr_ + 2u);
+                    indices_.emplace_back(vertex_ptr_ + 0u);
+                    indices_.emplace_back(vertex_ptr_ + 2u);
+                    indices_.emplace_back(vertex_ptr_ + 3u);
+
+                    vertices_.emplace_back(vec2{ x0, y0 }, glyph->uv_min, col);
+                    vertices_.emplace_back(vec2{ x0, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, col);
+                    vertices_.emplace_back(vec2{ x1, y1 }, glyph->uv_max, col);
+                    vertices_.emplace_back(vec2{ x1, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, col);
+
+                    vertex_ptr_ += 4u;
+                }
+            }
+        }
+
+        x += glyph->advance_x;
+    }
+}
+
 template<unicode::string_like String, std::integral T>
 inline float renderer2d::get_text_width(const String& text, T offset, std::optional<T> count)
 {
