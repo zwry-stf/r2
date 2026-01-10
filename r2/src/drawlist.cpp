@@ -9,7 +9,7 @@ r2_begin_
 void renderer2d::add_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col)
 {
     if (num_points < 3u ||
-        (col & color::alpha_mask) == 0u)
+        (col & color::alpha_mask) == 0u) [[unlikely]]
         return;
     
     const vec2 uv = shared_data_.uv_white_px;

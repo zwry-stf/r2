@@ -824,7 +824,7 @@ inline void renderer2d::add_text(const vec2& pos, color_u32 col, const String& t
 {
     assert(current_font_ != nullptr);
 
-    if ((col & ~color::alpha_mask) == 0u) [[unlikely]]
+    if ((col & color::alpha_mask) == 0u) [[unlikely]]
         return;
 
     const float line_height = static_cast<float>(current_font_->cfg().size);
@@ -1045,8 +1045,8 @@ inline void renderer2d::add_text_outlined(const vec2& pos, color_u32 col, const 
 {
     assert(current_font_ != nullptr);
 
-    const bool draw_no_outline = (col & ~color::alpha_mask) != 0u;
-    const bool draw_outline = (outline_col & ~color::alpha_mask) != 0u;
+    const bool draw_no_outline = (col & color::alpha_mask) != 0u;
+    const bool draw_outline = (outline_col & color::alpha_mask) != 0u;
     if (!draw_no_outline &&
         !draw_outline) [[unlikely]]
         return;
