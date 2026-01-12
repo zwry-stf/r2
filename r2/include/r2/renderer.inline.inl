@@ -86,7 +86,7 @@ inline void renderer2d::modify_clip_rect_x(std::int32_t min, std::int32_t max)
     rect rect = header_.clip_rect;
     if (min > header_.clip_rect.left)
         rect.left = min;
-    if (max > header_.clip_rect.right)
+    if (max < header_.clip_rect.right)
         rect.right = max;
 
     clip_rect_stack_.push_back(rect);
@@ -106,7 +106,7 @@ inline void renderer2d::modify_clip_rect_y(std::int32_t min, std::int32_t max)
     rect rect = header_.clip_rect;
     if (min > header_.clip_rect.top)
         rect.top = min;
-    if (max > header_.clip_rect.bottom)
+    if (max < header_.clip_rect.bottom)
         rect.bottom = max;
 
     clip_rect_stack_.push_back(rect);
