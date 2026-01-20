@@ -131,6 +131,7 @@ public:
     void add_quad_filled_multicolor(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, 
                                     color_u32 col1, color_u32 col2, color_u32 col3, color_u32 col4);
     void add_line(const vec2& start, const vec2& end, color_u32 col, float line_width);
+    void add_line_multicolor(const vec2& start, const vec2& end, color_u32 col_start, color_u32 col_end, float line_width);
     void add_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col);
     void add_shadow_convex(const vec2* points, std::uint32_t num_points, color_u32 col, float shadow_size, bool filled = true);
     void add_lines(const vec2* points, std::uint32_t num_points, color_u32 col, float line_width, bool closed = false);
@@ -210,6 +211,7 @@ private:
     void on_changed_header(const O& new_value, O draw_cmd::* field);
 
     void aa_side(const vec2& start, const vec2& end, std::uint32_t vtx_start, std::uint32_t vtx_end, color_u32 col);
+    void aa_side_multicolor(const vec2& start, const vec2& end, std::uint32_t vtx_start, std::uint32_t vtx_end, color_u32 col_start, color_u32 col_end);
 
 public:
     [[nodiscard]] std::uint32_t vertex_ptr() const noexcept {
