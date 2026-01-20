@@ -210,9 +210,6 @@ private:
     template <typename O>
     void on_changed_header(const O& new_value, O draw_cmd::* field);
 
-    void aa_side(const vec2& start, const vec2& end, std::uint32_t vtx_start, std::uint32_t vtx_end, color_u32 col);
-    void aa_side_multicolor(const vec2& start, const vec2& end, std::uint32_t vtx_start, std::uint32_t vtx_end, color_u32 col_start, color_u32 col_end);
-
 public:
     [[nodiscard]] std::uint32_t vertex_ptr() const noexcept {
         return vertex_ptr_;

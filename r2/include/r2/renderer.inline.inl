@@ -176,142 +176,6 @@ inline void renderer2d::pop_font()
     set_current_font(font_stack_.back());
 }
 
-inline void renderer2d::aa_side(const vec2& start, const vec2& end, std::uint32_t vtx_start, std::uint32_t vtx_end, color_u32 col)
-{
-    const vec2 d = (end - start);
-    const float length = d.length();
-    if (length < 1e-3f)
-        return;
-
-    const vec2 dir = d * vec2(1.f / length);
-    float diag_factor = (std::min)(std::abs(dir.x), std::abs(dir.y)) * 1.41421356f; // *sqrt(2)
-    diag_factor = std::clamp(diag_factor, 0.0f, 1.0f);
-    constexpr float p = 0.7f;
-    diag_factor = std::pow(diag_factor, p);
-
-    const float aa_scale = aa_scale_ * diag_factor;
-    if (aa_scale > 1e-3f) {
-        const vec2 aa = dir.perp() * vec2(aa_scale);
-
-        indices_.push_back(vtx_start);
-        indices_.push_back(vertex_ptr_ + 0u);
-        indices_.push_back(vertex_ptr_ + 1u);
-        indices_.push_back(vtx_start);
-        indices_.push_back(vertex_ptr_ + 1u);
-        indices_.push_back(vtx_end);
-
-        vertex_ptr_ += 2u;
-
-        vertices_.emplace_back(start + aa, shared_data_.uv_white_px, col);
-        vertices_.emplace_back(end + aa, shared_data_.uv_white_px, col);
-    }
-}
-
-inline void renderer2d::aa_side_multicolor(const vec2& start, const vec2& end, std::uint32_t vtx_start, std::uint32_t vtx_end, 
-                                           color_u32 col_start, color_u32 col_end)
-{
-    const vec2 d = end - start;
-    const float length = d.length();
-    if (length < 1e-3f)
-        return;
-    const vec2 dir = d * vec2(1.f / length);
-    float diag_factor = std::min(std::abs(dir.x), std::abs(dir.y)) * 1.41421356f; // *sqrt(2)
-    diag_factor = std::clamp(diag_factor, 0.f, 1.f);
-    constexpr float p = 0.7f;
-    diag_factor = std::pow(diag_factor, p);
-    const float aa_scale = aa_scale_ * diag_factor;
-    if (aa_scale > 1e-3f) {
-        const vec2 aa = dir.perp() * vec2(aa_scale);
-        indices_.push_back(vtx_start);
-        indices_.push_back(vertex_ptr_ + 0u);
-        indices_.push_back(vertex_ptr_ + 1u);
-        indices_.push_back(vtx_start);
-        indices_.push_back(vertex_ptr_ + 1u);
-        indices_.push_back(vtx_end);
-        vertices_.emplace_back(start + aa, shared_data_.uv_white_px, col_start);
-        vertices_.emplace_back(end + aa, shared_data_.uv_white_px, col_end);
-        vertex_ptr_ += 2u;
-    }
-}
-
-inline void renderer2d::add_line(const vec2& start, const vec2& end, color_u32 col, float line_width)
-{
-    if ((col & color::alpha_mask) == 0u) [[unlikely]]
-        return;
-
-    assert(path_.empty());
-
-    const vec2 d = (end - start);
-    const float length = d.length();
-    if (length < 1e-6f)
-        return;
-
-    const vec2 dir = d * vec2(1.f / length);
-    const vec2 n = dir.perp() * vec2(line_width * 0.5f);
-
-    // main quad
-    indices_.push_back(vertex_ptr_ + 0u);
-    indices_.push_back(vertex_ptr_ + 1u);
-    indices_.push_back(vertex_ptr_ + 2u);
-    indices_.push_back(vertex_ptr_ + 0u);
-    indices_.push_back(vertex_ptr_ + 2u);
-    indices_.push_back(vertex_ptr_ + 3u);
-
-    vertices_.emplace_back(start - n, shared_data_.uv_white_px, col);
-    vertices_.emplace_back(start + n, shared_data_.uv_white_px, col);
-    vertices_.emplace_back(end + n, shared_data_.uv_white_px, col);
-    vertices_.emplace_back(end - n, shared_data_.uv_white_px, col);
-
-    const auto backup = vertex_ptr_;
-    vertex_ptr_ += 4u;
-
-    if (!flags_.anti_aliased_lines) [[unlikely]]
-        return;
-
-    const color_u32 col_no_alpha = col & ~color::alpha_mask;
-
-    aa_side(start + n, end + n, backup + 1u, backup + 2u, col_no_alpha);
-    aa_side(end - n, start - n, backup + 3u, backup + 0u, col_no_alpha);
-}
-
-inline void renderer2d::add_line_multicolor(const vec2& start, const vec2& end, color_u32 col_start, color_u32 col_end, float line_width)
-{
-    if ((col_start & color::alpha_mask) == 0u &&
-        (col_end & color::alpha_mask) == 0u) [[unlikely]]
-        return;
-
-    assert(path_.empty());
-    const vec2 d = end - start;
-    const float length = d.length();
-    if (length < 1e-6f)
-        return;
-
-    const vec2 dir = d * vec2(1.f / length);
-    const vec2 n = dir.perp() * vec2(line_width * 0.5f);
-
-    indices_.push_back(vertex_ptr_ + 0u);
-    indices_.push_back(vertex_ptr_ + 1u);
-    indices_.push_back(vertex_ptr_ + 2u);
-    indices_.push_back(vertex_ptr_ + 0u);
-    indices_.push_back(vertex_ptr_ + 2u);
-    indices_.push_back(vertex_ptr_ + 3u);
-
-    vertices_.emplace_back(start - n, shared_data_.uv_white_px, col_start);
-    vertices_.emplace_back(start + n, shared_data_.uv_white_px, col_start);
-    vertices_.emplace_back(end + n, shared_data_.uv_white_px, col_end);
-    vertices_.emplace_back(end - n, shared_data_.uv_white_px, col_end);
-    const auto backup = vertex_ptr_;
-    vertex_ptr_ += 4u;
-
-    if (!flags_.anti_aliased_lines) [[unlikely]]
-        return;
-
-    const color_u32 col_no_alpha_start = col_start & ~color::alpha_mask;
-    const color_u32 col_no_alpha_end = col_end & ~color::alpha_mask;
-    aa_side_multicolor(start + n, end + n, backup + 1u, backup + 2u, col_no_alpha_start, col_no_alpha_end);
-    aa_side_multicolor(end - n, start - n, backup + 3u, backup + 0u, col_no_alpha_end, col_no_alpha_start);
-}
-
 inline void renderer2d::prim_rect(const vec2& min, const vec2& max, color_u32 col)
 {
     indices_.emplace_back(vertex_ptr_ + 0u);
@@ -645,6 +509,11 @@ inline void renderer2d::add_quad_filled_multicolor(const vec2& p1, const vec2& p
     vertices_.emplace_back(p4, uv, col4);
 
     vertex_ptr_ += 4u;
+}
+
+inline void renderer2d::add_line(const vec2& start, const vec2& end, color_u32 col, float line_width)
+{
+    add_line_multicolor(start, end, col, col, line_width);
 }
 
 inline void renderer2d::add_image(texture_handle texture, const vec2& min, const vec2& max, color_u32 col,

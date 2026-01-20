@@ -481,6 +481,14 @@ void render_frame()
             r2::color::blue().interp(r2::color::white(), 0.4f).interp(r2::color::green(), 0.3f),
             std::u8string_view(u8"Ä*+**''Ä")
         );
+
+        g_renderer.add_line_multicolor(
+            r2::vec2(200.f, 200.f),
+            r2::vec2(700.f, 500.f),
+            r2::color::red(),
+            r2::color::blue(),
+            20.f
+        );
     }
 
     // fps 

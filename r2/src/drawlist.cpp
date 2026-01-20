@@ -482,4 +482,169 @@ void renderer2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
     }
 }
 
+void renderer2d::add_line_multicolor(const vec2& start_p, const vec2& end_p, color_u32 col_start, color_u32 col_end, float line_width)
+{
+    const bool odd = (static_cast<int>(std::round(line_width)) & 1) != 0;
+    const float snap = odd ? 0.5f : 0.0f;
+
+    const vec2 start = start_p + vec2(snap);
+    const vec2 end = end_p + vec2(snap);
+
+    if ((col_start & color::alpha_mask) == 0u &&
+        (col_end & color::alpha_mask) == 0u) [[unlikely]]
+        return;
+
+    assert(path_.empty());
+    const vec2 d = end - start;
+    const float length = d.length();
+    if (length < 1e-6f)
+        return;
+
+    const vec2 dir = d * vec2(1.f / length);
+    const vec2 n = dir.perp() * vec2(line_width * 0.5f);
+    const vec2 opaque_uv = shared_data_.uv_white_px;
+    const color_u32 col_no_alpha_start = col_start & ~color::alpha_mask;
+    const color_u32 col_no_alpha_end = col_end & ~color::alpha_mask;
+    if (!flags_.anti_aliased_lines) [[unlikely]] {
+        indices_.push_back(vertex_ptr_ + 0u);
+        indices_.push_back(vertex_ptr_ + 1u);
+        indices_.push_back(vertex_ptr_ + 2u);
+        indices_.push_back(vertex_ptr_ + 0u);
+        indices_.push_back(vertex_ptr_ + 2u);
+        indices_.push_back(vertex_ptr_ + 3u);
+        vertices_.emplace_back(start - n, opaque_uv, col_start);
+        vertices_.emplace_back(start + n, opaque_uv, col_start);
+        vertices_.emplace_back(end + n, opaque_uv, col_end);
+        vertices_.emplace_back(end - n, opaque_uv, col_end);
+        vertex_ptr_ += 4u;
+        return;
+    }
+    line_width = (std::max)(line_width, 1.0f);
+    const bool thick_line = (line_width > aa_scale_);
+    const int integer_line_width = static_cast<int>(line_width);
+    const float fractional_line_width = line_width - integer_line_width;
+    const bool use_texture = (flags_.anti_aliased_lines_use_tex) &&
+        (integer_line_width < font_atlas::kBakedLinesMaxWidth) &&
+        (fractional_line_width <= 0.00001f) && (aa_scale_ == 1.0f);
+    shared_data_.temp_buffer.clear();
+    shared_data_.temp_buffer.reserve(2u * ((use_texture || !thick_line) ? 3u : 5u));
+    vec2* temp_normals = shared_data_.temp_buffer.data();
+    vec2* temp_points = temp_normals + 2u;
+    temp_normals[0].x = dir.y;
+    temp_normals[0].y = -dir.x;
+    temp_normals[1] = temp_normals[0];
+    if (use_texture || !thick_line) {
+        const float half_draw_size = use_texture ?
+            ((line_width * 0.5f) + 1.f) : aa_scale_;
+        temp_points[0] = start + temp_normals[0] * vec2(half_draw_size);
+        temp_points[1] = start - temp_normals[0] * vec2(half_draw_size);
+        temp_points[2] = end + temp_normals[1] * vec2(half_draw_size);
+        temp_points[3] = end - temp_normals[1] * vec2(half_draw_size);
+        std::uint32_t idx1 = vertex_ptr_;
+        std::uint32_t idx2 = idx1 + (use_texture ? 2u : 3u);
+        vec2 dm(
+            (temp_normals[0].x + temp_normals[1].x) * 0.5f,
+            (temp_normals[0].y + temp_normals[1].y) * 0.5f
+        );
+        dm = dm.normalize(100.f);
+        dm *= vec2(half_draw_size);
+        temp_points[2] = end + dm;
+        temp_points[3] = end - dm;
+        if (use_texture) {
+            indices_.emplace_back(idx2 + 0u);
+            indices_.emplace_back(idx1 + 0u);
+            indices_.emplace_back(idx1 + 1u);
+            indices_.emplace_back(idx2 + 1u);
+            indices_.emplace_back(idx1 + 1u);
+            indices_.emplace_back(idx2 + 0u);
+        }
+        else {
+            indices_.emplace_back(idx2 + 0u);
+            indices_.emplace_back(idx2 + 0u);
+            indices_.emplace_back(idx1 + 2u);
+            indices_.emplace_back(idx1 + 2u);
+            indices_.emplace_back(idx2 + 2u);
+            indices_.emplace_back(idx2 + 0u);
+            indices_.emplace_back(idx2 + 1u);
+            indices_.emplace_back(idx1 + 1u);
+            indices_.emplace_back(idx1 + 0u);
+            indices_.emplace_back(idx1 + 0u);
+            indices_.emplace_back(idx2 + 0u);
+            indices_.emplace_back(idx2 + 1u);
+        }
+        if (use_texture) {
+            vec4 tex_uvs = font_atlas_->tex_uv_lines[integer_line_width];
+            const vec2 tex_uv0(tex_uvs.x, tex_uvs.y);
+            const vec2 tex_uv1(tex_uvs.z, tex_uvs.w);
+            vertices_.emplace_back(temp_points[0], tex_uv0, col_start);
+            vertices_.emplace_back(temp_points[1], tex_uv1, col_start);
+            vertices_.emplace_back(temp_points[2], tex_uv0, col_end);
+            vertices_.emplace_back(temp_points[3], tex_uv1, col_end);
+            vertex_ptr_ += 4u;
+        }
+        else {
+            vertices_.emplace_back(start, opaque_uv, col_start);
+            vertices_.emplace_back(temp_points[0], opaque_uv, col_no_alpha_start);
+            vertices_.emplace_back(temp_points[1], opaque_uv, col_no_alpha_start);
+            vertices_.emplace_back(end, opaque_uv, col_end);
+            vertices_.emplace_back(temp_points[2], opaque_uv, col_no_alpha_end);
+            vertices_.emplace_back(temp_points[3], opaque_uv, col_no_alpha_end);
+            vertex_ptr_ += 6u;
+        }
+    }
+    else {
+        const float half_inner_line_width = (line_width - aa_scale_) * 0.5f;
+        temp_points[0] = start + temp_normals[0] * vec2(half_inner_line_width + aa_scale_);
+        temp_points[1] = start + temp_normals[0] * vec2(half_inner_line_width);
+        temp_points[2] = start - temp_normals[0] * vec2(half_inner_line_width);
+        temp_points[3] = start - temp_normals[0] * vec2(half_inner_line_width + aa_scale_);
+        temp_points[4] = end + temp_normals[1] * vec2(half_inner_line_width + aa_scale_);
+        temp_points[5] = end + temp_normals[1] * vec2(half_inner_line_width);
+        temp_points[6] = end - temp_normals[1] * vec2(half_inner_line_width);
+        temp_points[7] = end - temp_normals[1] * vec2(half_inner_line_width + aa_scale_);
+        std::uint32_t idx1 = vertex_ptr_;
+        std::uint32_t idx2 = idx1 + 4u;
+        vec2 dm(
+            (temp_normals[0].x + temp_normals[1].x) * 0.5f,
+            (temp_normals[0].y + temp_normals[1].y) * 0.5f
+        );
+        dm = dm.normalize(100.f);
+        vec2 dm_out = dm * vec2(half_inner_line_width + aa_scale_);
+        vec2 dm_in = dm * vec2(half_inner_line_width);
+        temp_points[4] = end + dm_out;
+        temp_points[5] = end + dm_in;
+        temp_points[6] = end - dm_in;
+        temp_points[7] = end - dm_out;
+
+        indices_.emplace_back(idx2 + 1u);
+        indices_.emplace_back(idx1 + 1u);
+        indices_.emplace_back(idx1 + 2u);
+        indices_.emplace_back(idx1 + 2u);
+        indices_.emplace_back(idx2 + 2u);
+        indices_.emplace_back(idx2 + 1u);
+        indices_.emplace_back(idx2 + 1u);
+        indices_.emplace_back(idx1 + 1u);
+        indices_.emplace_back(idx1 + 0u);
+        indices_.emplace_back(idx1 + 0u);
+        indices_.emplace_back(idx2 + 0u);
+        indices_.emplace_back(idx2 + 1u);
+        indices_.emplace_back(idx2 + 2u);
+        indices_.emplace_back(idx1 + 2u);
+        indices_.emplace_back(idx1 + 3u);
+        indices_.emplace_back(idx1 + 3u);
+        indices_.emplace_back(idx2 + 3u);
+        indices_.emplace_back(idx2 + 2u);
+
+        vertices_.emplace_back(temp_points[0], opaque_uv, col_no_alpha_start);
+        vertices_.emplace_back(temp_points[1], opaque_uv, col_start);
+        vertices_.emplace_back(temp_points[2], opaque_uv, col_start);
+        vertices_.emplace_back(temp_points[3], opaque_uv, col_no_alpha_start);
+        vertices_.emplace_back(temp_points[4], opaque_uv, col_no_alpha_end);
+        vertices_.emplace_back(temp_points[5], opaque_uv, col_end);
+        vertices_.emplace_back(temp_points[6], opaque_uv, col_end);
+        vertices_.emplace_back(temp_points[7], opaque_uv, col_no_alpha_end);
+        vertex_ptr_ += 8u;
+    }
+}
+
 r2_end_
