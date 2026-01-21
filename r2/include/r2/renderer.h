@@ -135,9 +135,11 @@ public:
     void add_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col);
     void add_shadow_convex(const vec2* points, std::uint32_t num_points, color_u32 col, float shadow_size, bool filled = true);
     void add_lines(const vec2* points, std::uint32_t num_points, color_u32 col, float line_width, bool closed = false);
-
+    
     void add_image(texture_handle texture, const vec2& min, const vec2& max, color_u32 col = color::white(),
                    const vec2& uv_min = vec2(0.f), const vec2& uv_max = vec2(1.f));
+    void add_image_outline(texture_handle texture, const vec2& min, const vec2& max, color_u32 col = color::white(), color_u32 outline_col = color::black(),
+                           float outline_size = 1.f, const vec2& uv_min = vec2(0.f), const vec2& uv_max = vec2(1.f));
     void add_image_rounded(texture_handle texture, const vec2& min, const vec2& max, float rounding, color_u32 col = color::white(),
                            const vec2& uv_min = vec2(0.f), const vec2& uv_max = vec2(1.f));
     void shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 

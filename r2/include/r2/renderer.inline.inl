@@ -541,6 +541,92 @@ inline void renderer2d::add_image(texture_handle texture, const vec2& min, const
     pop_texture_id();
 }
 
+inline void renderer2d::add_image_outline(texture_handle texture, const vec2& min, const vec2& max, color_u32 col, color_u32 outline_col,
+                                          float outline_size, const vec2& uv_min, const vec2& uv_max)
+{
+    if ((col & color::alpha_mask) == 0u) [[unlikely]]
+        return;
+
+    push_texture_id(texture);
+
+    // top
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    vertices_.emplace_back(vec2{ min.x, min.y - outline_size }, uv_min, outline_col);
+    vertices_.emplace_back(vec2{ min.x, max.y - outline_size }, vec2{ uv_min.x, uv_max.y }, outline_col);
+    vertices_.emplace_back(vec2{ max.x, max.y - outline_size }, uv_max, outline_col);
+    vertices_.emplace_back(vec2{ max.x, min.y - outline_size }, vec2{ uv_max.x, uv_min.y }, outline_col);
+
+    vertex_ptr_ += 4u;
+
+    // bottom
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    vertices_.emplace_back(vec2{ min.x, min.y + outline_size }, uv_min, outline_col);
+    vertices_.emplace_back(vec2{ min.x, max.y + outline_size }, vec2{ uv_min.x, uv_max.y }, outline_col);
+    vertices_.emplace_back(vec2{ max.x, max.y + outline_size }, uv_max, outline_col);
+    vertices_.emplace_back(vec2{ max.x, min.y + outline_size }, vec2{ uv_max.x, uv_min.y }, outline_col);
+
+    vertex_ptr_ += 4u;
+
+    // left
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    vertices_.emplace_back(vec2{ min.x - outline_size, min.y }, uv_min, outline_col);
+    vertices_.emplace_back(vec2{ min.x - outline_size, max.y }, vec2{ uv_min.x, uv_max.y }, outline_col);
+    vertices_.emplace_back(vec2{ max.x - outline_size, max.y }, uv_max, outline_col);
+    vertices_.emplace_back(vec2{ max.x - outline_size, min.y }, vec2{ uv_max.x, uv_min.y }, outline_col);
+
+    vertex_ptr_ += 4u;
+
+    // right
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    vertices_.emplace_back(vec2{ min.x + outline_size, min.y }, uv_min, outline_col);
+    vertices_.emplace_back(vec2{ min.x + outline_size, max.y }, vec2{ uv_min.x, uv_max.y }, outline_col);
+    vertices_.emplace_back(vec2{ max.x + outline_size, max.y }, uv_max, outline_col);
+    vertices_.emplace_back(vec2{ max.x + outline_size, min.y }, vec2{ uv_max.x, uv_min.y }, outline_col);
+
+    vertex_ptr_ += 4u;
+
+    // main
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 1u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 0u);
+    indices_.emplace_back(vertex_ptr_ + 2u);
+    indices_.emplace_back(vertex_ptr_ + 3u);
+
+    vertices_.emplace_back(min, uv_min, col);
+    vertices_.emplace_back(vec2{ min.x, max.y }, vec2{ uv_min.x, uv_max.y }, col);
+    vertices_.emplace_back(max, uv_max, col);
+    vertices_.emplace_back(vec2{ max.x, min.y }, vec2{ uv_max.x, uv_min.y }, col);
+
+    vertex_ptr_ += 4u;
+
+    pop_texture_id();
+}
+
 inline void renderer2d::add_image_rounded(texture_handle texture, const vec2& min, const vec2& max, float rounding, color_u32 col,
                                           const vec2& uv_min, const vec2& uv_max)
 {
