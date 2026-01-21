@@ -33,8 +33,7 @@ struct subresource_range {
     std::uint16_t layer_count = 1u;
 };
 
-struct textureview_desc
-{
+struct textureview_desc {
     view_usage usage = view_usage::shader_resource;
     texture_aspect aspect = texture_aspect::color;
     subresource_range range{};
