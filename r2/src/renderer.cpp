@@ -113,6 +113,7 @@ void renderer2d::build_fonts()
         throw error(error_code::font_build);
 
     // fonts
+    std::lock_guard<std::mutex> lock(font_mutex_);
     for (auto& font : fonts_) {
         if (!font->build())
             throw error(error_code::font_build);
@@ -197,10 +198,9 @@ font* renderer2d::add_font(const font_cfg& cfg)
 #if defined(_DEBUG)
     assert_render_thread();
 #endif
-    {
-        std::lock_guard<std::mutex> lock(font_mutex_);
-        fonts_.push_back(std::make_unique<font>(font_atlas_.get(), cfg));
-    }
+    std::lock_guard<std::mutex> lock(font_mutex_);
+
+    fonts_.push_back(std::make_unique<font>(font_atlas_.get(), cfg));
 
     if (font_stack_.empty()) {
         font_stack_.push_back(fonts_.back().get());
@@ -217,12 +217,14 @@ void renderer2d::remove_font(font* font)
 #if defined(_DEBUG)
     assert_render_thread();
 #endif
-    for (auto it = fonts_.begin(); it != fonts_.end(); it++) {
-        if (it->get() == font) {
-            std::lock_guard<std::mutex> lock(font_mutex_);
-            it->get()->destroy();
-            fonts_.erase(it);
-            break;
+    {
+        std::lock_guard<std::mutex> lock(font_mutex_);
+        for (auto it = fonts_.begin(); it != fonts_.end(); it++) {
+            if (it->get() == font) {
+                it->get()->destroy();
+                fonts_.erase(it);
+                break;
+            }
         }
     }
 
@@ -252,9 +254,12 @@ void renderer2d::update_fonts_on_frame()
 
     bool update_tex = atlas_update_queued_;
     atlas_update_queued_ = false;
-    for (auto& font : fonts_)
-        if (font->update_on_render())
-            update_tex = true;
+    {
+        std::lock_guard<std::mutex> lock(font_mutex_);
+        for (auto& font : fonts_)
+            if (font->update_on_render())
+                update_tex = true;
+    }
 
     if (update_tex) {
         render_data_->font_texture->update(
@@ -327,6 +332,7 @@ void renderer2d::reset_render_data()
     push_texture_id(
         render_data_->font_view.get()
     );
+    std::lock_guard<std::mutex> lock(font_mutex_);
     push_font(fonts_[0].get());
 }
 
