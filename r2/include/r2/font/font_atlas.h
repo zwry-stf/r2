@@ -27,10 +27,6 @@ private:
     std::vector<atlas_rect> rects_;
 
 public:
-    inline static constexpr std::uint32_t kBakedLinesMaxWidth = 63u;
-    vec4 tex_uv_lines[kBakedLinesMaxWidth + 1u]{};
-
-public:
     font_atlas(renderer2d* instance) noexcept;
 
 private:

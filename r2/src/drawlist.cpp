@@ -274,7 +274,7 @@ void renderer2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
         const float fractional_line_width = line_width - integer_line_width;
 
         const bool use_texture = (flags_.anti_aliased_lines_use_tex) &&
-            (integer_line_width < font_atlas::kBakedLinesMaxWidth) &&
+            (integer_line_width < shared_data::kBakedLinesMaxWidth) &&
             (fractional_line_width <= 0.00001f) && (aa_scale_ == 1.0f);
 
         shared_data_.temp_buffer.clear();
@@ -356,7 +356,7 @@ void renderer2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
             }
 
             if (use_texture) {
-                vec4 tex_uvs = font_atlas_->tex_uv_lines[integer_line_width];
+                vec4 tex_uvs = shared_data_.tex_uv_lines[integer_line_width];
                 const vec2 tex_uv0(tex_uvs.x, tex_uvs.y);
                 const vec2 tex_uv1(tex_uvs.z, tex_uvs.w);
                 for (std::uint32_t i = 0u; i < num_points; i++) {
@@ -524,7 +524,7 @@ void renderer2d::add_line_multicolor(const vec2& start_p, const vec2& end_p, col
     const int integer_line_width = static_cast<int>(line_width);
     const float fractional_line_width = line_width - integer_line_width;
     const bool use_texture = (flags_.anti_aliased_lines_use_tex) &&
-        (integer_line_width < font_atlas::kBakedLinesMaxWidth) &&
+        (integer_line_width < shared_data::kBakedLinesMaxWidth) &&
         (fractional_line_width <= 0.00001f) && (aa_scale_ == 1.0f);
     shared_data_.temp_buffer.clear();
     shared_data_.temp_buffer.reserve(2u * ((use_texture || !thick_line) ? 3u : 5u));
@@ -573,7 +573,7 @@ void renderer2d::add_line_multicolor(const vec2& start_p, const vec2& end_p, col
             indices_.emplace_back(idx2 + 1u);
         }
         if (use_texture) {
-            vec4 tex_uvs = font_atlas_->tex_uv_lines[integer_line_width];
+            vec4 tex_uvs = shared_data_.tex_uv_lines[integer_line_width];
             const vec2 tex_uv0(tex_uvs.x, tex_uvs.y);
             const vec2 tex_uv1(tex_uvs.z, tex_uvs.w);
             vertices_.emplace_back(temp_points[0], tex_uv0, col_start);

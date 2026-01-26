@@ -10,6 +10,10 @@
 
 r2_begin_
 
+class drawlist2d {
+private:
+};
+
 class renderer2d {
 private:
     std::unique_ptr<context> context_;

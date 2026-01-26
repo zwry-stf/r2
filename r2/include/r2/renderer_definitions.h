@@ -314,6 +314,9 @@ struct shared_data {
     vec4 shadow_uvs;
     std::vector<vec2> temp_buffer;
     std::vector<float> temp_buffer2;
+
+    inline static constexpr std::uint32_t kBakedLinesMaxWidth = 63u;
+    vec4 tex_uv_lines[kBakedLinesMaxWidth + 1u]{};
 };
 
 struct font_cfg {

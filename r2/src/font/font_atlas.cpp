@@ -122,10 +122,10 @@ void font_atlas::add_tex_lines()
     if (!renderer_->flags().anti_aliased_lines_use_tex)
         return;
 
-    auto rect_id = register_rect(kBakedLinesMaxWidth + 2u, kBakedLinesMaxWidth + 1u);
+    auto rect_id = register_rect(shared_data::kBakedLinesMaxWidth + 2u, shared_data::kBakedLinesMaxWidth + 1u);
     const auto& r = this->get_rect(rect_id);
 
-    for (std::uint32_t n = 0u; n < kBakedLinesMaxWidth + 1u; n++) {
+    for (std::uint32_t n = 0u; n < shared_data::kBakedLinesMaxWidth + 1u; n++) {
         std::uint32_t y = n;
         std::uint32_t line_width = n;
 
@@ -160,7 +160,7 @@ void font_atlas::add_tex_lines()
             static_cast<float>(r.pos_y + y + 1u)
         );
         float half_v = (uv0.y + uv1.y) * 0.5f;
-        tex_uv_lines[n] = vec4(
+        renderer_->shared_data_.tex_uv_lines[n] = vec4(
             uv0.x / static_cast<float>(width_),
             half_v / static_cast<float>(height_), 
             uv1.x / static_cast<float>(width_),
