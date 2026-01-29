@@ -1,12 +1,8 @@
 function r2_define_common(backend_name)
-    flags { "MultiProcessorCompile" }
+    multiprocessorcompile "On"
     warnings "Extra"
     fatalwarnings { "All" }
 
-    filter "action:vs*"
-        buildoptions { "/sdl" }
-    filter {}
-    
     filter "configurations:Debug*"
         symbols "On"
         defines { "_DEBUG" }

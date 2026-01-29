@@ -57,7 +57,7 @@ project "backend_d3d11"
     
     if backend_name == "opengl" then
         removefiles { "**" }
-        flags { "ExcludeFromBuild" }
+        excludefrombuild "On"
     end
     
 project "backend_opengl"
@@ -85,7 +85,7 @@ project "backend_opengl"
     
     if backend_name == "d3d11" then
         removefiles { "**" }
-        flags { "ExcludeFromBuild" }
+        excludefrombuild "On"
     end
 
 project "r2"
