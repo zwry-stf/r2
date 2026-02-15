@@ -28,8 +28,7 @@
 
 
 // Global data
-struct GlobalRenderData
-{
+struct GlobalRenderData {
 #if defined(R2_BACKEND_D3D11)
     d3d_pointer<IDXGISwapChain> swapchain;
     d3d_pointer<ID3D11Device> device;
@@ -39,8 +38,7 @@ struct GlobalRenderData
     std::unique_ptr<r2::framebuffer> render_target;
 };
 
-struct WindowData
-{
+struct WindowData {
     int fb_width{};
     int fb_height{};
     GLFWwindow* window{};

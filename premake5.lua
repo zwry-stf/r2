@@ -1,6 +1,13 @@
 workspace "r2"
     configurations { "Debug", "Release" }
     platforms { "x86", "x64" }
+
+    filter "platforms:x86"
+        architecture "x86"
+    filter "platforms:x64"
+        architecture "x86_64"
+    filter {}
+
     language "C++"
     cppdialect "C++23"
     staticruntime "Off"
@@ -14,12 +21,6 @@ workspace "r2"
             { "opengl", "OpenGL" }
         }
     }
-
-    filter "platforms:x86"
-        architecture "x86"
-    filter "platforms:x64"
-        architecture "x86_64"
-    filter {}
     
     local build_root = "build/%{prj.name}"
     local int_root   = "build/%{prj.name}/%{cfg.buildcfg}/%{cfg.platform}"
@@ -32,11 +33,14 @@ workspace "r2"
         
     location ("out/" .. action .. "/" .. host)
     
-dofile("premake5_common.lua")
-r2_define_common(_OPTIONS["backend"]);
-    
-dofile("premake5_projects.lua")
-r2_define_projects(nil, build_root, int_root, _OPTIONS["backend"])
+include "premake/r2.lua"
+
+r2.add_projects {
+    base = "",
+    build_root = build_root,
+    int_root = int_root,
+    backend = _OPTIONS["backend"],
+}
 
 project "TestRun"
     kind "WindowedApp"
@@ -52,29 +56,22 @@ project "TestRun"
 
     includedirs {
         "TestRun/ext",
-        "r2/include",
-        "backend/include",
-        "backend_d3d11/include"
     }
 
+    r2.set_common_project_settings()
+    r2.use { base = "", backend = _OPTIONS["backend"], include_impl = true }
+    r2.set_project_backend_defines( _OPTIONS["backend"] )
+
     dependson { "r2" }
-    links     { "r2", "backend" }
 
     filter { "system:windows", "platforms:x64" }
         links { "TestRun/ext/GLFW/windows/x64/glfw3" }
     filter { "system:windows", "platforms:x86" }
         links { "TestRun/ext/GLFW/windows/x86/glfw3" }
-    filter { }
+    filter {}
+
     filter { "options:backend=opengl", "system:windows", "platforms:x64" }
         links { "TestRun/ext/gl/windows/x64/glew32s" }
     filter { "options:backend=opengl", "system:windows", "platforms:x86" }
         links { "TestRun/ext/gl/windows/x86/glew32s" }
-    filter { }
-    
-    filter { "options:backend=d3d11" }
-        links { "backend_d3d11", "d3d11", "d3dcompiler" }
-    filter { }
-    
-    filter { "options:backend=opengl" }
-        links { "backend_opengl", "opengl32" }
-    filter { }
+    filter {}
