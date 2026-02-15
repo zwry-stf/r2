@@ -24,15 +24,11 @@ function r2.set_common_project_settings(groups)
 
     for _, cfgpat in ipairs(debug_groups) do
         filter("configurations:" .. cfgpat)
-            symbols "On"
             defines { "_DEBUG" }
     end
 
     for _, cfgpat in ipairs(release_groups) do
         filter("configurations:" .. cfgpat)
-            optimize "On"
-            intrinsics "On"
-            linktimeoptimization "On"
             defines { "NDEBUG" }
     end
 
