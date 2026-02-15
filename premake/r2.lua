@@ -96,7 +96,7 @@ function r2.use(opts)
     end
 end
 
-function r2.add_projects(opts)
+function r2.add_projects(opts, groups)
     local base = opts.base or ""
     local backend = opts.backend
 
@@ -111,7 +111,7 @@ function r2.add_projects(opts)
         objdir    (int_root)
         location  (join(base, "backend"))
 
-        r2.set_common_project_settings()
+        r2.set_common_project_settings(groups)
         r2.set_project_backend_defines(backend)
 
         files {
@@ -143,7 +143,7 @@ function r2.add_projects(opts)
             objdir    (int_root)
             location  (join(base, "backend_d3d11"))
             
-            r2.set_common_project_settings()
+            r2.set_common_project_settings(groups)
             r2.set_project_backend_defines(backend)
 
             files {
@@ -168,7 +168,7 @@ function r2.add_projects(opts)
             objdir    (int_root)
             location  (join(base, "backend_opengl"))
             
-            r2.set_common_project_settings()
+            r2.set_common_project_settings(groups)
             r2.set_project_backend_defines(backend)
 
             files {
@@ -196,7 +196,7 @@ function r2.add_projects(opts)
         objdir    (int_root)
         location  (join(base, "r2"))
         
-        r2.set_common_project_settings()
+        r2.set_common_project_settings(groups)
         r2.set_project_backend_defines(backend)
 
         files {
