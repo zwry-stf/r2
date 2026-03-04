@@ -30,8 +30,7 @@ struct rasterizerstate_desc {
     bool antialiased_lines  = false;
 };
 
-class rasterizerstate : public object<rasterizerstate_desc>
-{
+class rasterizerstate : public object<rasterizerstate_desc> {
 protected:
     using object<rasterizerstate_desc>::object;
 };
