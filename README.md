@@ -85,5 +85,3 @@ renderer.update_fonts_on_frame();   // call every frame (must be called from ren
 - `add_rect_filled()`, `add_rect()`, `add_line()`, `add_convex_filled()`
 - `add_text()`, `add_text_outlined()`, `add_text_faded()`
 - `path_clear()`, `path_rect()`, `path_fill_convex()`, `path_stroke()`
-
-```
