@@ -6,6 +6,7 @@ Modern immediate-mode 2D renderer with font atlas, Unicode support, rounded shap
 
 - Immediate-mode API
 - High-quality font rendering (subpixel, glow, oversampling)
+- Dynamic glyph loading
 - Unicode + emoji support via font stacking
 - Rects, rounded rects, lines, convex polygons, images
 - Multi-color gradients & vertex color shading
