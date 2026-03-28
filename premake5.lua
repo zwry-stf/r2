@@ -11,6 +11,8 @@ workspace "r2"
     language "C++"
     cppdialect "C++23"
     staticruntime "Off"
+    
+    startproject "TestRun"
 
     newoption {
         trigger     = "backend",
