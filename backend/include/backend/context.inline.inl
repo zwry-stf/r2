@@ -45,6 +45,7 @@ enum class primitive_topology : std::uint8_t {
     triangle_list,
     line_list,
     point_list,
+    triangle_strip,
 };
 
 

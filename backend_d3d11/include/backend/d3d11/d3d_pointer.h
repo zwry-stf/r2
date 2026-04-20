@@ -5,8 +5,7 @@
 
 template <class _Class>
     requires (std::is_base_of_v<IUnknown, _Class>)
-class d3d_pointer
-{
+class d3d_pointer {
 private:
     _Class* value_;
 

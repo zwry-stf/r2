@@ -377,16 +377,29 @@ void d3d11_context::set_vertex_buffer(const buffer* vb, std::uint32_t slot)
 
     auto* vbuf = vb == nullptr ? nullptr : to_native(vb)->buffer();
 
-    const UINT offset = 0u;
-    const UINT stride = static_cast<UINT>(vb->desc().vb_stride);
+    if (vb == nullptr) {
+        const UINT offset = 0u;
+        const UINT stride = 0u;
+        context_->IASetVertexBuffers(
+            static_cast<UINT>(slot),
+            1u,
+            &vbuf,
+            &stride,
+            &offset
+        );
+    }
+    else {
+        const UINT offset = 0u;
+        const UINT stride = static_cast<UINT>(vb->desc().vb_stride);
 
-    context_->IASetVertexBuffers(
-        static_cast<UINT>(slot),
-        1u,
-        &vbuf,
-        &stride,
-        &offset
-    );
+        context_->IASetVertexBuffers(
+            static_cast<UINT>(slot),
+            1u,
+            &vbuf,
+            &stride,
+            &offset
+        );
+    }
 }
 
 void d3d11_context::set_index_buffer(const buffer* ib)
@@ -395,8 +408,9 @@ void d3d11_context::set_index_buffer(const buffer* ib)
 
     context_->IASetIndexBuffer(
         ib == nullptr ? nullptr : to_native(ib)->buffer(),
-        ib->desc().ib_type == index_buffer_type::u16 ?
-            DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT,
+        ib == nullptr ? DXGI_FORMAT_R32_UINT :
+            (ib->desc().ib_type == index_buffer_type::u16 ?
+                DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT),
         0u
     );
 }
@@ -578,6 +592,9 @@ void d3d11_context::set_primitive_topology(primitive_topology t)
         break;
     case primitive_topology::point_list:
         tp = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
+        break;
+    case primitive_topology::triangle_strip:
+        tp = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
         break;
     default:
         return;
