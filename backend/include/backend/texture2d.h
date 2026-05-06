@@ -9,6 +9,7 @@ enum class texture_format : std::uint8_t {
     unknown = 0,
     rgba8_unorm,
     bgra8_unorm,
+    rgba16_float,
     r8_unorm,
     r16_float,
     r32_float,
