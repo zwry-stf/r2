@@ -839,7 +839,7 @@ inline void renderer2d::path_stroke(color_u32 col, float line_width, bool closed
     path_clear();
 }
 
-template <unicode::string_like String>
+template <float CharOffset, unicode::string_like String>
 inline void renderer2d::add_text(const vec2& pos, color_u32 col, const String& text, bool blurred)
 {
     assert(current_font_ != nullptr);
@@ -902,15 +902,19 @@ inline void renderer2d::add_text(const vec2& pos, color_u32 col, const String& t
         }
 
         x += glyph->advance_x;
+        if constexpr (CharOffset != 0.f) {
+            x += CharOffset;
+        }
     }
 }
 
-template<unicode::string_like String>
+template <float CharOffset, unicode::string_like String>
 inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32 faded_col,
                                        float fade_start, float fade_end, const String& text, bool blurred)
 {
+    assert(fade_start <= fade_end);
     if (col == faded_col) [[unlikely]]
-        return add_text<String>(pos, col, text, blurred);
+        return add_text(pos, col, text, blurred);
 
     assert(current_font_ != nullptr);
 
@@ -925,10 +929,11 @@ inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
 
     const bool do_fade = (fade_end > fade_start);
     if (!do_fade &&
-        !draw_no_fade) [[unlikely]]
+        !draw_no_fade &&
+        !draw_if_faded) [[unlikely]]
         return;
 
-    const float denom = (fade_end - fade_start);
+    const float denom = fade_end - fade_start;
     const float inv_denom = denom > 0.f ? 1.f / denom : 0.f;
 
     std::uint32_t s = 0u;
@@ -1037,6 +1042,43 @@ inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                         c_right = color(col).interp(color(faded_col), std::clamp(t_right, 0.f, 1.f));
                     }
                 }
+                else {
+                    if (x0 >= fade_start) {
+                        if (!draw_if_faded) {
+                            x += glyph->advance_x;
+                            continue;
+                        }
+                        c_left = faded_col;
+                        c_right = faded_col;
+                    }
+                    else if (fade_start < x1) {
+                        const float d = (fade_start - x0) / (x1 - x0);
+                        const float mid_pos = x0 + (x1 - x0) * d;
+                        const float mid_uv = uv_min.x + (uv_max.x - uv_min.x) * d;
+
+                        if (draw_no_fade) {
+                            indices_.emplace_back(vertex_ptr_ + 0u);
+                            indices_.emplace_back(vertex_ptr_ + 1u);
+                            indices_.emplace_back(vertex_ptr_ + 2u);
+                            indices_.emplace_back(vertex_ptr_ + 0u);
+                            indices_.emplace_back(vertex_ptr_ + 2u);
+                            indices_.emplace_back(vertex_ptr_ + 3u);
+
+                            vertices_.emplace_back(vec2{ x0, y0 }, vec2{ uv_min.x, uv_min.y }, col);
+                            vertices_.emplace_back(vec2{ x0, y1 }, vec2{ uv_min.x, uv_max.y }, col);
+                            vertices_.emplace_back(vec2{ mid_pos, y1 }, vec2{ mid_uv, uv_max.y }, col);
+                            vertices_.emplace_back(vec2{ mid_pos, y0 }, vec2{ mid_uv, uv_min.y }, col);
+
+                            vertex_ptr_ += 4u;
+                        }
+
+                        mid_left_pos = mid_pos;
+                        mid_left = mid_uv;
+
+                        c_left = faded_col;
+                        c_right = faded_col;
+                    }
+                }
 
                 // middle/main quad
                 indices_.emplace_back(vertex_ptr_ + 0u);
@@ -1056,10 +1098,13 @@ inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
         }
 
         x += glyph->advance_x;
+        if constexpr (CharOffset != 0.f) {
+            x += CharOffset;
+        }
     }
 }
 
-template<unicode::string_like String>
+template<float CharOffset, unicode::string_like String>
 inline void renderer2d::add_text_outlined(const vec2& pos, color_u32 col, const String& text,
                                           const color_u32 outline_col, float outline_width, bool blurred)
 {
@@ -1191,6 +1236,9 @@ inline void renderer2d::add_text_outlined(const vec2& pos, color_u32 col, const 
         }
 
         x += glyph->advance_x;
+        if constexpr (CharOffset != 0.f) {
+            x += CharOffset;
+        }
     }
 }
 

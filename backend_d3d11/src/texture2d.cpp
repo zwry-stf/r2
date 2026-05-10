@@ -9,15 +9,16 @@ r2_begin_
 DXGI_FORMAT d3d11_texture2d::to_dxgi_format(texture_format fmt) noexcept
 {
     switch (fmt) {
-    case texture_format::rgba8_unorm: return DXGI_FORMAT_R8G8B8A8_UNORM;
-    case texture_format::bgra8_unorm: return DXGI_FORMAT_B8G8R8A8_UNORM;
-    case texture_format::r16_float:   return DXGI_FORMAT_R16_FLOAT;
-    case texture_format::r32_float:   return DXGI_FORMAT_R32_FLOAT;
-    case texture_format::r8_unorm:    return DXGI_FORMAT_R8_UNORM;
+    case texture_format::rgba8_unorm:  return DXGI_FORMAT_R8G8B8A8_UNORM;
+    case texture_format::bgra8_unorm:  return DXGI_FORMAT_B8G8R8A8_UNORM;
+    case texture_format::rgba16_float: return DXGI_FORMAT_R16G16B16A16_FLOAT;
+    case texture_format::r16_float:    return DXGI_FORMAT_R16_FLOAT;
+    case texture_format::r32_float:    return DXGI_FORMAT_R32_FLOAT;
+    case texture_format::r8_unorm:     return DXGI_FORMAT_R8_UNORM;
 
-    case texture_format::d24s8:       return DXGI_FORMAT_R24G8_TYPELESS;
-    case texture_format::d32_float:   return DXGI_FORMAT_R32_TYPELESS;
-    case texture_format::backbuffer: assert(false);
+    case texture_format::d24s8:        return DXGI_FORMAT_R24G8_TYPELESS;
+    case texture_format::d32_float:    return DXGI_FORMAT_R32_TYPELESS;
+    case texture_format::backbuffer:   assert(false);
     default:
         assert(false);
         return {};
@@ -30,6 +31,8 @@ std::uint32_t d3d11_texture2d::bytes_per_pixel(texture_format fmt) noexcept
     case texture_format::rgba8_unorm:
     case texture_format::bgra8_unorm:
         return 4u;
+    case texture_format::rgba16_float:
+        return 8u;
     case texture_format::r8_unorm:
         return 1u;
     case texture_format::r16_float:
@@ -128,12 +131,13 @@ std::unique_ptr<d3d11_texture2d> d3d11_texture2d::from_existing(d3d11_context* c
     d.width = static_cast<std::uint32_t>(sd.Width);
     d.height = static_cast<std::uint32_t>(sd.Height);
     switch (sd.Format) {
-    case DXGI_FORMAT_R8G8B8A8_UNORM:  d.format = texture_format::rgba8_unorm; break;
-    case DXGI_FORMAT_B8G8R8A8_UNORM:  d.format = texture_format::bgra8_unorm; break;
-    case DXGI_FORMAT_R16_FLOAT:       d.format = texture_format::r16_float; break;
-    case DXGI_FORMAT_R32_FLOAT:       d.format = texture_format::r32_float; break;
-    case DXGI_FORMAT_R24G8_TYPELESS:  d.format = texture_format::d24s8; break;
-    case DXGI_FORMAT_R32_TYPELESS:    d.format = texture_format::d32_float; break;
+    case DXGI_FORMAT_R8G8B8A8_UNORM:     d.format = texture_format::rgba8_unorm; break;
+    case DXGI_FORMAT_B8G8R8A8_UNORM:     d.format = texture_format::bgra8_unorm; break;
+    case DXGI_FORMAT_R16G16B16A16_FLOAT: d.format = texture_format::rgba16_float; break;
+    case DXGI_FORMAT_R16_FLOAT:          d.format = texture_format::r16_float; break;
+    case DXGI_FORMAT_R32_FLOAT:          d.format = texture_format::r32_float; break;
+    case DXGI_FORMAT_R24G8_TYPELESS:     d.format = texture_format::d24s8; break;
+    case DXGI_FORMAT_R32_TYPELESS:       d.format = texture_format::d32_float; break;
     default: d.format = texture_format::unknown; break;
     }
 
