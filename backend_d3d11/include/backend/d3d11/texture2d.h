@@ -25,6 +25,7 @@ public:
 
 public:
     virtual void update(const void* data, std::uint32_t row_pitch) override;
+    virtual void update(const void* data, std::uint32_t row_pitch, const rect& box) override;
 
     [[nodiscard]] auto* texture() const noexcept {
         return texture_.get();

@@ -1,6 +1,6 @@
 #include <backend/d3d11/texture2d.h>
 #include <backend/d3d11/context.h>
-#include <assert.h>
+#include <cassert>
 
 
 r2_begin_
@@ -162,6 +162,26 @@ void d3d11_texture2d::update(const void* data, std::uint32_t row_pitch)
         data,
         static_cast<UINT>(row_pitch),
         0 
+    );
+}
+
+void d3d11_texture2d::update(const void* data, std::uint32_t row_pitch, const rect& box)
+{
+    D3D11_BOX d3d_box = {};
+    d3d_box.left = static_cast<UINT>(box.left);
+    d3d_box.top = static_cast<UINT>(box.top);
+    d3d_box.front = 0;
+    d3d_box.right = static_cast<UINT>(box.right);
+    d3d_box.bottom = static_cast<UINT>(box.bottom);
+    d3d_box.back = 1;
+
+    context()->get_context()->UpdateSubresource(
+        texture_.get(),
+        0,
+        &d3d_box,
+        data,
+        static_cast<UINT>(row_pitch),
+        0
     );
 }
 

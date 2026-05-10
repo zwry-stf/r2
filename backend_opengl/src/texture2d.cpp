@@ -286,4 +286,104 @@ void gl_texture2d::update(const void* data, std::uint32_t row_pitch)
     }
 }
 
+void gl_texture2d::update(const void* data, std::uint32_t row_pitch, const rect& box)
+{
+    assert(!is_backbuffer_handle());
+    const auto& desc = desc_;
+
+    assert(texture_ != 0u);
+    assert(desc.width > 0 && desc.height > 0);
+    assert(desc.sample_desc.count == 1u);
+
+    assert(box.left < box.right && box.top < box.bottom);
+    assert(box.right <= desc.width && box.bottom <= desc.height);
+
+    GLint  internal_format = 0;
+    GLenum format = 0;
+    GLenum type = 0;
+    to_gl_format(desc.format, internal_format, format, type);
+
+    const std::uint32_t bpp = bytes_per_pixel(desc.format);
+    assert(bpp != 0);
+
+    GLint backup_unpack_alignment;
+    GLint backup_unpack_row_length;
+    GLint backup_unpack_skip_rows;
+    GLint backup_unpack_skip_pixels;
+
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &backup_unpack_alignment);
+    glGetIntegerv(GL_UNPACK_ROW_LENGTH, &backup_unpack_row_length);
+    glGetIntegerv(GL_UNPACK_SKIP_ROWS, &backup_unpack_skip_rows);
+    glGetIntegerv(GL_UNPACK_SKIP_PIXELS, &backup_unpack_skip_pixels);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+
+    const std::uint32_t sub_width = box.right - box.left;
+    const std::uint32_t sub_height = box.bottom - box.top;
+    const std::uint32_t tight_pitch = sub_width * bpp;
+
+    glBindTexture(GL_TEXTURE_2D, texture_);
+
+    if (row_pitch == 0 || row_pitch == tight_pitch) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+        glTexSubImage2D(GL_TEXTURE_2D,
+            0,
+            static_cast<GLint>(box.left), static_cast<GLint>(box.top),
+            static_cast<GLsizei>(sub_width), static_cast<GLsizei>(sub_height),
+            format,
+            type,
+            data);
+    }
+    else if ((row_pitch % bpp) == 0) {
+        const GLint row_length_pixels = static_cast<GLint>(row_pitch / bpp);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, row_length_pixels);
+
+        glTexSubImage2D(GL_TEXTURE_2D,
+            0,
+            static_cast<GLint>(box.left), static_cast<GLint>(box.top),
+            static_cast<GLsizei>(sub_width), static_cast<GLsizei>(sub_height),
+            format,
+            type,
+            data);
+
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    }
+    else {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+        const auto* bytes = static_cast<const std::uint8_t*>(data);
+        for (GLint y = 0; y < static_cast<GLint>(sub_height); ++y)
+        {
+            const void* row_ptr = bytes + static_cast<std::size_t>(y) * row_pitch;
+
+            glTexSubImage2D(GL_TEXTURE_2D,
+                0,
+                static_cast<GLint>(box.left), static_cast<GLint>(box.top) + y,
+                static_cast<GLsizei>(sub_width),
+                1,
+                format,
+                type,
+                row_ptr);
+        }
+    }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, backup_unpack_alignment);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, backup_unpack_row_length);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, backup_unpack_skip_rows);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, backup_unpack_skip_pixels);
+
+    const GLenum gl_err = drain_gl_errors();
+    if (gl_err != GL_NO_ERROR) {
+        set_error(
+            std::to_underlying(gl_texture2d_error::texture_update),
+            static_cast<std::int32_t>(gl_err)
+        );
+    }
+}
+
 r2_end_

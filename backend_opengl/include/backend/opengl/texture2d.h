@@ -28,6 +28,7 @@ public:
 
 public:
     virtual void update(const void* data, std::uint32_t row_pitch) override;
+    virtual void update(const void* data, std::uint32_t row_pitch, const rect& box) override;
 
     [[nodiscard]] bool is_backbuffer_handle() const noexcept {
         return backbuffer_handle_;
