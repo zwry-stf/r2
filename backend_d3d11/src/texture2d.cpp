@@ -169,14 +169,15 @@ void d3d11_texture2d::update(const void* data, std::uint32_t row_pitch)
     );
 }
 
-void d3d11_texture2d::update(const void* data, std::uint32_t row_pitch, const rect& box)
+void d3d11_texture2d::update(const void* data, std::uint32_t row_pitch, std::uint32_t x, std::uint32_t y,
+                             std::uint32_t width, std::uint32_t height)
 {
     D3D11_BOX d3d_box = {};
-    d3d_box.left = static_cast<UINT>(box.left);
-    d3d_box.top = static_cast<UINT>(box.top);
+    d3d_box.left = static_cast<UINT>(x);
+    d3d_box.top = static_cast<UINT>(y);
     d3d_box.front = 0;
-    d3d_box.right = static_cast<UINT>(box.right);
-    d3d_box.bottom = static_cast<UINT>(box.bottom);
+    d3d_box.right = static_cast<UINT>(x + width);
+    d3d_box.bottom = static_cast<UINT>(y + height);
     d3d_box.back = 1;
 
     context()->get_context()->UpdateSubresource(

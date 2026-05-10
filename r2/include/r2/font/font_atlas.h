@@ -42,6 +42,7 @@ public:
     void get_rect_uv(std::uint32_t id, vec2& uv_min, vec2& uv_max) const;
     [[nodiscard]] atlas_rect get_rect(std::uint32_t id);
     void write_data(std::uint32_t id, const std::uint8_t* data, std::size_t size);
+    void write_data_init(std::uint32_t id, const std::uint8_t* data, std::size_t size);
 
 public:
     bool build();

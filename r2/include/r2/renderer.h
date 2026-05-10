@@ -77,6 +77,9 @@ public:
     void destroy_render();
 
     void build_fonts();
+    // will clear the internal font cpu data
+    // call build_fonts again to rebuild data
+    // can be used to clear old texture
     void create_font_texture();
 
     void pre_resize();

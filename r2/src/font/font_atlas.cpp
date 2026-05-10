@@ -1,6 +1,7 @@
 #include <r2/font/font_atlas.h>
 #include <r2/error.h>
 #include <r2/renderer.h>
+#include <r2/render_data.h>
 
 
 r2_begin_
@@ -10,7 +11,6 @@ font_atlas::font_atlas(renderer2d* instance) noexcept
       width_(kDefaultSize),
       height_(kDefaultSize)
 {
-    data32_.resize(width_ * height_);
 }
 
 
@@ -109,7 +109,7 @@ void font_atlas::add_white_pixel()
 {
     constexpr std::uint8_t kWhitePixel = 0xFFu;
     auto rect_id = register_rect(1u, 1u);
-    write_data(rect_id, &kWhitePixel, 1u);
+    write_data_init(rect_id, &kWhitePixel, 1u);
 
     vec2 uv_min, uv_max;
     get_rect_uv(rect_id, uv_min, uv_max);
@@ -221,7 +221,7 @@ void font_atlas::add_shadow_tex()
         }
     }
 
-    write_data(rect_id, data.data(), data.size());
+    write_data_init(rect_id, data.data(), data.size());
 
     vec2 uv_min, uv_max;
     get_rect_uv(rect_id, uv_min, uv_max);
@@ -273,16 +273,6 @@ void font_atlas::remove_rect(std::uint32_t id)
         return;
     }
 
-#if defined(_DEBUG)
-    // clear in debug
-    auto& rect = rects_[id];
-    for (std::uint32_t y = 0u; y < rect.height; ++y) {
-        uint32_t* dst_row = data32_.data() + (rect.pos_y + y) *
-            width_ + rect.pos_x;
-        std::memset(dst_row, 0, rect.width * sizeof(std::uint32_t));
-    }
-#endif
-
     // make "invisible" to "find_rect"
     rects_[id].pos_x = 0;
     rects_[id].pos_y = 0;
@@ -322,6 +312,31 @@ atlas_rect font_atlas::get_rect(std::uint32_t id)
 
 void font_atlas::write_data(std::uint32_t id, const std::uint8_t* data, std::size_t size)
 {
+    assert(renderer_->render_data());
+    assert(renderer_->render_data()->font_texture);
+
+    atlas_rect r = get_rect(id);
+    assert(r.width * r.height == size);
+
+    std::vector<std::uint32_t> rgba(r.width * r.height);
+
+    for (std::uint32_t i = 0; i < size; ++i) {
+        constexpr std::uint8_t white = 0xffu;
+        rgba[i] = white | (white << 8) | (white << 16) | (data[i] << 24);
+    }
+
+    renderer_->render_data()->font_texture->update(
+        rgba.data(),
+        r.width * sizeof(std::uint32_t),
+        r.pos_x,
+        r.pos_y,
+        r.width,
+        r.height
+    );
+}
+
+void font_atlas::write_data_init(std::uint32_t id, const std::uint8_t* data, std::size_t size)
+{
 #if defined(_DEBUG)
     renderer_->assert_render_thread();
 #endif
@@ -346,6 +361,8 @@ void font_atlas::write_data(std::uint32_t id, const std::uint8_t* data, std::siz
 
 bool font_atlas::build()
 {
+    data32_.resize(width_ * height_);
+
     add_white_pixel();
     add_tex_lines();
     add_shadow_tex();

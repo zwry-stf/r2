@@ -20,7 +20,7 @@ font::~font() = default;
 constexpr wchar kDefaultGlyphsStart = 0x20u;
 constexpr wchar kDefaultGlyphsEnd = 0x7E;
 
-bool font::update_on_render()
+void font::update_on_render()
 {
     frame_start_ += 1u;
 
@@ -30,8 +30,6 @@ bool font::update_on_render()
         local_completed.swap(completed_glyphs_);
     }
 
-    bool atlas_changed = !local_completed.empty();
-
     for (auto& pg : local_completed) {
         if (pg.failed) {
             // remove supported flag
@@ -40,11 +38,11 @@ bool font::update_on_render()
                 glyph_lookup_[pg.codepoint].supported) = 0u;
             continue;
         }
-        apply_glyph(std::move(pg));
+        apply_glyph(std::move(pg), false /* init time */);
     }
 
     // clean unused rects
-    constexpr auto kCleanupTime = std::chrono::seconds{ 10 };
+    constexpr auto kCleanupTime = std::chrono::seconds{ 20 };
     const auto now = std::chrono::steady_clock::now();
     if (now - last_cleanup_ > kCleanupTime) {
         constexpr std::uint64_t kRemoveAge = 100000u;
@@ -68,14 +66,11 @@ bool font::update_on_render()
 
                 g.visible = false;
                 free_glyph_slots_.push_back(idx);
-                atlas_changed = true;
             }
         }
 
         last_cleanup_ = now;
     }
-
-    return atlas_changed;
 }
 
 void font::update_worker()
@@ -105,7 +100,7 @@ void font::update_worker()
     }
 }
 
-bool font::build()
+bool font::build(bool initial_build)
 {
     assert(!fonts_.empty());
     assert(frame_start_ == 0u);
@@ -123,7 +118,7 @@ bool font::build()
         if (ret.failed)
             continue;
 
-        apply_glyph(ret);
+        apply_glyph(ret, initial_build /* init time */);
         private_buffer_.swap(ret.bitmap);
     } 
 
@@ -203,7 +198,7 @@ bool font::add_font(const std::uint8_t* data, std::size_t data_size, std::vector
     return true;
 }
 
-void font::apply_glyph(const pending_glyph& pg)
+void font::apply_glyph(const pending_glyph& pg, bool is_init_time)
 {
     const std::size_t lookup_size = (pg.blurred ? glyph_lookup_blurred_.size() : glyph_lookup_.size());
     assert(lookup_size == unicode::codepoint_max);
@@ -228,7 +223,9 @@ void font::apply_glyph(const pending_glyph& pg)
     if (pg.visible) {
         g.rect_id = atlas_->register_rect(pg.bmp_w, pg.bmp_h);
         atlas_->get_rect_uv(g.rect_id, g.uv_min, g.uv_max);
-        atlas_->write_data(g.rect_id, pg.bitmap.data(), pg.bitmap.size());
+        is_init_time ? 
+            atlas_->write_data_init(g.rect_id, pg.bitmap.data(), pg.bitmap.size()) :
+            atlas_->write_data(g.rect_id, pg.bitmap.data(), pg.bitmap.size());
     }
 
     std::uint32_t slot = 0u;

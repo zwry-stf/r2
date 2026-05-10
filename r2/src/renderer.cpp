@@ -115,7 +115,7 @@ void renderer2d::build_fonts()
     // fonts
     std::lock_guard<std::mutex> lock(font_mutex_);
     for (auto& font : fonts_) {
-        if (!font->build())
+        if (!font->build(true /* initial build */))
             throw error(error_code::font_build);
     }
 
@@ -157,6 +157,8 @@ void renderer2d::create_font_texture()
             render_data_->font_view->get_detail()
         );
     }
+
+    font_atlas_->get_data32().clear();
 }
 
 void renderer2d::pre_resize()
@@ -252,21 +254,11 @@ void renderer2d::update_fonts_on_frame()
     assert(render_data_);
     assert(render_data_->font_texture);
 
-    bool update_tex = atlas_update_queued_;
     atlas_update_queued_ = false;
-    {
-        std::lock_guard<std::mutex> lock(font_mutex_);
-        for (auto& font : fonts_)
-            if (font->update_on_render())
-                update_tex = true;
-    }
 
-    if (update_tex) {
-        render_data_->font_texture->update(
-            font_atlas_->get_data32().data(), 
-            static_cast<std::uint32_t>(
-                font_atlas_->get_width() * sizeof(std::uint32_t))
-        );
+    std::lock_guard<std::mutex> lock(font_mutex_);
+    for (auto& font : fonts_) {
+        font->update_on_render();
     }
 }
 

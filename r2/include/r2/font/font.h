@@ -94,9 +94,9 @@ public:
     [[nodiscard]] const font_glyph* find_glyph_no_fallback(wchar c);
     [[nodiscard]] const font_cfg& cfg() const;
 
-    bool update_on_render();
+    void update_on_render();
     void update_worker();
-    bool build();
+    bool build(bool initial_build = false);
     void destroy();
 
     // Adds font data to the font instance.
@@ -111,7 +111,7 @@ public:
 
 private:
     pending_glyph rasterize_glyph(wchar glyph, font_data* data = nullptr, bool blurred = false);
-    void apply_glyph(const pending_glyph& pg);
+    void apply_glyph(const pending_glyph& pg, bool is_init_time);
     void build_weights();
     void blur_rect(std::uint32_t w, std::uint32_t h);
     void glow_rect(std::uint32_t w, std::uint32_t h);

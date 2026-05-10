@@ -104,12 +104,13 @@ gl_texture2d::gl_texture2d(gl_context* ctx, const texture_desc& desc, const void
 
     if (multisampled) {
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, texture_);
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
-                                desc.sample_desc.count,
-                                internal_format,
-                                desc.width,
-                                desc.height,
-                                GL_TRUE
+        glTexImage2DMultisample(
+            GL_TEXTURE_2D_MULTISAMPLE,
+            desc.sample_desc.count,
+            internal_format,
+            desc.width,
+            desc.height,
+            GL_TRUE
         );
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
     }
@@ -131,15 +132,16 @@ gl_texture2d::gl_texture2d(gl_context* ctx, const texture_desc& desc, const void
 
         glBindTexture(GL_TEXTURE_2D, texture_);
 
-        glTexImage2D(GL_TEXTURE_2D,
-                     0,
-                     internal_format,
-                     desc.width,
-                     desc.height,
-                     0,
-                     format,
-                     type,
-                     data
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            internal_format,
+            desc.width,
+            desc.height,
+            0,
+            format,
+            type,
+            data
         );
 
         glPixelStorei(GL_UNPACK_ALIGNMENT,   backup_unpack_alignment);
@@ -227,27 +229,31 @@ void gl_texture2d::update(const void* data, std::uint32_t row_pitch)
     if (row_pitch == 0 || row_pitch == tight_pitch) {
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
-        glTexSubImage2D(GL_TEXTURE_2D,
-                        0,
-                        0, 0,
-                        desc.width,
-                        desc.height,
-                        format,
-                        type,
-                        data);
+        glTexSubImage2D(
+            GL_TEXTURE_2D,
+            0,
+            0, 0,
+            desc.width,
+            desc.height,
+            format,
+            type,
+            data
+        );
     }
     else if ((row_pitch % bpp) == 0) {
         const GLint row_length_pixels = static_cast<GLint>(row_pitch / bpp);
         glPixelStorei(GL_UNPACK_ROW_LENGTH, row_length_pixels);
 
-        glTexSubImage2D(GL_TEXTURE_2D,
-                        0,
-                        0, 0,
-                        desc.width,
-                        desc.height,
-                        format,
-                        type,
-                        data);
+        glTexSubImage2D(
+            GL_TEXTURE_2D,
+            0,
+            0, 0,
+            desc.width,
+            desc.height,
+            format,
+            type,
+            data
+        );
 
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     }
@@ -255,18 +261,19 @@ void gl_texture2d::update(const void* data, std::uint32_t row_pitch)
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
         const auto* bytes = static_cast<const std::uint8_t*>(data);
-        for (GLint y = 0; y < static_cast<GLint>(desc.height); ++y)
-        {
+        for (GLint y = 0; y < static_cast<GLint>(desc.height); ++y) {
             const void* row_ptr = bytes + static_cast<std::size_t>(y) * row_pitch;
 
-            glTexSubImage2D(GL_TEXTURE_2D,
-                            0,
-                            0, y,
-                            desc.width,
-                            1,
-                            format,
-                            type,
-                            row_ptr);
+            glTexSubImage2D(
+                GL_TEXTURE_2D,
+                0,
+                0, y,
+                desc.width,
+                1,
+                format,
+                type,
+                row_ptr
+            );
         }
     }
 
@@ -286,7 +293,8 @@ void gl_texture2d::update(const void* data, std::uint32_t row_pitch)
     }
 }
 
-void gl_texture2d::update(const void* data, std::uint32_t row_pitch, const rect& box)
+void gl_texture2d::update(const void* data, std::uint32_t row_pitch, std::uint32_t x, std::uint32_t y, 
+                          std::uint32_t width, std::uint32_t height)
 {
     assert(!is_backbuffer_handle());
     const auto& desc = desc_;
@@ -294,9 +302,6 @@ void gl_texture2d::update(const void* data, std::uint32_t row_pitch, const rect&
     assert(texture_ != 0u);
     assert(desc.width > 0 && desc.height > 0);
     assert(desc.sample_desc.count == 1u);
-
-    assert(box.left < box.right && box.top < box.bottom);
-    assert(box.right <= desc.width && box.bottom <= desc.height);
 
     GLint  internal_format = 0;
     GLenum format = 0;
@@ -320,34 +325,36 @@ void gl_texture2d::update(const void* data, std::uint32_t row_pitch, const rect&
     glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
     glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
 
-    const std::uint32_t sub_width = box.right - box.left;
-    const std::uint32_t sub_height = box.bottom - box.top;
-    const std::uint32_t tight_pitch = sub_width * bpp;
+    const std::uint32_t tight_pitch = width * bpp;
 
     glBindTexture(GL_TEXTURE_2D, texture_);
 
     if (row_pitch == 0 || row_pitch == tight_pitch) {
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
-        glTexSubImage2D(GL_TEXTURE_2D,
+        glTexSubImage2D(
+            GL_TEXTURE_2D,
             0,
-            static_cast<GLint>(box.left), static_cast<GLint>(box.top),
-            static_cast<GLsizei>(sub_width), static_cast<GLsizei>(sub_height),
+            static_cast<GLint>(x), static_cast<GLint>(y),
+            static_cast<GLsizei>(width), static_cast<GLsizei>(height),
             format,
             type,
-            data);
+            data
+        );
     }
     else if ((row_pitch % bpp) == 0) {
         const GLint row_length_pixels = static_cast<GLint>(row_pitch / bpp);
         glPixelStorei(GL_UNPACK_ROW_LENGTH, row_length_pixels);
 
-        glTexSubImage2D(GL_TEXTURE_2D,
+        glTexSubImage2D(
+            GL_TEXTURE_2D,
             0,
-            static_cast<GLint>(box.left), static_cast<GLint>(box.top),
-            static_cast<GLsizei>(sub_width), static_cast<GLsizei>(sub_height),
+            static_cast<GLint>(x), static_cast<GLint>(y),
+            static_cast<GLsizei>(width), static_cast<GLsizei>(height),
             format,
             type,
-            data);
+            data
+        );
 
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     }
@@ -355,18 +362,19 @@ void gl_texture2d::update(const void* data, std::uint32_t row_pitch, const rect&
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
         const auto* bytes = static_cast<const std::uint8_t*>(data);
-        for (GLint y = 0; y < static_cast<GLint>(sub_height); ++y)
-        {
+        for (GLint y = 0; y < static_cast<GLint>(height); ++y) {
             const void* row_ptr = bytes + static_cast<std::size_t>(y) * row_pitch;
 
-            glTexSubImage2D(GL_TEXTURE_2D,
+            glTexSubImage2D(
+                GL_TEXTURE_2D,
                 0,
-                static_cast<GLint>(box.left), static_cast<GLint>(box.top) + y,
-                static_cast<GLsizei>(sub_width),
+                static_cast<GLint>(x), static_cast<GLint>(y) + y,
+                static_cast<GLsizei>(width),
                 1,
                 format,
                 type,
-                row_ptr);
+                row_ptr
+            );
         }
     }
 
