@@ -1,5 +1,5 @@
 #include <backend/d3d11/framebuffer.h>
-#include <assert.h>
+#include <cassert>
 
 
 r2_begin_

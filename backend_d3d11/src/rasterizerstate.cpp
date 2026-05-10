@@ -1,6 +1,6 @@
 #include <backend/d3d11/rasterizerstate.h>
 #include <backend/d3d11/context.h>
-#include <assert.h>
+#include <cassert>
 
 
 r2_begin_

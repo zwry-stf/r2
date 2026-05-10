@@ -2,7 +2,7 @@
 #include <backend/d3d11/context.h>
 #include <backend/d3d11/vertexshader.h>
 #include <backend/d3d11/pixelshader.h>
-#include <assert.h>
+#include <cassert>
 
 
 r2_begin_

@@ -265,7 +265,7 @@
          our own versions.
 
       ASSERT
-         Define STBIR_ASSERT(boolval) to override assert() and not use assert.h
+         Define STBIR_ASSERT(boolval) to override assert() and not use cassert
 
      PORTING FROM VERSION 1
         The API has changed. You can continue to use the old version of stb_image_resize.h,
@@ -779,7 +779,7 @@ STBIRDEF void stbir_resize_split_profile_info( STBIR_PROFILE_INFO * out_info, ST
 #if defined(STB_IMAGE_RESIZE_IMPLEMENTATION) || defined(STB_IMAGE_RESIZE2_IMPLEMENTATION)
 
 #ifndef STBIR_ASSERT
-#include <assert.h>
+#include <cassert>
 #define STBIR_ASSERT(x) assert(x)
 #endif
 

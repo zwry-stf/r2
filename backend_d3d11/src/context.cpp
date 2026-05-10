@@ -1,5 +1,5 @@
 #include <backend/d3d11/context.h>
-#include <assert.h>
+#include <cassert>
 
 //
 #include <backend/d3d11/blendstate.h>

@@ -1,6 +1,6 @@
 #pragma once
 #include <backend/context.h>
-#include <assert.h>
+#include <cassert>
 #include <cmath>
 #include <vector>
 #include <algorithm>

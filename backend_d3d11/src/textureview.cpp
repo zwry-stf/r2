@@ -1,7 +1,7 @@
 #include <backend/d3d11/textureview.h>
 #include <backend/d3d11/context.h>
 #include <backend/d3d11/texture2d.h>
-#include <assert.h>
+#include <cassert>
 
 
 r2_begin_

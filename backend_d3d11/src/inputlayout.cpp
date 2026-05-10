@@ -1,6 +1,6 @@
 #include <backend/d3d11/inputlayout.h>
 #include <backend/d3d11/context.h>
-#include <assert.h>
+#include <cassert>
 #include <vector>
 
 

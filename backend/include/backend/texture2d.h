@@ -54,6 +54,7 @@ protected:
 
 public:
     virtual void update(const void* data, std::uint32_t row_pitch) = 0;
+    virtual void update(const void* data, std::uint32_t row_pitch, const rect& box) = 0;
 
     [[nodiscard]] auto width()  const noexcept { return desc_.width; }
     [[nodiscard]] auto height() const noexcept { return desc_.height; }

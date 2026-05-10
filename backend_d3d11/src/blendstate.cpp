@@ -1,7 +1,7 @@
 #include <backend/d3d11/blendstate.h>
 #include <backend/d3d11/context.h>
 #include <backend/util.h>
-#include <assert.h>
+#include <cassert>
 
 
 r2_begin_

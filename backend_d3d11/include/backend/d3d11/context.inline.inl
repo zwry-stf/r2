@@ -1,5 +1,5 @@
 #pragma once
-#include <assert.h>
+#include <cassert>
 
 
 r2_begin_
