@@ -1242,7 +1242,7 @@ inline void renderer2d::add_text_outlined(const vec2& pos, color_u32 col, const 
     }
 }
 
-template<unicode::string_like String, std::integral T>
+template <float CharOffset, unicode::string_like String, std::integral T>
 inline float renderer2d::get_text_width(const String& text, T offset, std::optional<T> count)
 {
     std::uint32_t length = static_cast<std::uint32_t>(text.length());
@@ -1271,12 +1271,15 @@ inline float renderer2d::get_text_width(const String& text, T offset, std::optio
             continue;
 
         ret += glyph->advance_x;
+        if constexpr (CharOffset != 0.f) {
+            ret += CharOffset;
+        }
     }
 
     return ret;
 }
 
-template<unicode::string_like String, std::integral T>
+template <unicode::string_like String, std::integral T>
 inline vec2 renderer2d::get_text_size(const String& text, T offset, std::optional<T> count)
 {
     std::uint32_t length = static_cast<std::uint32_t>(text.length());
@@ -1314,7 +1317,7 @@ inline vec2 renderer2d::get_text_size(const String& text, T offset, std::optiona
     return ret;
 }
 
-template<unicode::string_like String, std::integral T>
+template <float CharOffset, unicode::string_like String, std::integral T>
 inline bool renderer2d::get_text_width_strict(const String& text, float& out, T offset, std::optional<T> count)
 {
     std::uint32_t length = static_cast<std::uint32_t>(text.length());
@@ -1343,12 +1346,15 @@ inline bool renderer2d::get_text_width_strict(const String& text, float& out, T 
             return false;
 
         out += glyph->advance_x;
+        if constexpr (CharOffset != 0.f) {
+            out += CharOffset;
+        }
     }
 
     return true;
 }
 
-template<unicode::string_like String, std::integral T>
+template <unicode::string_like String, std::integral T>
 inline bool renderer2d::get_text_size_strict(const String& text, vec2& out, T offset, std::optional<T> count)
 {
     std::uint32_t length = static_cast<std::uint32_t>(text.length());
@@ -1386,7 +1392,7 @@ inline bool renderer2d::get_text_size_strict(const String& text, vec2& out, T of
     return true;
 }
 
-template<bool center, unicode::string_like String>
+template <bool center, unicode::string_like String>
 inline std::uint32_t renderer2d::get_char_at_pos(const String& text, float pos)
 {
     if (pos <= 0.f)
@@ -1435,7 +1441,7 @@ inline std::uint32_t renderer2d::get_char_at_pos(const String& text, float pos)
     return length;
 }
 
-template<bool center, unicode::string_like String>
+template <bool center, unicode::string_like String>
 inline bool renderer2d::get_char_at_pos_strict(const String& text, float pos, std::uint32_t& index)
 {
     if (pos <= 0.f) {
