@@ -312,21 +312,27 @@ atlas_rect font_atlas::get_rect(std::uint32_t id)
 
 void font_atlas::write_data(std::uint32_t id, const std::uint8_t* data, std::size_t size)
 {
-    assert(renderer_->render_data());
-    assert(renderer_->render_data()->font_texture);
-
-    atlas_rect r = get_rect(id);
-    assert(r.width * r.height == size);
-
-    std::vector<std::uint32_t> rgba(r.width * r.height);
+    std::vector<std::uint32_t> rgba(size);
 
     for (std::uint32_t i = 0; i < size; ++i) {
         constexpr std::uint8_t white = 0xffu;
         rgba[i] = white | (white << 8) | (white << 16) | (data[i] << 24);
     }
 
+    return write_data(id, rgba.data(), rgba.size());
+}
+
+void font_atlas::write_data(std::uint32_t id, const std::uint32_t* data, std::size_t size)
+{
+    assert(renderer_->render_data());
+    assert(renderer_->render_data()->font_texture);
+
+    atlas_rect r = get_rect(id);
+    assert(r.width * r.height == size);
+    (void)size;
+
     renderer_->render_data()->font_texture->update(
-        rgba.data(),
+        data,
         r.width * sizeof(std::uint32_t),
         r.pos_x,
         r.pos_y,
