@@ -1,0 +1,123 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ext">
+      <UniqueIdentifier>{7670880B-E279-887C-6BF5-9E7CD7FD937C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ext\gl">
+      <UniqueIdentifier>{58FA33FC-449C-5ED2-2D57-72261998E522}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\backend">
+      <UniqueIdentifier>{60C76F9D-CC52-DD61-D563-6056416E3962}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\backend\opengl">
+      <UniqueIdentifier>{F47CBB3C-E076-E48E-C9E3-7A9FB57C4AFB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ext\gl\glew.h">
+      <Filter>ext\gl</Filter>
+    </ClInclude>
+    <ClInclude Include="ext\gl\wglext.h">
+      <Filter>ext\gl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\blendstate.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\buffer.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\compiled_shader.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\context.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\context.inline.inl">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\depthstencilstate.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\framebuffer.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\inputlayout.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\object.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\pixelshader.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\rasterizerstate.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\sampler.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\shaderprogram.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\texture2d.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\textureview.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="include\backend\opengl\vertexshader.h">
+      <Filter>include\backend\opengl</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\blendstate.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\buffer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\compiled_shader.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\context.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\depthstencilstate.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\framebuffer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\inputlayout.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\pixelshader.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rasterizerstate.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sampler.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\shaderprogram.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\texture2d.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\textureview.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vertexshader.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

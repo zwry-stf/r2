@@ -203,8 +203,9 @@ void font::apply_glyph(const pending_glyph& pg, bool is_init_time)
     const std::size_t lookup_size = (pg.blurred ? glyph_lookup_blurred_.size() : glyph_lookup_.size());
     assert(lookup_size == unicode::codepoint_max);
     if (static_cast<std::size_t>(pg.codepoint) >=
-        lookup_size)
+        lookup_size) {
         return;
+    }
 
     auto& lookup = pg.blurred ?
         glyph_lookup_blurred_[pg.codepoint] : glyph_lookup_[pg.codepoint];
@@ -221,7 +222,12 @@ void font::apply_glyph(const pending_glyph& pg, bool is_init_time)
     g.blurred = pg.blurred;
 
     if (pg.visible) {
-        g.rect_id = atlas_->register_rect(pg.bmp_w, pg.bmp_h);
+        const auto rect_id = atlas_->register_rect(pg.bmp_w, pg.bmp_h);
+        if (!rect_id) {
+            return;
+        }
+
+        g.rect_id = *rect_id;
         atlas_->get_rect_uv(g.rect_id, g.uv_min, g.uv_max);
         is_init_time ? 
             atlas_->write_data_init(g.rect_id, pg.bitmap.data(), pg.bitmap.size()) :

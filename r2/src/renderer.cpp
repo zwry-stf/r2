@@ -17,30 +17,30 @@ renderer2d::~renderer2d()
         update_thread_.join();
 }
 
-void renderer2d::init(const platform_init_data& pinit, const backend_init_data& binit)
+error renderer2d::init(const platform_init_data& pinit, const backend_init_data& binit)
 {
     context_ = r2::context::make_context(pinit, binit, true);
     if (context_->has_error()) {
-        throw error(
+        return error(
             error_code::context_initialization,
             context_->get_error(),
             context_->get_detail()
         );
     }
 
-    do_init();
+    return do_init();
 }
 
-void renderer2d::init(r2::context* ctx)
+error renderer2d::init(r2::context* ctx)
 {
     assert(ctx != nullptr);
 
     context_.reset(ctx);
 
-    do_init();
+    return do_init();
 }
 
-void renderer2d::do_init()
+error renderer2d::do_init()
 {
     assert((bool)!render_data_);
     render_data_ = std::make_unique<r2::render_data>();
@@ -53,33 +53,34 @@ void renderer2d::do_init()
 #endif // R2_BACKEND_OPENGL
 
     context_->acquire_backbuffer();
-    if (context_->has_error())
-        throw error(error_code::blend_state_create,
-            context_->get_error(), context_->get_detail());
-
-#if defined(R2_BACKEND_OPENGL)
-    try {
-#endif // R2_BACKEND_OPENGL
-        create_resources();
-#if defined(R2_BACKEND_OPENGL)
-    }
-    catch (const error& e) {
-        restore_render_state();
-        throw e;
+    if (context_->has_error()) {
+        return error(
+            error_code::context_backbuffer,
+            context_->get_error(), context_->get_detail()
+        );
     }
 
+    const auto res = create_resources();
+    if (res.get_code() != error_code::none) {
+        return res;
+    }
+
+#if defined(R2_BACKEND_OPENGL)
     restore_render_state();
 #endif // R2_BACKEND_OPENGL
 
     destroyed_.store(false, std::memory_order_release);
-    update_thread_ = std::thread([this]()
-        {
+    update_thread_ = std::thread(
+        [this]() {
             this->font_update_thread();
-        });
+        }
+    );
 
     update_display_size();
 
     resources_created_ = true;
+
+    return error(error_code::none);
 }
 
 void renderer2d::destroy()
@@ -105,24 +106,28 @@ void renderer2d::destroy_render()
         update_thread_.join();
 }
 
-void renderer2d::build_fonts()
+bool renderer2d::build_fonts()
 {
     assert(resources_created_ && "call init first");
 
-    if (!font_atlas_->build())
-        throw error(error_code::font_build);
+    if (!font_atlas_->build()) {
+        return false;
+    }
 
     // fonts
     std::lock_guard<std::mutex> lock(font_mutex_);
     for (auto& font : fonts_) {
-        if (!font->build(true /* initial build */))
-            throw error(error_code::font_build);
+        if (!font->build(true /* initial build */)) {
+            return false;
+        }
     }
 
     is_initialized_ = true;
+
+    return true;
 }
 
-void renderer2d::create_font_texture()
+bool renderer2d::create_font_texture()
 {
     assert(font_atlas_->get_width() > 0 &&
            font_atlas_->get_height() > 0);
@@ -140,10 +145,7 @@ void renderer2d::create_font_texture()
         font_atlas_->get_data32().data()
     );
     if (render_data_->font_texture->has_error()) {
-        throw error(error_code::font_tex_create,
-            render_data_->font_texture->get_error(),
-            render_data_->font_texture->get_detail()
-        );
+        return false;
     }
 
     textureview_desc vd{};
@@ -152,13 +154,12 @@ void renderer2d::create_font_texture()
         vd
     );
     if (render_data_->font_view->has_error()) {
-        throw error(error_code::font_tex_create,
-            render_data_->font_view->get_error(),
-            render_data_->font_view->get_detail()
-        );
+        return false;
     }
 
     font_atlas_->get_data32().clear();
+
+    return true;
 }
 
 void renderer2d::pre_resize()
@@ -406,7 +407,7 @@ void renderer2d::set_multisampled(bool multisample)
 
 #include "shader.h"
 
-void renderer2d::create_resources()
+error renderer2d::create_resources()
 {
     // Create vertex shader
     vertex_attribute_desc vs_desc[] = {
@@ -417,38 +418,58 @@ void renderer2d::create_resources()
 
     std::unique_ptr<compiled_shader> vs_data = context_->compile_vertexshader(
         &vs_source[0], sizeof(vs_source));
-    if (vs_data->has_error())
-        throw error(error_code::vertex_shader_compile,
-            vs_data->get_error(), vs_data->get_detail());
+    if (vs_data->has_error()) {
+        return error(
+            error_code::vertex_shader_compile,
+            vs_data->get_error(), 
+            vs_data->get_detail()
+        );
+    }
 
     std::unique_ptr<vertexshader> vs(context_->create_vertexshader(
         vs_data->data(), vs_data->size()));
-    if (vs->has_error())
-        throw error(error_code::vertex_shader_create,
-            vs->get_error(), vs->get_detail());
+    if (vs->has_error()) {
+        return error(
+            error_code::vertex_shader_create,
+            vs->get_error(),
+            vs->get_detail()
+        );
+    }
 
     render_data_->input_layout = context_->create_inputlayout(vs_desc, _countof(vs_desc),
         vs_data->data(), vs_data->size());
-    if (render_data_->input_layout->has_error())
-        throw error(error_code::input_layout_create,
-            render_data_->input_layout->get_error(), render_data_->input_layout->get_detail());
+    if (render_data_->input_layout->has_error()) {
+        return error(
+            error_code::input_layout_create,
+            render_data_->input_layout->get_error(), 
+            render_data_->input_layout->get_detail()
+        );
+    }
 
     std::unique_ptr<compiled_shader> ps_data = context_->compile_pixelshader(
         &ps_source[0], sizeof(ps_source));
     if (ps_data->has_error())
-        throw error(error_code::vertex_shader_compile,
+        return error(error_code::vertex_shader_compile,
             ps_data->get_error(), ps_data->get_detail());
 
     std::unique_ptr<pixelshader> ps(context_->create_pixelshader(
         ps_data->data(), ps_data->size()));
-    if (ps->has_error())
-        throw error(error_code::pixel_shader_create,
-            ps->get_error(), ps->get_detail());
+    if (ps->has_error()) {
+        return error(
+            error_code::pixel_shader_create,
+            ps->get_error(),
+            ps->get_detail()
+        );
+    }
 
     render_data_->shader = context_->create_shaderprogram(vs.get(), ps.get());
-    if (render_data_->shader->has_error())
-        throw error(error_code::shader_program_create, 
-            render_data_->shader->get_error(), render_data_->shader->get_detail());
+    if (render_data_->shader->has_error()) {
+        return error(
+            error_code::shader_program_create,
+            render_data_->shader->get_error(),
+            render_data_->shader->get_detail()
+        );
+    }
 
     // Create constant buffer
     buffer_desc cbdesc;
@@ -457,9 +478,13 @@ void renderer2d::create_resources()
     cbdesc.usage      = buffer_usage::uniform;
 
     render_data_->constant_buffer = context_->create_buffer(cbdesc);
-    if (render_data_->constant_buffer->has_error())
-        throw error(error_code::constant_buffer_create,
-            render_data_->constant_buffer->get_error(), render_data_->constant_buffer->get_detail());
+    if (render_data_->constant_buffer->has_error()) {
+        return error(
+            error_code::constant_buffer_create,
+            render_data_->constant_buffer->get_error(), 
+            render_data_->constant_buffer->get_detail()
+        );
+    }
 
     blendstate_desc bdesc;
     bdesc.independent_blend_enable = false;
@@ -474,9 +499,13 @@ void renderer2d::create_resources()
     bdesc.targets[0].write_mask = color_write_mask::all;
 
     render_data_->blend_state = context_->create_blendstate(bdesc);
-    if (render_data_->blend_state->has_error())
-        throw error(error_code::blend_state_create,
-            render_data_->blend_state->get_error(), render_data_->blend_state->get_detail());
+    if (render_data_->blend_state->has_error()) {
+        return error(
+            error_code::blend_state_create,
+            render_data_->blend_state->get_error(),
+            render_data_->blend_state->get_detail()
+        );
+    }
 
     rasterizerstate_desc rdesc;
     rdesc.fill = fill_mode::solid;
@@ -485,16 +514,24 @@ void renderer2d::create_resources()
     rdesc.depth_clip_enable = true;
 
     render_data_->rasterizer_state = context_->create_rasterizerstate(rdesc);
-    if (render_data_->rasterizer_state->has_error())
-        throw error(error_code::rasterizer_state_create,
-            render_data_->rasterizer_state->get_error(), render_data_->rasterizer_state->get_detail());
+    if (render_data_->rasterizer_state->has_error()) {
+        return error(
+            error_code::rasterizer_state_create,
+            render_data_->rasterizer_state->get_error(),
+            render_data_->rasterizer_state->get_detail()
+        );
+    }
 
     rdesc.multisample_enable = true;
 
     render_data_->rasterizer_state_ms = context_->create_rasterizerstate(rdesc);
-    if (render_data_->rasterizer_state_ms->has_error())
-        throw error(error_code::rasterizer_state_create,
-            render_data_->rasterizer_state_ms->get_error(), render_data_->rasterizer_state_ms->get_detail());
+    if (render_data_->rasterizer_state_ms->has_error()) {
+        return error(
+            error_code::rasterizer_state_create,
+            render_data_->rasterizer_state_ms->get_error(),
+            render_data_->rasterizer_state_ms->get_detail()
+        );
+    }
 
     depthstencilstate_desc ddesc;
     ddesc.depth_enable = false;
@@ -508,9 +545,13 @@ void renderer2d::create_resources()
     ddesc.back_face = ddesc.front_face;
 
     render_data_->depth_stencil_state = context_->create_depthstencilstate(ddesc);
-    if (render_data_->depth_stencil_state->has_error())
-        throw error(error_code::depth_stencil_state_create,
-            render_data_->depth_stencil_state->get_error(), render_data_->depth_stencil_state->get_detail());
+    if (render_data_->depth_stencil_state->has_error()) {
+        return error(
+            error_code::depth_stencil_state_create,
+            render_data_->depth_stencil_state->get_error(), 
+            render_data_->depth_stencil_state->get_detail()
+        );
+    }
 
     // Create texture sampler
     sampler_desc sdesc;
@@ -521,9 +562,14 @@ void renderer2d::create_resources()
     sdesc.filter  = sampler_filter::linear;
 
     render_data_->sampler = context_->create_sampler(sdesc);
-    if (render_data_->sampler->has_error())
-        throw error(error_code::sampler_create,
-            render_data_->sampler->get_error(), render_data_->sampler->get_detail());
+    if (render_data_->sampler->has_error()) {
+        return error(
+            error_code::sampler_create,
+            render_data_->sampler->get_error(), render_data_->sampler->get_detail()
+        );
+    }
+
+    return error(error_code::none);
 }
 
 void renderer2d::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_vertices)

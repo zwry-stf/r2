@@ -44,7 +44,7 @@ bool font_atlas::check_side(std::uint32_t x, std::uint32_t y, std::uint32_t widt
     return true;
 }
 
-void font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint32_t& out_x, std::uint32_t& out_y)
+bool font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint32_t& out_x, std::uint32_t& out_y)
 {
 #if defined(_DEBUG)
     renderer_->assert_render_thread();
@@ -58,7 +58,7 @@ void font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint3
     if (rects_.empty()) {
         out_x = padding_;
         out_y = padding_;
-        return;
+        return true;
     }
 
     for (const auto& r : rects_) {
@@ -69,7 +69,7 @@ void font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint3
         if (check_side(x, y, width, height)) {
             out_x = x;
             out_y = y;
-            return;
+            return true;
         }
 
         // check left
@@ -78,7 +78,7 @@ void font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint3
             if (check_side(x, y, width, height)) {
                 out_x = x;
                 out_y = y;
-                return;
+                return true;
             }
         }
 
@@ -88,7 +88,7 @@ void font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint3
         if (check_side(x, y, width, height)) {
             out_x = x;
             out_y = y;
-            return;
+            return true;
         }
 
         // check above
@@ -97,33 +97,44 @@ void font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint3
             if (check_side(x, y, width, height)) {
                 out_x = x;
                 out_y = y;
-                return;
+                return true;
             }
         }
     }
 
-    throw error(error_code::font_atlas_full);
+    return false;
 }
 
-void font_atlas::add_white_pixel()
+bool font_atlas::add_white_pixel()
 {
     constexpr std::uint8_t kWhitePixel = 0xFFu;
     auto rect_id = register_rect(1u, 1u);
-    write_data_init(rect_id, &kWhitePixel, 1u);
+    if (!rect_id) {
+        return false;
+    }
+
+    write_data_init(*rect_id, &kWhitePixel, 1u);
 
     vec2 uv_min, uv_max;
-    get_rect_uv(rect_id, uv_min, uv_max);
+    get_rect_uv(*rect_id, uv_min, uv_max);
 
     renderer_->shared_data_.uv_white_px = (uv_min + uv_max) * vec2(0.5f);
+
+    return true;
 }
 
-void font_atlas::add_tex_lines()
+bool font_atlas::add_tex_lines()
 {
-    if (!renderer_->flags().anti_aliased_lines_use_tex)
-        return;
+    if (!renderer_->flags().anti_aliased_lines_use_tex) {
+        return true;
+    }
 
     auto rect_id = register_rect(shared_data::kBakedLinesMaxWidth + 2u, shared_data::kBakedLinesMaxWidth + 1u);
-    const auto& r = this->get_rect(rect_id);
+    if (!rect_id) {
+        return false;
+    }
+
+    const auto& r = this->get_rect(*rect_id);
 
     for (std::uint32_t n = 0u; n < shared_data::kBakedLinesMaxWidth + 1u; n++) {
         std::uint32_t y = n;
@@ -167,14 +178,19 @@ void font_atlas::add_tex_lines()
             half_v / static_cast<float>(height_)
         );
     }
+
+    return true;
 }
 
-void font_atlas::add_shadow_tex()
+bool font_atlas::add_shadow_tex()
 {
     constexpr std::uint32_t kPadding = 1u;
     constexpr std::uint32_t kShadowTexSize = 32u;
     const std::uint32_t shadow_convex_size = kShadowTexSize + kPadding * 2u;
     auto rect_id = register_rect(shadow_convex_size, shadow_convex_size);
+    if (!rect_id) {
+        return false;
+    }
 
     constexpr float kShadowFallowPower = 4.f;
     constexpr float kShadowDistanceFieldOffset = 3.8f;
@@ -221,10 +237,10 @@ void font_atlas::add_shadow_tex()
         }
     }
 
-    write_data_init(rect_id, data.data(), data.size());
+    write_data_init(*rect_id, data.data(), data.size());
 
     vec2 uv_min, uv_max;
-    get_rect_uv(rect_id, uv_min, uv_max);
+    get_rect_uv(*rect_id, uv_min, uv_max);
 
     const vec2 offset = vec2(
         static_cast<float>(kPadding) * 1.f / static_cast<float>(width_),
@@ -235,16 +251,20 @@ void font_atlas::add_shadow_tex()
         uv_min.x + offset.x, uv_min.y + offset.y,
         uv_max.x - offset.x, uv_max.y - offset.y
     );
+
+    return true;
 }
 
-std::uint32_t font_atlas::register_rect(std::uint32_t width, std::uint32_t height)
+std::optional<std::uint32_t> font_atlas::register_rect(std::uint32_t width, std::uint32_t height)
 {
 #if defined(_DEBUG)
     renderer_->assert_render_thread();
 #endif
 
     std::uint32_t x, y;
-    find_rect(width, height, x, y);
+    if (!find_rect(width, height, x, y)) {
+        return std::nullopt;
+    }
 
     if (!free_rect_slots_.empty()) {
         auto idx = free_rect_slots_.back();
@@ -369,9 +389,17 @@ bool font_atlas::build()
 {
     data32_.resize(width_ * height_);
 
-    add_white_pixel();
-    add_tex_lines();
-    add_shadow_tex();
+    if (!add_white_pixel()) {
+        return false;
+    }
+
+    if (!add_tex_lines()) {
+        return false;
+    }
+
+    if (!add_shadow_tex()) {
+        return false;
+    }
 
     return true;
 }

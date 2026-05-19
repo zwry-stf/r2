@@ -7,6 +7,7 @@
 r2_begin_
 
 enum class error_code : std::int32_t {
+    none,
     context_initialization,
     context_backbuffer,
     vertex_shader_compile,
