@@ -136,6 +136,15 @@ d3d11_textureview::d3d11_textureview(d3d11_context* ctx, d3d11_texture2d* tex, c
     }
 }
 
+d3d11_textureview::d3d11_textureview(d3d11_context* ctx, ID3D11ShaderResourceView* srv)
+    : r2::textureview(textureview_desc{}),
+      d3d11_object(ctx),
+      resource_(nullptr)
+{
+    srv_.reset(srv);
+    srv_->AddRef();
+}
+
 d3d11_textureview::~d3d11_textureview()
 {
     srv_.reset();
