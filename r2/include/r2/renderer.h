@@ -243,6 +243,12 @@ public:
     [[nodiscard]] const auto& cmd_header() const noexcept {
         return header_;
     }
+    [[nodiscard]] vertex& get_vertex(std::uint32_t vtx_ptr) noexcept {
+        return vertices_[cmds_.back().vertex_start + vtx_ptr];
+    }
+    [[nodiscard]] const vertex& get_vertex(std::uint32_t vtx_ptr) const noexcept {
+        return vertices_[cmds_.back().vertex_start + vtx_ptr];
+    }
     [[nodiscard]] auto* release_context() noexcept {
         return context_.release();
     }
