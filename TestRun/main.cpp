@@ -98,26 +98,46 @@ int __stdcall WinMain(HINSTANCE /* instance */,
     r2::platform_init_data pinit(glfwGetWin32Window(g_data.window_data.window));
 #endif
 
-    try {
-        g_renderer.init(pinit, binit);
-
-        r2::font_cfg fcfg{};
-        fcfg.size = 20u;
-        fcfg.oversample_h = 2u;
-        fcfg.oversample_v = 2u;
-        fcfg.glow_radius = 10u;
-        fcfg.glow_strength = 2.f;
-        auto* f = g_renderer.add_font(fcfg);
-        g_font = f;
-        f->add_font(NotoSans_Medium, NotoSans_Medium_size);
-        f->add_font(MPLUSRounded1c_Medium, MPLUSRounded1c_Medium_size);
-        f->add_font(NotoEmoji_Medium, NotoEmoji_Medium_size);
-
-        g_renderer.build_fonts();
-        g_renderer.create_font_texture();
+    if (auto err = g_renderer.init(pinit, binit);
+        err.get_code() != r2::error_code::none) {
+        show_error_and_exit("renderer initialization failed: {}", err.to_string());
     }
-    catch (const r2::error& e) {
-        show_error_and_exit("renderer initialization failed: {}", e.to_string());
+
+    r2::font_cfg fcfg{};
+    fcfg.size = 20u;
+    fcfg.oversample_h = 2u;
+    fcfg.oversample_v = 2u;
+    fcfg.glow_radius = 10u;
+    fcfg.glow_strength = 2.f;
+    auto* f = g_renderer.add_font(fcfg);
+    g_font = f;
+    if (!f->add_font(NotoSans_Medium, NotoSans_Medium_size) ||
+        !f->add_font(MPLUSRounded1c_Medium, MPLUSRounded1c_Medium_size) ||
+        !f->add_font(NotoEmoji_Medium, NotoEmoji_Medium_size)) {
+        show_error_and_exit("failed to add fonts.");
+    }
+
+    if (!g_renderer.build_fonts() ||
+        !g_renderer.create_font_texture()) {
+        show_error_and_exit("failed to build fonts.");
+    }
+
+
+    if (auto err = g_renderer3d.init(pinit, binit);
+        err.get_code() != r2::error_code::none) {
+        show_error_and_exit("renderer initialization failed: {}", err.to_string());
+    }
+
+    auto* f2 = g_renderer3d.add_font(fcfg);
+    if (!f2->add_font(NotoSans_Medium, NotoSans_Medium_size) ||
+        !f2->add_font(MPLUSRounded1c_Medium, MPLUSRounded1c_Medium_size) ||
+        !f2->add_font(NotoEmoji_Medium, NotoEmoji_Medium_size)) {
+        show_error_and_exit("failed to add fonts.");
+    }
+
+    if (!g_renderer3d.build_fonts() ||
+        !g_renderer3d.create_font_texture()) {
+        show_error_and_exit("failed to build fonts.");
     }
 
     if (!create_render_target())
@@ -316,6 +336,7 @@ bool resize(int width, int height) {
     g_data.render_data.render_target.reset();
 
     g_renderer.pre_resize();
+    g_renderer3d.pre_resize();
 
 #if defined(R2_BACKEND_D3D11)
     HRESULT hr = g_data.render_data.swapchain->ResizeBuffers(
@@ -330,6 +351,7 @@ bool resize(int width, int height) {
 #endif
 
     g_renderer.post_resize();
+    g_renderer3d.post_resize();
 
     if (!create_render_target())
         return false;
@@ -529,6 +551,24 @@ void render_frame() {
     g_renderer.render();
 
     g_renderer.update_fonts_on_frame();
+
+    {
+        g_renderer3d.reset_render_data();
+        g_renderer3d.setup_render_state();
+
+        g_renderer3d.add_shadow_rect_filled(
+            r2::vec2(100.f, 100.f),
+            r2::vec2(400.f, 400.f),
+            0.f,
+            r2::color::cyan(),
+            10.f,
+            50.f
+        );
+
+        g_renderer3d.render();
+
+        g_renderer3d.update_fonts_on_frame();
+    }
 }
 
 void render_thread() {
@@ -538,6 +578,7 @@ void render_thread() {
 
 #if defined(_DEBUG)
     g_renderer.set_render_thread(std::this_thread::get_id());
+    g_renderer3d.set_render_thread(std::this_thread::get_id());
 #endif
 
     while (g_data.running.load(std::memory_order_acquire)) {

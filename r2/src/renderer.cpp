@@ -411,9 +411,9 @@ error renderer2d::create_resources()
 {
     // Create vertex shader
     vertex_attribute_desc vs_desc[] = {
-        { "POSITION", vertex_attribute_format::f32f32,         offsetof(vertex, pos), false, 0 },
-        { "TEXCOORD", vertex_attribute_format::f32f32,         offsetof(vertex, uv),  false, 0 },
-        { "COLOR",    vertex_attribute_format::r8r8r8r8_unorm, offsetof(vertex, col), false, 0 },
+        { "POSITION", 0, vertex_attribute_format::f32f32,         offsetof(vertex, pos), false, 0 },
+        { "TEXCOORD", 0, vertex_attribute_format::f32f32,         offsetof(vertex, uv),  false, 0 },
+        { "COLOR",    0, vertex_attribute_format::r8r8r8r8_unorm, offsetof(vertex, col), false, 0 },
     };
 
     std::unique_ptr<compiled_shader> vs_data = context_->compile_vertexshader(

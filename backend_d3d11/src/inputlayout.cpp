@@ -67,13 +67,13 @@ d3d11_inputlayout::d3d11_inputlayout(d3d11_context* ctx, const vertex_attribute_
         const auto& _desc = desc[i];
 
         layout_desc[i].SemanticName = _desc.semantic_name;
+        layout_desc[i].SemanticIndex = static_cast<UINT>(_desc.semantic_index);
         layout_desc[i].Format = to_d3d11_format(_desc.format);
         layout_desc[i].AlignedByteOffset = _desc.aligned_byte_offset;
         layout_desc[i].InputSlotClass = _desc.per_instance ?
             D3D11_INPUT_PER_INSTANCE_DATA : D3D11_INPUT_PER_VERTEX_DATA;
         layout_desc[i].InstanceDataStepRate = _desc.instance_data_step_rate;
 
-        layout_desc[i].SemanticIndex = 0;
         layout_desc[i].InputSlot = 0;
     }
 

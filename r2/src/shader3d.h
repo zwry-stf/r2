@@ -9,10 +9,10 @@ cbuffer vertexBuffer : register(b0)
 
 struct VS_INPUT
 {
-    float2 pos : POSITION;
-    float depth : DEPTH;
-    float4 col : COLOR0;
-    float2 uv  : TEXCOORD0;
+    float2 pos  : POSITION;
+    float depth : TEXCOORD1;
+    float4 col  : COLOR0;
+    float2 uv   : TEXCOORD0;
 };
 
 struct PS_INPUT
@@ -40,14 +40,14 @@ struct PS_INPUT
     float2 uv  : TEXCOORD0;
 };
 
-sampler sampler0;
+sampler sampler0: register(s0);
 Texture2D texture0 : register(t0);
 Texture2D depth0 : register(t1);
 
 float4 main(PS_INPUT input) : SV_TARGET
 {
-    float depth = depth0.Sample(sampler0, input.uv);
-    if (depth > input.depth) {
+    float depth = depth0.Sample(sampler0, input.uv).r;
+    if (input.pos.z > depth) {
         discard;
     }
     float4 out_col = input.col * texture0.Sample(sampler0, input.uv);
@@ -77,7 +77,7 @@ void main()
     vec2 ndc = (aPos / uResolution) * 2.0 - 1.0;
     ndc.y = -ndc.y;
 
-    gl_Position = vec4(ndc, 0.0, 1.0);
+    gl_Position = vec4(ndc, aDepth, 1.0);
     vColor = aColor;
     vUV = aUV;
     vDepth = aDepth;
@@ -98,7 +98,7 @@ out vec4 FragColor;
 void main()
 {
     float depth = texture(uDepth0, vUV).r;
-    if (depth > vDepth) {
+    if (vDepth > depth) {
         discard;
     }
     vec4 texColor = texture(uTexture0, vUV);

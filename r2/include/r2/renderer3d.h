@@ -3,6 +3,7 @@
 #include "renderer_definitions.h"
 #include "renderer_base.h"
 #include "font/unicode.h"
+#include "error.h"
 
 #include <vector>
 #include <thread>
@@ -62,16 +63,16 @@ public:
     ~renderer3d();
 
 public:
-    void init(const platform_init_data& pinit, const backend_init_data& binit);
-    void init(context* ctx);
+    [[nodiscard]] error init(const platform_init_data& pinit, const backend_init_data& binit);
+    [[nodiscard]] error init(context* ctx);
     void destroy();
     void destroy_render();
 
-    void build_fonts();
+    [[nodiscard]] bool build_fonts();
     // will clear the internal font cpu data
     // call build_fonts again to rebuild data
     // can be used to clear old texture
-    void create_font_texture();
+    [[nodiscard]] bool create_font_texture();
 
     void pre_resize();
     void post_resize();
@@ -203,8 +204,8 @@ public:
     }
 
 private:
-    void do_init();
-    void create_resources();
+    [[nodiscard]] error do_init();
+    [[nodiscard]] error create_resources();
     void ensure_capacity(std::uint32_t num_indices, std::uint32_t num_vertices);
     draw_cmd& add_draw_cmd();
     void font_update_thread();
@@ -228,6 +229,12 @@ public:
     }
     [[nodiscard]] const auto& cmd_header() const noexcept {
         return header_;
+    }
+    [[nodiscard]] vertex3d& get_vertex(std::uint32_t vtx_ptr) noexcept {
+        return vertices_[cmds_.back().vertex_start + vtx_ptr];
+    }
+    [[nodiscard]] const vertex3d& get_vertex(std::uint32_t vtx_ptr) const noexcept {
+        return vertices_[cmds_.back().vertex_start + vtx_ptr];
     }
     [[nodiscard]] auto* release_context() noexcept {
         return context_.release();

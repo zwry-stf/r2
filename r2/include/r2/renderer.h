@@ -3,6 +3,8 @@
 #include "renderer_definitions.h"
 #include "renderer_base.h"
 #include "font/unicode.h"
+#include "error.h"
+
 #include <vector>
 #include <thread>
 #include <atomic>

@@ -40,6 +40,7 @@ enum class vertex_attribute_format : std::uint8_t {
 
 struct vertex_attribute_desc {
     const char*             semantic_name;
+    std::uint32_t           semantic_index;
     vertex_attribute_format format;
     std::uint32_t           aligned_byte_offset;
     bool                    per_instance = false;
