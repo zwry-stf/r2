@@ -12,17 +12,30 @@
 
 r2_begin_
 
-class renderer2d : public renderer_base {
+struct vertex3d {
+    vec2 pos; // position
+    float depth;
+    vec2 uv;  // tex coord
+    color_u32 col; // color
+};
+
+struct path_point_t {
+    vec2 pos;
+    float depth;
+};
+
+class renderer3d : public renderer_base {
 private:
     std::unique_ptr<context> context_;
     std::unique_ptr<class font_atlas> font_atlas_;
 
     // rendering
-    std::vector<vertex> vertices_;
+    std::vector<vertex3d> vertices_;
     std::vector<index> indices_;
     std::vector<draw_cmd> cmds_;
     std::uint32_t vertex_ptr_;
-    std::vector<vec2> path_;
+    std::vector<path_point_t> path_;
+    std::vector<path_point_t> temp_buffer3d_;
     cmd_header header_;
 
     bool atlas_update_queued_{ false };
@@ -45,8 +58,8 @@ private:
     friend class font_atlas;
 
 public:
-    renderer2d();
-    ~renderer2d();
+    renderer3d();
+    ~renderer3d();
 
 public:
     void init(const platform_init_data& pinit, const backend_init_data& binit);
@@ -98,39 +111,41 @@ public:
     void pop_font();
 
     /// render
-    void prim_rect(const vec2& min, const vec2& max, color_u32 col);
-    void add_rect(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding = 0.f,
+    void prim_rect(const vec2& min, const vec2& max, float depth, color_u32 col);
+    void add_rect(const vec2& min, const vec2& max, float depth, color_u32 col, float line_width, float rounding = 0.f,
                   e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
-    void add_rect_inner(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding = 0.f,
+    void add_rect_inner(const vec2& min, const vec2& max, float depth, color_u32 col, float line_width, float rounding = 0.f,
                         e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
-    void add_rect_inner_fast(const vec2& min, const vec2& max, color_u32 col, float line_width);
-    void add_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding = 0.f,
+    void add_rect_inner_fast(const vec2& min, const vec2& max, float depth, color_u32 col, float line_width);
+    void add_rect_filled(const vec2& min, const vec2& max, float depth, color_u32 col, float rounding = 0.f,
                          e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
-    void add_rect_filled_multicolor(const vec2& min, const vec2& max,
+    void add_rect_filled_multicolor(const vec2& min, const vec2& max, float depth,
                                     color_u32 col_tl, color_u32 col_tr, color_u32 col_br, color_u32 col_bl);
-    void add_rect_filled_faded(const vec2& min, const vec2& max, color_u32 col, color_u32 faded_col, 
+    void add_rect_filled_faded(const vec2& min, const vec2& max, float depth, color_u32 col, color_u32 faded_col,
                                float fade_start, float fade_end);
-    void add_shadow_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding = 0.f, float shadow_size = 50.f,
+    void add_shadow_rect_filled(const vec2& min, const vec2& max, float depth, color_u32 col, float rounding = 0.f, float shadow_size = 50.f,
                                 e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
-    void add_quad_filled(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, color_u32 col);
-    void add_quad_filled_multicolor(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, 
+    void add_quad_filled(const path_point_t& p1, const path_point_t& p2, const path_point_t& p3, const path_point_t& p4, color_u32 col);
+    void add_quad_filled_multicolor(const path_point_t& p1, const path_point_t& p2, const path_point_t& p3, const path_point_t& p4,
                                     color_u32 col1, color_u32 col2, color_u32 col3, color_u32 col4);
-    void add_line(const vec2& start, const vec2& end, color_u32 col, float line_width);
-    void add_line_multicolor(const vec2& start, const vec2& end, color_u32 col_start, color_u32 col_end, float line_width);
-    void add_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col);
-    void add_shadow_convex(const vec2* points, std::uint32_t num_points, color_u32 col, float shadow_size, bool filled = true);
-    void add_lines(const vec2* points, std::uint32_t num_points, color_u32 col, float line_width, bool closed = false);
+    void add_line(const path_point_t& start, const path_point_t& end, color_u32 col, float line_width);
+    void add_line_multicolor(const path_point_t& start, const path_point_t& end, color_u32 col_start, color_u32 col_end, float line_width);
+    void add_convex_filled(const path_point_t* points, std::uint32_t num_points, color_u32 col);
+    void add_shadow_convex(const path_point_t* points, std::uint32_t num_points, color_u32 col, float shadow_size, bool filled = true);
+    void add_lines(const path_point_t* points, std::uint32_t num_points, color_u32 col, float line_width, bool closed = false);
     
-    void add_image(texture_handle texture, const vec2& min, const vec2& max, color_u32 col = color::white(),
+    void add_image(texture_handle texture, const vec2& min, const vec2& max, float depth, color_u32 col = color::white(),
                    const vec2& uv_min = vec2(0.f), const vec2& uv_max = vec2(1.f));
-    void add_image_outline(texture_handle texture, const vec2& min, const vec2& max, color_u32 col = color::white(), color_u32 outline_col = color::black(),
+    void add_image_outline(texture_handle texture, const vec2& min, const vec2& max, float depth, color_u32 col = color::white(), color_u32 outline_col = color::black(),
                            float outline_size = 1.f, const vec2& uv_min = vec2(0.f), const vec2& uv_max = vec2(1.f));
-    void add_image_rounded(texture_handle texture, const vec2& min, const vec2& max, float rounding, color_u32 col = color::white(),
+    void add_image_rounded(texture_handle texture, const vec2& min, const vec2& max, float depth, float rounding, color_u32 col = color::white(),
                            const vec2& uv_min = vec2(0.f), const vec2& uv_max = vec2(1.f));
     void shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
                            const vec2& uv_min, const vec2& uv_max);
     void shade_vertices_col(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
                             const color& col_tl, const color& col_tr, const color& col_br, const color& col_bl);
+    void shade_vertices_depth(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max,
+                              float depth_tl, float depth_tr, float depth_br, float depth_bl);
 
     /// text
     template <float CharOffset = 0.f, unicode::string_like String>
@@ -175,10 +190,11 @@ public:
 
     /// path
     void path_clear();
-    void path_add_point(const vec2& p);
+    void path_add_point(const vec2& p, float depth);
+    void path_add_point(const path_point_t& p);
     template <int a_min_of_12, int a_max_of_12>
-    void path_arc_to(const vec2& center, float radius, float step);
-    void path_rect(const vec2& min, const vec2& max, float rounding,
+    void path_arc_to(const vec2& center, float depth, float radius, float step);
+    void path_rect(const vec2& min, const vec2& max, float depth, float rounding,
                    e_rounding_flags flags = e_rounding_flags::rounding_all, float corner_step = 2.f);
     void path_fill_convex(color_u32 col);
     void path_stroke(color_u32 col, float line_width, bool closed = false);
@@ -225,4 +241,4 @@ public:
 
 r2_end_
 
-#include "renderer.inline.inl"
+#include "renderer3d.inline.inl"

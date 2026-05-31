@@ -1,12 +1,12 @@
 #include <r2/font/font_atlas.h>
 #include <r2/error.h>
-#include <r2/renderer.h>
+#include <r2/renderer_base.h>
 #include <r2/render_data.h>
 
 
 r2_begin_
 
-font_atlas::font_atlas(renderer2d* instance) noexcept
+font_atlas::font_atlas(renderer_base* instance) noexcept
     : renderer_(instance),
       width_(kDefaultSize),
       height_(kDefaultSize)

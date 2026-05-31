@@ -18,7 +18,7 @@ public:
     inline static constexpr std::uint32_t kDefaultSize = 4096u;
 
 private:
-    class renderer2d* const renderer_;
+    class renderer_base* const renderer_;
     std::uint32_t padding_{ 1u };
     const std::uint32_t width_;
     const std::uint32_t height_;
@@ -27,7 +27,7 @@ private:
     std::vector<atlas_rect> rects_;
 
 public:
-    font_atlas(renderer2d* instance) noexcept;
+    font_atlas(renderer_base* instance) noexcept;
 
 private:
     bool check_side(std::uint32_t x, std::uint32_t y, std::uint32_t width, std::uint32_t height);

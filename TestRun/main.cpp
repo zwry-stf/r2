@@ -24,6 +24,7 @@
 #endif
 
 #include <r2/renderer.h>
+#include <r2/renderer3d.h>
 #include <r2/error.h>
 
 
@@ -56,6 +57,7 @@ struct GlobalData {
 inline static GlobalData g_data;
 
 inline static r2::renderer2d g_renderer;
+inline static r2::renderer3d g_renderer3d;
 inline static r2::font* g_font;
 
 
