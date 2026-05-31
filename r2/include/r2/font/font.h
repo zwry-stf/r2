@@ -44,8 +44,9 @@ struct font_range {
 };
 
 struct font_data {
+    std::vector<std::uint8_t> owned_data;
     const std::uint8_t* const data;
-    const std::size_t size;
+    const std::size_t size{};
     std::vector<font_range> ranges;
     std::unique_ptr<stbtt_fontinfo> font_info;
 };
@@ -108,6 +109,16 @@ public:
     // Adds font data to the font instance.
     // The order of added fonts matters. Only TTF format is supported.
     bool add_font(const std::uint8_t* data, std::size_t data_size, std::vector<font_range>&& ranges);
+
+    // Adds font data to the font instance.
+    // The order of added fonts matters. Only TTF format is supported.
+    bool add_font(std::vector<std::uint8_t> data);
+    // Adds font data to the font instance.
+    // The order of added fonts matters. Only TTF format is supported.
+    bool add_font(std::vector<std::uint8_t> data, const std::vector<font_range>& ranges);
+    // Adds font data to the font instance.
+    // The order of added fonts matters. Only TTF format is supported.
+    bool add_font(std::vector<std::uint8_t> data, std::vector<font_range>&& ranges);
 
 private:
     pending_glyph rasterize_glyph(wchar glyph, font_data* data = nullptr, bool blurred = false);

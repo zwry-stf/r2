@@ -181,6 +181,7 @@ bool font::add_font(const std::uint8_t* data, std::size_t data_size, const std::
 bool font::add_font(const std::uint8_t* data, std::size_t data_size, std::vector<font_range>&& ranges)
 {
     fonts_.emplace_back(
+        std::vector<std::uint8_t>(),
         data,
         data_size,
         std::move(ranges),
@@ -198,13 +199,49 @@ bool font::add_font(const std::uint8_t* data, std::size_t data_size, std::vector
     return true;
 }
 
+bool font::add_font(std::vector<std::uint8_t> data)
+{
+    std::vector<font_range> ranges;
+    ranges.emplace_back(wchar(0), unicode::codepoint_max);
+
+    return add_font(std::move(data), std::move(ranges));
+}
+
+bool font::add_font(std::vector<std::uint8_t> data, const std::vector<font_range>& ranges)
+{
+    std::vector<font_range> copy = ranges;
+    return add_font(std::move(data), std::move(copy));
+}
+
+bool font::add_font(std::vector<std::uint8_t> data, std::vector<font_range>&& ranges)
+{
+    fonts_.emplace_back(
+        data,
+        nullptr, /* data */
+        0, /* size */
+        std::move(ranges),
+        std::make_unique<stbtt_fontinfo>()
+    );
+
+    const int ok = stbtt_InitFont(
+        fonts_.back().font_info.get(),
+        fonts_.back().owned_data.data(),
+        0
+    );
+    if (ok == 0)
+        return false;
+
+    return true;
+}
+
 void font::apply_glyph(const pending_glyph& pg, bool is_init_time)
 {
     const std::size_t lookup_size = (pg.blurred ? glyph_lookup_blurred_.size() : glyph_lookup_.size());
     assert(lookup_size == unicode::codepoint_max);
     if (static_cast<std::size_t>(pg.codepoint) >=
-        lookup_size)
+        lookup_size) {
         return;
+    }
 
     auto& lookup = pg.blurred ?
         glyph_lookup_blurred_[pg.codepoint] : glyph_lookup_[pg.codepoint];
@@ -221,7 +258,12 @@ void font::apply_glyph(const pending_glyph& pg, bool is_init_time)
     g.blurred = pg.blurred;
 
     if (pg.visible) {
-        g.rect_id = atlas_->register_rect(pg.bmp_w, pg.bmp_h);
+        const auto rect_id = atlas_->register_rect(pg.bmp_w, pg.bmp_h);
+        if (!rect_id) {
+            return;
+        }
+
+        g.rect_id = *rect_id;
         atlas_->get_rect_uv(g.rect_id, g.uv_min, g.uv_max);
         is_init_time ? 
             atlas_->write_data_init(g.rect_id, pg.bitmap.data(), pg.bitmap.size()) :
