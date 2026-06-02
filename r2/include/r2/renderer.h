@@ -58,6 +58,9 @@ public:
 
     std::shared_ptr<font> add_font(const font_cfg& cfg);
     void remove_font(font* font);
+    void remove_font(const std::shared_ptr<font>& font) {
+        remove_font(font.get());
+    }
 
     [[nodiscard]] bool is_initialized();
 

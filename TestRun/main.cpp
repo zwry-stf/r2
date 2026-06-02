@@ -24,12 +24,12 @@
 #endif
 
 #include <r2/renderer.h>
-#include <r2/renderer3d.h>
+#include <r2/drawlist/drawlist2d.h>
 #include <r2/error.h>
 
 
 // Global data
-struct GlobalRenderData {
+struct global_render_data_t {
 #if defined(R2_BACKEND_D3D11)
     d3d_pointer<IDXGISwapChain> swapchain;
     d3d_pointer<ID3D11Device> device;
@@ -39,7 +39,7 @@ struct GlobalRenderData {
     std::unique_ptr<r2::framebuffer> render_target;
 };
 
-struct WindowData {
+struct window_data_t {
     int fb_width{};
     int fb_height{};
     GLFWwindow* window{};
@@ -48,17 +48,17 @@ struct WindowData {
     int pending_resize_height{};
 };
 
-struct GlobalData {
+struct global_data_t {
     std::atomic<bool> running{ false };
-    WindowData window_data;
-    GlobalRenderData render_data;
+    window_data_t window_data;
+    global_render_data_t render_data;
 };
 
-inline static GlobalData g_data;
+inline static global_data_t g_data;
 
-inline static r2::renderer2d g_renderer;
-inline static r2::renderer3d g_renderer3d;
-inline static r2::font* g_font;
+inline static r2::renderer g_renderer;
+inline static std::unique_ptr<r2::drawlist2d> g_drawlist;
+inline static std::shared_ptr<r2::font> g_font;
 
 
 // function def
@@ -103,40 +103,23 @@ int __stdcall WinMain(HINSTANCE /* instance */,
         show_error_and_exit("renderer initialization failed: {}", err.to_string());
     }
 
+    g_drawlist = g_renderer.create_drawlist<r2::drawlist2d>();
+
     r2::font_cfg fcfg{};
     fcfg.size = 20u;
     fcfg.oversample_h = 2u;
     fcfg.oversample_v = 2u;
     fcfg.glow_radius = 10u;
     fcfg.glow_strength = 2.f;
-    auto* f = g_renderer.add_font(fcfg);
-    g_font = f;
-    if (!f->add_font(NotoSans_Medium, NotoSans_Medium_size) ||
-        !f->add_font(MPLUSRounded1c_Medium, MPLUSRounded1c_Medium_size) ||
-        !f->add_font(NotoEmoji_Medium, NotoEmoji_Medium_size)) {
+    g_font = g_renderer.add_font(fcfg);
+    if (!g_font->add_font(NotoSans_Medium, NotoSans_Medium_size) ||
+        !g_font->add_font(MPLUSRounded1c_Medium, MPLUSRounded1c_Medium_size) ||
+        !g_font->add_font(NotoEmoji_Medium, NotoEmoji_Medium_size)) {
         show_error_and_exit("failed to add fonts.");
     }
 
     if (!g_renderer.build_fonts() ||
         !g_renderer.create_font_texture()) {
-        show_error_and_exit("failed to build fonts.");
-    }
-
-
-    if (auto err = g_renderer3d.init(pinit, binit);
-        err.get_code() != r2::error_code::none) {
-        show_error_and_exit("renderer initialization failed: {}", err.to_string());
-    }
-
-    auto* f2 = g_renderer3d.add_font(fcfg);
-    if (!f2->add_font(NotoSans_Medium, NotoSans_Medium_size) ||
-        !f2->add_font(MPLUSRounded1c_Medium, MPLUSRounded1c_Medium_size) ||
-        !f2->add_font(NotoEmoji_Medium, NotoEmoji_Medium_size)) {
-        show_error_and_exit("failed to add fonts.");
-    }
-
-    if (!g_renderer3d.build_fonts() ||
-        !g_renderer3d.create_font_texture()) {
         show_error_and_exit("failed to build fonts.");
     }
 
@@ -166,6 +149,8 @@ int __stdcall WinMain(HINSTANCE /* instance */,
     if (t.joinable())
         t.join();
 
+    g_drawlist.reset();
+    g_font.reset();
     g_renderer.destroy();
 
     destroy_backend();
@@ -270,8 +255,9 @@ bool initialize_backend() {
         );
     }
 
-    if (FAILED(res))
+    if (FAILED(res)) {
         return false;
+    }
 #endif
 
     return true;
@@ -336,7 +322,6 @@ bool resize(int width, int height) {
     g_data.render_data.render_target.reset();
 
     g_renderer.pre_resize();
-    g_renderer3d.pre_resize();
 
 #if defined(R2_BACKEND_D3D11)
     HRESULT hr = g_data.render_data.swapchain->ResizeBuffers(
@@ -346,15 +331,18 @@ bool resize(int width, int height) {
         DXGI_FORMAT_UNKNOWN,
         DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
     );
-    if (FAILED(hr))
+    if (FAILED(hr)) {
         return false;
+    }
 #endif
 
-    g_renderer.post_resize();
-    g_renderer3d.post_resize();
-
-    if (!create_render_target())
+    if (!g_renderer.post_resize()) {
         return false;
+    }
+
+    if (!create_render_target()) {
+        return false;
+    }
 
     g_data.window_data.fb_width = width;
     g_data.window_data.fb_height = height;
@@ -375,22 +363,22 @@ void render_frame() {
         fcfg.oversample_v = 2u;
         fcfg.glow_radius = 10u;
         fcfg.glow_strength = 2.f;
-        auto* f = g_renderer.add_font(fcfg);
+        g_font = g_renderer.add_font(fcfg);
 
-        f->add_font(NotoSans_Medium, NotoSans_Medium_size);
-        f->add_font(MPLUSRounded1c_Medium, MPLUSRounded1c_Medium_size);
-        f->add_font(NotoEmoji_Medium, NotoEmoji_Medium_size);
+        g_font->add_font(NotoSans_Medium, NotoSans_Medium_size);
+        g_font->add_font(MPLUSRounded1c_Medium, MPLUSRounded1c_Medium_size);
+        g_font->add_font(NotoEmoji_Medium, NotoEmoji_Medium_size);
 
-        f->build();
+        g_font->build();
     }
 
-    g_renderer.reset_render_data();
+    g_drawlist->reset_states();
     g_renderer.setup_render_state();
 
     // test
     {
         {
-            g_renderer.push_clip_rect(
+            g_drawlist->push_clip_rect(
                 r2::rect(
                     1000, 200,
                     1200,
@@ -398,7 +386,7 @@ void render_frame() {
                 )
             );
 
-            g_renderer.add_quad_filled_multicolor(
+            g_drawlist->add_quad_filled_multicolor(
                 r2::vec2{ 800.f, 100.f },
                 r2::vec2{ 800.f, 500.f },
                 r2::vec2{ 1300.f, 500.f },
@@ -409,14 +397,14 @@ void render_frame() {
                 r2::color::blue()
             );
 
-            g_renderer.pop_clip_rect();
+            g_drawlist->pop_clip_rect();
         }
 
-        g_renderer.add_line(r2::vec2(200.f, 200.f), r2::vec2(700.f, 600.f), r2::color::black(), 6.f);
-        g_renderer.add_line(r2::vec2(200.f, 200.f), r2::vec2(700.f, 600.f), r2::color::white(), 4.f);
+        g_drawlist->add_line(r2::vec2(200.f, 200.f), r2::vec2(700.f, 600.f), r2::color::black(), 6.f);
+        g_drawlist->add_line(r2::vec2(200.f, 200.f), r2::vec2(700.f, 600.f), r2::color::white(), 4.f);
 
-        g_renderer.add_line(r2::vec2(200.f, 200.f), r2::vec2(200.f, 600.f), r2::color::black(), 3.f);
-        g_renderer.add_line(r2::vec2(200.f, 200.f), r2::vec2(200.f, 600.f), r2::color::white(), 1.f);
+        g_drawlist->add_line(r2::vec2(200.f, 200.f), r2::vec2(200.f, 600.f), r2::color::black(), 3.f);
+        g_drawlist->add_line(r2::vec2(200.f, 200.f), r2::vec2(200.f, 600.f), r2::color::white(), 1.f);
 
         const r2::vec2 points[] = {
             r2::vec2(500.f, 500.f),
@@ -426,21 +414,21 @@ void render_frame() {
             r2::vec2(450.f, 240.f),
         };
 
-        g_renderer.add_convex_filled(
+        g_drawlist->add_convex_filled(
             points, sizeof(points) / sizeof(points[0]),
             r2::color::cyan().interp(r2::color::black(), 0.5f).interp(r2::color::white(), 0.3f).alpha(0.3f)
         );
 
-        auto vtx_index = g_renderer.vertex_ptr();
-        g_renderer.add_shadow_rect_filled(
+        auto vtx_index = g_drawlist->vertex_ptr();
+        g_drawlist->add_shadow_rect_filled(
             r2::vec2(600.f, 400.f),
             r2::vec2(900.f, 600.f),
             r2::color::white(),
             20.f
         );
-        g_renderer.shade_vertices_col(
+        g_drawlist->shade_vertices_col(
             vtx_index,
-            g_renderer.vertex_ptr(),
+            g_drawlist->vertex_ptr(),
             r2::vec2(500.f, 300.f),
             r2::vec2(1000.f, 700.f),
             r2::color::white(),
@@ -449,8 +437,8 @@ void render_frame() {
             r2::color::purple()
         );
 
-        vtx_index = g_renderer.vertex_ptr();
-        g_renderer.add_rect(
+        vtx_index = g_drawlist->vertex_ptr();
+        g_drawlist->add_rect(
             r2::vec2(600.f, 700.f),
             r2::vec2(900.f, 900.f),
             r2::color::white(),
@@ -458,9 +446,9 @@ void render_frame() {
             20.f,
             r2::e_rounding_flags::rounding_top | r2::e_rounding_flags::rounding_bottomright
         );
-        g_renderer.shade_vertices_col(
+        g_drawlist->shade_vertices_col(
             vtx_index,
-            g_renderer.vertex_ptr(),
+            g_drawlist->vertex_ptr(),
             r2::vec2(500.f, 600.f),
             r2::vec2(1000.f, 1000.f),
             r2::color::white(),
@@ -469,7 +457,7 @@ void render_frame() {
             r2::color::purple()
         );
 
-        g_renderer.add_quad_filled(
+        g_drawlist->add_quad_filled(
             r2::vec2(300.f, 300.f),
             r2::vec2(400.f, 700.f),
             r2::vec2(1000.f, 800.f),
@@ -478,9 +466,9 @@ void render_frame() {
         );
 
         auto test_str = std::u8string_view(u8"Hello World! abcikawhfioawhf");
-        float width = g_renderer.get_text_width(test_str);
+        float width = g_drawlist->get_text_width(test_str);
         (void)width;
-        g_renderer.add_text_faded(
+        g_drawlist->add_text_faded(
             r2::vec2(500.f, 300.f),
             r2::color::blue().interp(r2::color::white(), 0.4f).interp(r2::color::green(), 0.3f),
             r2::color::red(),
@@ -489,13 +477,13 @@ void render_frame() {
             true
         );
 
-        g_renderer.add_text(
+        g_drawlist->add_text(
             r2::vec2(300.f, 300.f),
             r2::color::blue().interp(r2::color::white(), 0.4f).interp(r2::color::green(), 0.3f),
             std::u8string_view(u8"Ä*+**''Ä")
         );
 
-        g_renderer.add_line_multicolor(
+        g_drawlist->add_line_multicolor(
             r2::vec2(200.f, 200.f),
             r2::vec2(700.f, 500.f),
             r2::color::red(),
@@ -524,7 +512,7 @@ void render_frame() {
 
         auto s = std::format("{:.2f}", current);
 
-        g_renderer.add_text(
+        g_drawlist->add_text(
             r2::vec2(10.f, 10.f),
             r2::color::cyan(),
             s
@@ -532,7 +520,7 @@ void render_frame() {
     }
 
     if (GetAsyncKeyState(VK_F7) & 0x8000) {
-        g_renderer.add_text(
+        g_drawlist->add_text(
             r2::vec2(750.f, 200.f),
             r2::color::yellow(),
             std::u8string_view(u8"→😭😂🤓😘→")
@@ -540,7 +528,7 @@ void render_frame() {
     }
 
     if (GetAsyncKeyState(VK_F8) & 0x8000) {
-        g_renderer.add_text(
+        g_drawlist->add_text(
             r2::vec2(750.f, 200.f),
             r2::color::yellow(),
             std::u8string_view(u8"💔💔🤑🐒")
@@ -548,27 +536,9 @@ void render_frame() {
         change_font = true;
     }
 
-    g_renderer.render();
+    g_renderer.render(*g_drawlist);
 
     g_renderer.update_fonts_on_frame();
-
-    {
-        g_renderer3d.reset_render_data();
-        g_renderer3d.setup_render_state();
-
-        g_renderer3d.add_shadow_rect_filled(
-            r2::vec2(100.f, 100.f),
-            r2::vec2(400.f, 400.f),
-            0.f,
-            r2::color::cyan(),
-            10.f,
-            50.f
-        );
-
-        g_renderer3d.render();
-
-        g_renderer3d.update_fonts_on_frame();
-    }
 }
 
 void render_thread() {
@@ -578,7 +548,6 @@ void render_thread() {
 
 #if defined(_DEBUG)
     g_renderer.set_render_thread(std::this_thread::get_id());
-    g_renderer3d.set_render_thread(std::this_thread::get_id());
 #endif
 
     while (g_data.running.load(std::memory_order_acquire)) {

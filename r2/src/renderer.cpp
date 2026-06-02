@@ -87,7 +87,8 @@ error renderer::do_init()
 void renderer::destroy()
 {
     destroy_render();
-    
+
+    fonts_.clear();
     font_atlas_.reset();
 }
 
@@ -379,8 +380,8 @@ error renderer::create_resources()
     // create vertex shader
     vertex_attribute_desc vs_desc[] = {
         { "POSITION", 0, vertex_attribute_format::f32f32,         offsetof(vertex, pos),   false, 0 },
-        { "COLOR",    0, vertex_attribute_format::r8r8r8r8_unorm, offsetof(vertex, col),   false, 0 },
         { "TEXCOORD", 0, vertex_attribute_format::f32f32,         offsetof(vertex, uv),    false, 0 },
+        { "COLOR",    0, vertex_attribute_format::r8r8r8r8_unorm, offsetof(vertex, col),   false, 0 },
         { "TEXCOORD", 1, vertex_attribute_format::f32,            offsetof(vertex, depth), false, 0 },
     };
 

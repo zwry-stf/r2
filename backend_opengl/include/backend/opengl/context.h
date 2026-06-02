@@ -34,6 +34,7 @@ private:
     std::uint32_t render_width_{ 0u };
     std::uint32_t render_height_{ 0u };
     raster_state_cache raster_;
+    const inputlayout* current_inputlayout_ = nullptr;
 
     std::unique_ptr<struct backup_render_data> backup_data_;
 

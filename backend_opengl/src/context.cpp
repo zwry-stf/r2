@@ -372,6 +372,7 @@ void gl_context::set_depthstencilstate(const depthstencilstate* ds, std::uint32_
 
 void gl_context::set_inputlayout(const inputlayout* il)
 {
+    current_inputlayout_ = il;
     if (il != nullptr) {
         gl_call(glBindVertexArray(
             to_native(il)->vao()
@@ -412,6 +413,14 @@ void gl_context::set_vertex_buffer(const buffer* vb, std::uint32_t slot)
     }
     else {
         gl_call(glBindBuffer(GL_ARRAY_BUFFER, buf));
+
+        if (current_inputlayout_ != nullptr && 
+            vb != nullptr) {
+            auto* saved_il = current_inputlayout_;
+            current_inputlayout_ = nullptr;
+            to_native(const_cast<inputlayout*>(saved_il))->link(const_cast<buffer*>(vb));
+            current_inputlayout_ = saved_il;
+        }
     }
 }
 

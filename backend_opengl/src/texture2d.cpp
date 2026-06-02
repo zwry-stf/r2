@@ -362,13 +362,13 @@ void gl_texture2d::update(const void* data, std::uint32_t row_pitch, std::uint32
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
         const auto* bytes = static_cast<const std::uint8_t*>(data);
-        for (GLint y = 0; y < static_cast<GLint>(height); ++y) {
-            const void* row_ptr = bytes + static_cast<std::size_t>(y) * row_pitch;
+        for (GLint y1 = 0; y1 < static_cast<GLint>(height); ++y1) {
+            const void* row_ptr = bytes + static_cast<std::size_t>(y1) * row_pitch;
 
             glTexSubImage2D(
                 GL_TEXTURE_2D,
                 0,
-                static_cast<GLint>(x), static_cast<GLint>(y) + y,
+                static_cast<GLint>(x), static_cast<GLint>(y) + y1,
                 static_cast<GLsizei>(width),
                 1,
                 format,

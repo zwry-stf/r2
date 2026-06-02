@@ -113,6 +113,7 @@ gl_inputlayout::gl_inputlayout(gl_context* ctx, const vertex_attribute_desc* des
     const GLuint kInstanceBinding = 1;
 
     if (ctx->has_version(4, 3)) {
+        std::uint32_t last_offset = static_cast<std::uint32_t>(-1);
         for (std::uint32_t i = 0u; i < count; ++i) {
             const auto& a = desc[i];
             const GLuint attrib_index = i;
@@ -120,6 +121,10 @@ gl_inputlayout::gl_inputlayout(gl_context* ctx, const vertex_attribute_desc* des
             const GLuint binding = a.per_instance ? kInstanceBinding : kVertexBinding;
 
             glEnableVertexAttribArray(attrib_index);
+
+            assert(last_offset == static_cast<std::uint32_t>(-1) ||
+                last_offset < a.aligned_byte_offset && "open gl requires attributes to be sorted by byte offset");
+            last_offset = a.aligned_byte_offset;
 
             if (info.integer && !info.normalized) {
                 glVertexAttribIFormat(attrib_index, info.size,
@@ -175,11 +180,16 @@ void gl_inputlayout::link(buffer* buffer)
 
         GLuint stride = static_cast<GLuint>(buffer->desc().vb_stride);
 
+        std::uint32_t last_offset = static_cast<std::uint32_t>(-1);
         for (std::size_t i = 0u; i < desc_.size(); ++i) {
             const auto& a = desc_[i];
             const GLuint attrib_index = static_cast<GLuint>(i);
             const gl_attr_info info = to_gl_attr_info(a.format);
             const GLvoid* pointer = reinterpret_cast<const GLvoid*>(static_cast<uintptr_t>(a.aligned_byte_offset));
+
+            assert(last_offset == static_cast<std::uint32_t>(-1) ||
+                last_offset < a.aligned_byte_offset && "open gl requires attributes to be sorted by byte offset");
+            last_offset = a.aligned_byte_offset;
 
             glEnableVertexAttribArray(attrib_index);
 

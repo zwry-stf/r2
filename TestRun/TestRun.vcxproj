@@ -99,8 +99,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>_DEBUG;R2_BACKEND_D3D11;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>ext;..\backend\include;..\r2\include;..\r2\src;..\r2\ext;..\backend_d3d11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_DEBUG;R2_BACKEND_OPENGL;GLEW_STATIC;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>ext;..\backend\include;..\r2\include;..\r2\src;..\r2\ext;..\backend_opengl\include;..\backend_opengl\ext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -110,7 +110,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;ext\GLFW\windows\x86\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;ext\GLFW\windows\x86\glfw3.lib;ext\gl\windows\x86\glew32s.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
     </ProjectReference>
@@ -120,8 +120,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>_DEBUG;R2_BACKEND_D3D11;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>ext;..\backend\include;..\r2\include;..\r2\src;..\r2\ext;..\backend_d3d11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_DEBUG;R2_BACKEND_OPENGL;GLEW_STATIC;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>ext;..\backend\include;..\r2\include;..\r2\src;..\r2\ext;..\backend_opengl\include;..\backend_opengl\ext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -131,7 +131,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;ext\GLFW\windows\x64\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;ext\GLFW\windows\x64\glfw3.lib;ext\gl\windows\x64\glew32s.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
     </ProjectReference>
@@ -141,8 +141,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>NDEBUG;R2_BACKEND_D3D11;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>ext;..\backend\include;..\r2\include;..\r2\src;..\r2\ext;..\backend_d3d11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;R2_BACKEND_OPENGL;GLEW_STATIC;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X86;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>ext;..\backend\include;..\r2\include;..\r2\src;..\r2\ext;..\backend_opengl\include;..\backend_opengl\ext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -152,7 +152,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;ext\GLFW\windows\x86\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;ext\GLFW\windows\x86\glfw3.lib;ext\gl\windows\x86\glew32s.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
     </ProjectReference>
@@ -162,8 +162,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>NDEBUG;R2_BACKEND_D3D11;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>ext;..\backend\include;..\r2\include;..\r2\src;..\r2\ext;..\backend_d3d11\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;R2_BACKEND_OPENGL;GLEW_STATIC;R2_PLATFORM_WINDOWS;R2_PLATFORM_WINDOWS_X64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>ext;..\backend\include;..\r2\include;..\r2\src;..\r2\ext;..\backend_opengl\include;..\backend_opengl\ext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -173,7 +173,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;ext\GLFW\windows\x64\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;ext\GLFW\windows\x64\glfw3.lib;ext\gl\windows\x64\glew32s.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
     </ProjectReference>
@@ -196,8 +196,8 @@
     <ProjectReference Include="..\backend\backend.vcxproj">
       <Project>{ED260B65-5906-8A00-621E-15D7CE7CF061}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\backend_d3d11\backend_d3d11.vcxproj">
-      <Project>{0932C30E-75F2-3E45-3E2D-88C2AAAC8321}</Project>
+    <ProjectReference Include="..\backend_opengl\backend_opengl.vcxproj">
+      <Project>{11A02305-FD6D-170B-E601-8831D26EF36F}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
