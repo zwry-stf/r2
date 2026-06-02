@@ -35,10 +35,7 @@ void drawlist2d::reset_states()
     push_texture_id(
         renderer_->render_data_->font_view.get()
     );
-    {
-        std::lock_guard<std::mutex> lock(renderer_->font_mutex_);
-        push_font(renderer_->fonts_.front());
-    }
+    push_font(renderer_->fonts_.front().get());
 }
 
 

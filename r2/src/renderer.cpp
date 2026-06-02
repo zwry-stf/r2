@@ -86,14 +86,6 @@ error renderer::do_init()
 
 void renderer::destroy()
 {
-    destroy_render();
-
-    fonts_.clear();
-    font_atlas_.reset();
-}
-
-void renderer::destroy_render()
-{
     resources_created_ = false;
     is_initialized_ = false;
     destroyed_.store(true, std::memory_order_release);
@@ -106,6 +98,9 @@ void renderer::destroy_render()
 
     if (update_thread_.joinable())
         update_thread_.join();
+
+    fonts_.clear();
+    font_atlas_.reset();
 }
 
 bool renderer::build_fonts()
@@ -204,18 +199,18 @@ void renderer::set_flags(renderer_flags f)
     flags_ = f;
 }
 
-std::shared_ptr<font> renderer::add_font(const font_cfg& cfg)
+font* renderer::add_font(const font_cfg& cfg)
 {
 #if defined(_DEBUG)
     assert_render_thread();
 #endif
-    std::lock_guard<std::mutex> lock(font_mutex_);
 
+    std::lock_guard<std::mutex> lock(font_mutex_);
     fonts_.push_back(
-        std::make_shared<font>(font_atlas_.get(), cfg)
+        std::make_unique<font>(font_atlas_.get(), cfg)
     );
 
-    return fonts_.back();
+    return fonts_.back().get();
 }
 
 void renderer::remove_font(font* font)

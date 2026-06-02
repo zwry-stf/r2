@@ -119,15 +119,15 @@ inline void drawlist_base::pop_texture_id()
     set_current_texture(texture_stack_.back());
 }
 
-inline void drawlist_base::set_current_font(std::shared_ptr<font> font)
+inline void drawlist_base::set_current_font(font* font)
 {
-    current_font_ = std::move(font);
+    current_font_ = font;
 }
 
-inline void drawlist_base::push_font(std::shared_ptr<font> font)
+inline void drawlist_base::push_font(font* font)
 {
     font_stack_.push_back(font);
-    set_current_font(std::move(font));
+    set_current_font(font);
 }
 
 inline void drawlist_base::pop_font()

@@ -21,7 +21,7 @@ private:
 
     bool atlas_update_queued_{ false };
     std::mutex font_mutex_;
-    std::vector<std::shared_ptr<font>> fonts_;
+    std::vector<std::unique_ptr<font>> fonts_;
 
     float aa_scale_{ 1.f };
 
@@ -43,7 +43,6 @@ public:
     [[nodiscard]] error init(const platform_init_data& pinit, const backend_init_data& binit);
     [[nodiscard]] error init(context* ctx);
     void destroy();
-    void destroy_render();
 
     [[nodiscard]] bool build_fonts();
     // will clear the internal font cpu data
@@ -56,11 +55,8 @@ public:
 
     void set_flags(renderer_flags f);
 
-    std::shared_ptr<font> add_font(const font_cfg& cfg);
+    font* add_font(const font_cfg& cfg);
     void remove_font(font* font);
-    void remove_font(const std::shared_ptr<font>& font) {
-        remove_font(font.get());
-    }
 
     [[nodiscard]] bool is_initialized();
 

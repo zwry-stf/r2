@@ -16,7 +16,9 @@ font::font(font_atlas* atlas, const font_cfg& cfg)
 }
 
 font::~font() {
-    destroy();
+    if (!is_destroyed_) {
+        destroy();
+    }
 }
 
 constexpr wchar kDefaultGlyphsStart = 0x20u;
@@ -83,8 +85,9 @@ void font::update_worker()
         local_requests.swap(glyphs_to_rasterize_);
     }
 
-    if (local_requests.empty())
+    if (local_requests.empty()) {
         return;
+    }
 
     std::vector<pending_glyph> local_completed;
     local_completed.reserve(local_requests.size());
@@ -92,13 +95,15 @@ void font::update_worker()
     for (const auto& cp : local_requests) {
         auto pg = rasterize_glyph(cp.codepoint, nullptr, cp.blurred);
         local_completed.push_back(
-            std::move(pg));
+            std::move(pg)
+        );
     }
 
     {
         std::lock_guard<std::mutex> lock(completed_mutex_);
-        for (auto& g : local_completed)
+        for (auto& g : local_completed) {
             completed_glyphs_.push_back(std::move(g));
+        }
     }
 }
 
@@ -156,11 +161,20 @@ bool font::build(bool initial_build)
 
 void font::destroy()
 {
+    assert(!is_destroyed_);
+
     for (auto& glyph : glyphs_) {
         if (glyph.visible) {
             atlas_->remove_rect(glyph.rect_id);
         }
     }
+
+    glyphs_.clear();
+    glyph_lookup_.clear();
+    glyph_lookup_blurred_.clear();
+    free_glyph_slots_.clear();
+
+    is_destroyed_ = true;
 }
 
 bool font::add_font(const std::uint8_t* data, std::size_t data_size)

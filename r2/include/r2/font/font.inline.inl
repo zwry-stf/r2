@@ -67,9 +67,4 @@ inline const font_glyph* font::find_glyph_no_fallback(wchar c)
     return &glyphs_[i.index];
 }
 
-inline const font_cfg& font::cfg() const
-{
-    return cfg_;
-}
-
 r2_end_

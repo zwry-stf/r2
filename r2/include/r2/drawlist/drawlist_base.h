@@ -22,8 +22,8 @@ protected:
 
     std::vector<rect> clip_rect_stack_;
     std::vector<texture_handle> texture_stack_;
-    std::vector<std::shared_ptr<font>> font_stack_;
-    std::shared_ptr<font> current_font_{ nullptr };
+    std::vector<font*> font_stack_;
+    font* current_font_{ nullptr };
 
     friend class renderer;
 
@@ -46,8 +46,8 @@ public:
     void push_texture_id(texture_handle texture);
     void push_texture_id(textureview* texture);
     void pop_texture_id();
-    void set_current_font(std::shared_ptr<font> font);
-    void push_font(std::shared_ptr<font> font);
+    void set_current_font(font* font);
+    void push_font(font* font);
     void pop_font();
 
     /// text

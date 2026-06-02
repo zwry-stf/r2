@@ -61,6 +61,7 @@ private:
     class font_atlas* const atlas_;
     const font_cfg cfg_;
     std::vector<font_data> fonts_;
+    bool is_destroyed_{ false };
 
     const font_glyph* fallback_glyph_{ nullptr };
 
@@ -93,7 +94,13 @@ public:
     [[nodiscard]] const font_glyph* find_glyph(wchar c);
     [[nodiscard]] const font_glyph* find_glyph_blurred(wchar c);
     [[nodiscard]] const font_glyph* find_glyph_no_fallback(wchar c);
-    [[nodiscard]] const font_cfg& cfg() const;
+
+    [[nodiscard]] const font_cfg& cfg() const noexcept {
+        return cfg_;
+    }
+    [[nodiscard]] bool is_destroyed() const noexcept {
+        return is_destroyed_;
+    }
 
     void update_on_render();
     void update_worker();
