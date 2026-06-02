@@ -42,6 +42,9 @@ public:
         : error(code, -1, 0) { }
 
 public:
+    [[nodiscard]] bool operator==(const error& e) const noexcept {
+        return code_ == e.code_;
+    }
     [[nodiscard]] auto get_code() const noexcept {
         return code_;
     }
