@@ -1,182 +1,12 @@
 #pragma once
+#include "drawlist2d.h"
+
 #include <algorithm>
-#include "font/font.h"
-#include "renderer.h"
 
-
-static_assert(sizeof(r2::renderer2d) > 0u);
 
 r2_begin_
 
-inline draw_cmd& renderer2d::add_draw_cmd()
-{
-    assert(cmds_.empty() ||
-        vertex_ptr_ == vertices_.size() - cmds_.back().vertex_start);
-    vertex_ptr_ = 0u;
-
-    auto& ret = cmds_.emplace_back();
-    ret.index_start = static_cast<std::uint32_t>(indices_.size());
-    ret.vertex_start = static_cast<std::uint32_t>(vertices_.size());
-    ret.clip_rect = header_.clip_rect;
-    ret.texture = header_.texture;
-    return ret;
-}
-
-template<typename O>
-inline void renderer2d::on_changed_header(const O& new_value, O draw_cmd::* field)
-{
-    assert(!cmds_.empty());
-
-    if constexpr (std::is_same_v<O, decltype(draw_cmd::clip_rect)>) {
-        header_.clip_rect = new_value;
-    }
-    else if constexpr (std::is_same_v<O, decltype(draw_cmd::texture)>) {
-        header_.texture = new_value;
-    }
-
-    auto& curr_cmd = cmds_.back();
-
-    if (curr_cmd.*field != new_value) {
-        if (indices_.size() > curr_cmd.index_start) {
-            add_draw_cmd();
-        }
-        else {
-            curr_cmd.*field = new_value;
-        }
-    }
-}
-
-inline void renderer2d::set_clip_rect(const rect& r)
-{
-    on_changed_header(r, &draw_cmd::clip_rect);
-}
-
-inline void renderer2d::push_clip_rect(const vec2& min, const vec2& max, bool intersect_current)
-{
-    push_clip_rect({
-        static_cast<std::int32_t>(min.x),
-        static_cast<std::int32_t>(min.y),
-        static_cast<std::int32_t>(max.x),
-        static_cast<std::int32_t>(max.y),
-        },
-        intersect_current
-    );
-}
-
-inline void renderer2d::push_clip_rect(const rect& r, bool intersect_current)
-{
-    rect rect = r;
-    if (intersect_current) {
-        if (header_.clip_rect.left > rect.left)
-            rect.left = header_.clip_rect.left;
-        if (header_.clip_rect.right < rect.right)
-            rect.right = header_.clip_rect.right;
-        if (header_.clip_rect.top > rect.top)
-            rect.top = header_.clip_rect.top;
-        if (header_.clip_rect.bottom < rect.bottom)
-            rect.bottom = header_.clip_rect.bottom;
-    }
-
-    clip_rect_stack_.push_back(rect);
-    set_clip_rect(rect);
-}
-
-inline void renderer2d::modify_clip_rect_x(std::int32_t min, std::int32_t max)
-{
-    rect rect = header_.clip_rect;
-    if (min > header_.clip_rect.left)
-        rect.left = min;
-    if (max < header_.clip_rect.right)
-        rect.right = max;
-
-    clip_rect_stack_.push_back(rect);
-    set_clip_rect(rect);
-}
-
-inline void renderer2d::modify_clip_rect_x(float min, float max)
-{
-    modify_clip_rect_x(
-        static_cast<std::int32_t>(min),
-        static_cast<std::int32_t>(max)
-    );
-}
-
-inline void renderer2d::modify_clip_rect_y(std::int32_t min, std::int32_t max)
-{
-    rect rect = header_.clip_rect;
-    if (min > header_.clip_rect.top)
-        rect.top = min;
-    if (max < header_.clip_rect.bottom)
-        rect.bottom = max;
-
-    clip_rect_stack_.push_back(rect);
-    set_clip_rect(rect);
-}
-
-inline void renderer2d::modify_clip_rect_y(float min, float max)
-{
-    modify_clip_rect_y(
-        static_cast<std::int32_t>(min),
-        static_cast<std::int32_t>(max)
-    );
-}
-
-inline void renderer2d::pop_clip_rect()
-{
-    assert(clip_rect_stack_.size() > 1u);
-
-    clip_rect_stack_.pop_back();
-    const auto& rect = clip_rect_stack_.back();
-
-    on_changed_header(rect, &draw_cmd::clip_rect);
-}
-
-inline void renderer2d::set_current_texture(texture_handle texture)
-{
-    on_changed_header(texture, &draw_cmd::texture);
-}
-
-inline void renderer2d::push_texture_id(texture_handle texture)
-{
-    texture_stack_.push_back(texture);
-    set_current_texture(texture);
-}
-
-inline void renderer2d::push_texture_id(textureview* texture)
-{
-    assert(texture != nullptr && 
-           texture->desc().usage == view_usage::shader_resource);
-    push_texture_id(texture->native_texture_handle());
-}
-
-inline void renderer2d::pop_texture_id()
-{
-    assert(texture_stack_.size() > 1u);
-
-    texture_stack_.pop_back();
-    set_current_texture(texture_stack_.back());
-}
-
-inline void renderer2d::set_current_font(font* font)
-{
-    current_font_ = font;
-}
-
-inline void renderer2d::push_font(font* font)
-{
-    font_stack_.push_back(font);
-    set_current_font(font);
-}
-
-inline void renderer2d::pop_font()
-{
-    assert(font_stack_.size() > 1u);
-
-    font_stack_.pop_back();
-    set_current_font(font_stack_.back());
-}
-
-inline void renderer2d::prim_rect(const vec2& min, const vec2& max, color_u32 col)
+inline void drawlist2d::prim_rect(const vec2& min, const vec2& max, color_u32 col)
 {
     indices_.emplace_back(vertex_ptr_ + 0u);
     indices_.emplace_back(vertex_ptr_ + 1u);
@@ -185,7 +15,7 @@ inline void renderer2d::prim_rect(const vec2& min, const vec2& max, color_u32 co
     indices_.emplace_back(vertex_ptr_ + 2u);
     indices_.emplace_back(vertex_ptr_ + 3u);
 
-    const vec2& uv = shared_data_.uv_white_px;
+    const vec2& uv = shared_data_->uv_white_px;
     vertices_.emplace_back(vec2{ min.x, min.y }, uv, col);
     vertices_.emplace_back(vec2{ min.x, max.y }, uv, col);
     vertices_.emplace_back(vec2{ max.x, max.y }, uv, col);
@@ -194,7 +24,7 @@ inline void renderer2d::prim_rect(const vec2& min, const vec2& max, color_u32 co
     vertex_ptr_ += 4u;
 }
 
-inline void renderer2d::add_rect(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding,
+inline void drawlist2d::add_rect(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding,
                                  e_rounding_flags flags, float corner_step)
 {
     if ((col & color::alpha_mask) == 0u) [[unlikely]]
@@ -213,7 +43,7 @@ inline void renderer2d::add_rect(const vec2& min, const vec2& max, color_u32 col
     path_stroke(col, line_width, true);
 }
 
-inline void renderer2d::add_rect_inner(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding,
+inline void drawlist2d::add_rect_inner(const vec2& min, const vec2& max, color_u32 col, float line_width, float rounding,
                                        e_rounding_flags flags, float corner_step)
 {
     if ((col & color::alpha_mask) == 0u) [[unlikely]]
@@ -231,7 +61,7 @@ inline void renderer2d::add_rect_inner(const vec2& min, const vec2& max, color_u
     path_stroke(col, line_width, true);
 }
 
-inline void renderer2d::add_rect_inner_fast(const vec2& min, const vec2& max, color_u32 col, float line_width)
+inline void drawlist2d::add_rect_inner_fast(const vec2& min, const vec2& max, color_u32 col, float line_width)
 {
     if ((col & color::alpha_mask) == 0u) [[unlikely]]
         return;
@@ -244,7 +74,7 @@ inline void renderer2d::add_rect_inner_fast(const vec2& min, const vec2& max, co
     indices_.emplace_back(vertex_ptr_ + 2u);
     indices_.emplace_back(vertex_ptr_ + 3u);
 
-    const auto& uv = shared_data_.uv_white_px;
+    const auto& uv = shared_data_->uv_white_px;
 
     vertices_.emplace_back(min, uv, col);
     vertices_.emplace_back(min + vec2(line_width), uv, col);
@@ -299,7 +129,7 @@ inline void renderer2d::add_rect_inner_fast(const vec2& min, const vec2& max, co
     vertex_ptr_ += 4u;
 }
 
-inline void renderer2d::add_rect_filled_multicolor(const vec2& min, const vec2& max,
+inline void drawlist2d::add_rect_filled_multicolor(const vec2& min, const vec2& max,
                                                    color_u32 col_tl, color_u32 col_tr, color_u32 col_br, color_u32 col_bl)
 {
     indices_.emplace_back(vertex_ptr_ + 0u);
@@ -309,7 +139,7 @@ inline void renderer2d::add_rect_filled_multicolor(const vec2& min, const vec2& 
     indices_.emplace_back(vertex_ptr_ + 2u);
     indices_.emplace_back(vertex_ptr_ + 3u);
 
-    const auto& uv = shared_data_.uv_white_px;
+    const auto& uv = shared_data_->uv_white_px;
 
     vertices_.emplace_back(min, uv, col_tl);
     vertices_.emplace_back(vec2{ min.x, max.y }, uv, col_bl);
@@ -319,7 +149,7 @@ inline void renderer2d::add_rect_filled_multicolor(const vec2& min, const vec2& 
     vertex_ptr_ += 4u;
 }
 
-inline void renderer2d::add_rect_filled(const vec2& min, const vec2& max, color_u32 col,
+inline void drawlist2d::add_rect_filled(const vec2& min, const vec2& max, color_u32 col,
                                         float rounding, e_rounding_flags flags, float corner_step)
 {
     if ((col & color::alpha_mask) == 0u) [[unlikely]]
@@ -335,7 +165,7 @@ inline void renderer2d::add_rect_filled(const vec2& min, const vec2& max, color_
     }
 }
 
-inline void renderer2d::add_rect_filled_faded(const vec2& min, const vec2& max, color_u32 col, color_u32 faded_col, float fade_start, float fade_end)
+inline void drawlist2d::add_rect_filled_faded(const vec2& min, const vec2& max, color_u32 col, color_u32 faded_col, float fade_start, float fade_end)
 {
     const float delta = fade_end - fade_start;
     const bool draw_if_faded = (faded_col & color::alpha_mask) != 0u;
@@ -367,7 +197,7 @@ inline void renderer2d::add_rect_filled_faded(const vec2& min, const vec2& max, 
             return;
         }
 
-        const vec2& uv = shared_data_.uv_white_px;
+        const vec2& uv = shared_data_->uv_white_px;
         if (fade_start > min.x) {
             if (draw_no_fade) {
                 prim_rect(min, vec2(fade_start, max.y), col);
@@ -459,7 +289,7 @@ inline void renderer2d::add_rect_filled_faded(const vec2& min, const vec2& max, 
     }
 }
 
-inline void renderer2d::add_shadow_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding,
+inline void drawlist2d::add_shadow_rect_filled(const vec2& min, const vec2& max, color_u32 col, float rounding,
                                                float shadow_size, e_rounding_flags flags, float corner_step)
 {
     if ((col & color::alpha_mask) == 0u) [[unlikely]]
@@ -476,7 +306,7 @@ inline void renderer2d::add_shadow_rect_filled(const vec2& min, const vec2& max,
     path_clear();
 }
 
-inline void renderer2d::add_quad_filled(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, color_u32 col)
+inline void drawlist2d::add_quad_filled(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, color_u32 col)
 {
     if ((col & color::alpha_mask) == 0u) [[unlikely]]
         return;
@@ -491,7 +321,7 @@ inline void renderer2d::add_quad_filled(const vec2& p1, const vec2& p2, const ve
     path_fill_convex(col);
 }
 
-inline void renderer2d::add_quad_filled_multicolor(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, 
+inline void drawlist2d::add_quad_filled_multicolor(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, 
                                                    color_u32 col1, color_u32 col2, color_u32 col3, color_u32 col4)
 {
     indices_.emplace_back(vertex_ptr_ + 0u);
@@ -501,7 +331,7 @@ inline void renderer2d::add_quad_filled_multicolor(const vec2& p1, const vec2& p
     indices_.emplace_back(vertex_ptr_ + 2u);
     indices_.emplace_back(vertex_ptr_ + 3u);
 
-    const auto& uv = shared_data_.uv_white_px;
+    const auto& uv = shared_data_->uv_white_px;
 
     vertices_.emplace_back(p1, uv, col1);
     vertices_.emplace_back(p2, uv, col2);
@@ -511,12 +341,17 @@ inline void renderer2d::add_quad_filled_multicolor(const vec2& p1, const vec2& p
     vertex_ptr_ += 4u;
 }
 
-inline void renderer2d::add_line(const vec2& start, const vec2& end, color_u32 col, float line_width)
+inline void drawlist2d::add_line(const vec2& start, const vec2& end, color_u32 col, float line_width)
 {
     add_line_multicolor(start, end, col, col, line_width);
 }
 
-inline void renderer2d::add_image(texture_handle texture, const vec2& min, const vec2& max, color_u32 col,
+inline void drawlist2d::add_line(const point_3d& start, const point_3d& end, color_u32 col, float line_width)
+{
+    add_line_multicolor(start, end, col, col, line_width);
+}
+
+inline void drawlist2d::add_image(texture_handle texture, const vec2& min, const vec2& max, color_u32 col,
                                   const vec2& uv_min, const vec2& uv_max)
 {
     if ((col & color::alpha_mask) == 0u) [[unlikely]]
@@ -541,7 +376,7 @@ inline void renderer2d::add_image(texture_handle texture, const vec2& min, const
     pop_texture_id();
 }
 
-inline void renderer2d::add_image_outline(texture_handle texture, const vec2& min, const vec2& max, color_u32 col, color_u32 outline_col,
+inline void drawlist2d::add_image_outline(texture_handle texture, const vec2& min, const vec2& max, color_u32 col, color_u32 outline_col,
                                           float outline_size, const vec2& uv_min, const vec2& uv_max)
 {
     if ((col & color::alpha_mask) == 0u) [[unlikely]]
@@ -627,7 +462,7 @@ inline void renderer2d::add_image_outline(texture_handle texture, const vec2& mi
     pop_texture_id();
 }
 
-inline void renderer2d::add_image_rounded(texture_handle texture, const vec2& min, const vec2& max, float rounding, color_u32 col,
+inline void drawlist2d::add_image_rounded(texture_handle texture, const vec2& min, const vec2& max, float rounding, color_u32 col,
                                           const vec2& uv_min, const vec2& uv_max)
 {
     if ((col & color::alpha_mask) == 0u) [[unlikely]]
@@ -635,12 +470,12 @@ inline void renderer2d::add_image_rounded(texture_handle texture, const vec2& mi
 
     push_texture_id(texture);
 
-    const auto backup = vertex_ptr_;
+    const auto backup = vertex_ptr();
     add_rect_filled(min, max, col, rounding);
 
     shade_vertices_uv(
         backup,
-        vertex_ptr_,
+        vertex_ptr(),
         min, max,
         uv_min, uv_max
     );
@@ -648,7 +483,7 @@ inline void renderer2d::add_image_rounded(texture_handle texture, const vec2& mi
     pop_texture_id();
 }
 
-inline void renderer2d::shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max,
+inline void drawlist2d::shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max,
                                           const vec2& uv_min, const vec2& uv_max)
 {
     assert(vtx_start <= vtx_end);
@@ -660,11 +495,9 @@ inline void renderer2d::shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t
     const vec2 inv_d_pos = vec2(1.f) / d_pos;
     const vec2 d_uv = uv_max - uv_min;
 
-    const auto& curr_cmd = cmds_.back();
-    assert(curr_cmd.vertex_start + vtx_end <= vertices_.size());
+    assert(vtx_end <= vertices_.size());
 
-    for (std::uint32_t i = curr_cmd.vertex_start + vtx_start;
-         i < curr_cmd.vertex_start + vtx_end; i++) {
+    for (std::uint32_t i = vtx_start; i < vtx_end; i++) {
         auto& vtx = vertices_[i];
 
         vec2 d = (vtx.pos - min) * inv_d_pos;
@@ -676,7 +509,7 @@ inline void renderer2d::shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t
     }
 }
 
-inline void renderer2d::shade_vertices_col(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
+inline void drawlist2d::shade_vertices_col(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
                                            const color& col_tl, const color& col_tr, const color& col_br, const color& col_bl)
 {
     assert(vtx_start <= vtx_end);
@@ -687,15 +520,13 @@ inline void renderer2d::shade_vertices_col(std::uint32_t vtx_start, std::uint32_
 
     const vec2 inv_d_pos = vec2(1.f) / d_pos;
 
-    const auto& curr_cmd = cmds_.back();
-    assert(curr_cmd.vertex_start + vtx_end <= vertices_.size());
+    assert(vtx_end <= vertices_.size());
 
-    for (std::uint32_t i = curr_cmd.vertex_start + vtx_start;
-         i < curr_cmd.vertex_start + vtx_end; i++) {
+    for (std::uint32_t i = vtx_start; i < vtx_end; i++) {
         auto& vtx = vertices_[i];
 
         vec2 d = (vtx.pos - min) * inv_d_pos;
-        // clamp
+
         d.x = std::clamp(d.x, 0.f, 1.f);
         d.y = std::clamp(d.y, 0.f, 1.f);
 
@@ -706,18 +537,73 @@ inline void renderer2d::shade_vertices_col(std::uint32_t vtx_start, std::uint32_
     }
 }
 
-inline void renderer2d::path_clear()
+inline void drawlist2d::shade_vertices_depth(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
+                                             float depth_tl, float depth_tr, float depth_br, float depth_bl)
+{
+    assert(vtx_start <= vtx_end);
+
+    const vec2 d_pos = max - min;
+    if (d_pos.x == 0.f || d_pos.y == 0.f)
+        return;
+
+    const vec2 inv_d_pos = vec2(1.f) / d_pos;
+
+    assert(vtx_end <= vertices_.size());
+
+    for (std::uint32_t i = vtx_start; i < vtx_end; i++) {
+        auto& vtx = vertices_[i];
+
+        vec2 d = (vtx.pos - min) * inv_d_pos;
+
+        d.x = std::clamp(d.x, 0.f, 1.f);
+        d.y = std::clamp(d.y, 0.f, 1.f);
+
+        const float a = std::lerp(depth_tl, depth_tr, d.x);
+        const float b = std::lerp(depth_bl, depth_br, d.x);
+
+        vtx.depth = std::lerp(a, b, d.y);
+    }
+}
+
+inline void drawlist2d::shade_vertices_depth(std::uint32_t vtx_start, std::uint32_t vtx_end, float depth)
+{
+    assert(vtx_start <= vtx_end);
+
+    assert(vtx_end <= vertices_.size());
+
+    for (std::uint32_t i = vtx_start; i < vtx_end; i++) {
+        auto& vtx = vertices_[i];
+        vtx.depth = depth;
+    }
+}
+
+inline void drawlist2d::path_clear()
 {
     path_.clear();
 }
 
-inline void renderer2d::path_add_point(const vec2& p)
+inline void drawlist2d::path_clear3d()
+{
+    path3d_.clear();
+}
+
+inline void drawlist2d::path_add_point(const vec2& p)
 {
     path_.emplace_back(p);
 }
 
+inline void drawlist2d::path_add_point(const vec2& p, float depth)
+{
+    path3d_.emplace_back(p, depth);
+}
+
+inline void drawlist2d::path_add_point(const point_3d& p)
+{
+    path3d_.emplace_back(p);
+}
+
 template <int a_min_of_12, int a_max_of_12>
-inline void renderer2d::path_arc_to(const vec2& center, float radius, float step)
+inline void drawlist2d::path_arc_to(const vec2& center, float radius, float step)
 {
     static_assert(a_min_of_12 < a_max_of_12);
     static_assert(a_min_of_12 >= 0 && a_min_of_12 < 12);
@@ -749,7 +635,7 @@ inline void renderer2d::path_arc_to(const vec2& center, float radius, float step
     }
 }
 
-inline void renderer2d::path_rect(const vec2& min, const vec2& max, float rounding, e_rounding_flags flags, float corner_step)
+inline void drawlist2d::path_rect(const vec2& min, const vec2& max, float rounding, e_rounding_flags flags, float corner_step)
 {
     float width = max.x - min.x;
     float height = max.y - min.y;
@@ -805,7 +691,7 @@ inline void renderer2d::path_rect(const vec2& min, const vec2& max, float roundi
     }
 }
 
-inline void renderer2d::path_fill_convex(color_u32 col)
+inline void drawlist2d::path_fill_convex(color_u32 col)
 {
     if ((col & color::alpha_mask) == 0u) [[unlikely]] {
         path_clear();
@@ -821,7 +707,7 @@ inline void renderer2d::path_fill_convex(color_u32 col)
     path_clear();
 }
 
-inline void renderer2d::path_stroke(color_u32 col, float line_width, bool closed)
+inline void drawlist2d::path_stroke(color_u32 col, float line_width, bool closed)
 {
     if ((col & color::alpha_mask) == 0u) [[unlikely]] {
         path_clear();
@@ -840,7 +726,7 @@ inline void renderer2d::path_stroke(color_u32 col, float line_width, bool closed
 }
 
 template <float CharOffset, unicode::string_like String>
-inline void renderer2d::add_text(const vec2& pos, color_u32 col, const String& text, bool blurred)
+inline void drawlist2d::add_text(const vec2& pos, color_u32 col, const String& text, bool blurred)
 {
     assert(current_font_ != nullptr);
 
@@ -909,7 +795,7 @@ inline void renderer2d::add_text(const vec2& pos, color_u32 col, const String& t
 }
 
 template <float CharOffset, unicode::string_like String>
-inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32 faded_col,
+inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32 faded_col,
                                        float fade_start, float fade_end, const String& text, bool blurred)
 {
     assert(fade_start <= fade_end);
@@ -1105,7 +991,7 @@ inline void renderer2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
 }
 
 template<float CharOffset, unicode::string_like String>
-inline void renderer2d::add_text_outlined(const vec2& pos, color_u32 col, const String& text,
+inline void drawlist2d::add_text_outlined(const vec2& pos, color_u32 col, const String& text,
                                           const color_u32 outline_col, float outline_width, bool blurred)
 {
     assert(current_font_ != nullptr);
@@ -1242,258 +1128,84 @@ inline void renderer2d::add_text_outlined(const vec2& pos, color_u32 col, const 
     }
 }
 
-template <float CharOffset, unicode::string_like String, std::integral T>
-inline float renderer2d::get_text_width(const String& text, T offset, std::optional<T> count)
+template<std::integral T>
+void drawlist2d::add_convex_filled(const vec2* points, T num_points, color_u32 col)
 {
-    std::uint32_t length = static_cast<std::uint32_t>(text.length());
-    if (count.has_value() &&
-        static_cast<std::uint32_t>(*count) < length) {
-        length = static_cast<std::uint32_t>(*count);
-    }
+    assert(num_points >= 0);
 
-    float ret = 0.f;
-    std::uint32_t s = offset;
-    while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
-        if (cp == unicode::codepoint_invalid)
-            continue;
-
-        if (cp < 0x20u) {
-            assert(cp != U'\n');
-            if (cp == U'\r')
-                continue;
-
-            continue;
-        }
-
-        const auto* glyph = current_font_->find_glyph(cp);
-        if (glyph == nullptr)
-            continue;
-
-        ret += glyph->advance_x;
-        if constexpr (CharOffset != 0.f) {
-            ret += CharOffset;
-        }
-    }
-
-    return ret;
+    add_convex_filled(
+        points,
+        static_cast<std::uint32_t>(num_points),
+        col
+    );
 }
 
-template <unicode::string_like String, std::integral T>
-inline vec2 renderer2d::get_text_size(const String& text, T offset, std::optional<T> count)
+template<std::integral T>
+void drawlist2d::add_shadow_convex(const vec2* points, T num_points, color_u32 col, float shadow_size, bool filled)
 {
-    std::uint32_t length = static_cast<std::uint32_t>(text.length());
-    if (count.has_value() &&
-        static_cast<std::uint32_t>(*count) < length) {
-        length = static_cast<std::uint32_t>(*count);
-    }
-    const float line_height = static_cast<float>(current_font_->cfg().size);
+    assert(num_points >= 0);
 
-    vec2 ret;
-    std::uint32_t s = offset;
-    while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
-        if (cp == unicode::codepoint_invalid)
-            continue;
-
-        if (cp < 0x20u) {
-            if (cp == U'\n') {
-                ret.y += line_height;
-                continue;
-            }
-            if (cp == U'\r')
-                continue;
-
-            continue;
-        }
-
-        const auto* glyph = current_font_->find_glyph(cp);
-        if (glyph == nullptr)
-            continue;
-
-        ret.x = (std::max)(ret.x, glyph->advance_x);
-    }
-
-    return ret;
+    add_shadow_convex(
+        points,
+        static_cast<std::uint32_t>(num_points),
+        col,
+        shadow_size,
+        filled
+    );
 }
 
-template <float CharOffset, unicode::string_like String, std::integral T>
-inline bool renderer2d::get_text_width_strict(const String& text, float& out, T offset, std::optional<T> count)
+template<std::integral T>
+void drawlist2d::add_lines(const vec2* points, T num_points, color_u32 col, float line_width, bool closed)
 {
-    std::uint32_t length = static_cast<std::uint32_t>(text.length());
-    if (count.has_value() &&
-        static_cast<std::uint32_t>(*count) < length) {
-        length = static_cast<std::uint32_t>(*count);
-    }
+    assert(num_points >= 0);
 
-    out = 0.f;
-    std::uint32_t s = offset;
-    while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
-        if (cp == unicode::codepoint_invalid)
-            continue;
-
-        if (cp < 0x20u) {
-            assert(cp != U'\n');
-            if (cp == U'\r')
-                continue;
-
-            continue;
-        }
-
-        const auto* glyph = current_font_->find_glyph_no_fallback(cp);
-        if (glyph == nullptr)
-            return false;
-
-        out += glyph->advance_x;
-        if constexpr (CharOffset != 0.f) {
-            out += CharOffset;
-        }
-    }
-
-    return true;
+    add_lines(
+        points,
+        static_cast<std::uint32_t>(num_points),
+        col,
+        line_width,
+        closed
+    );
 }
 
-template <unicode::string_like String, std::integral T>
-inline bool renderer2d::get_text_size_strict(const String& text, vec2& out, T offset, std::optional<T> count)
+template<std::integral T>
+inline void drawlist2d::add_convex_filled(const point_3d* points, T num_points, color_u32 col)
 {
-    std::uint32_t length = static_cast<std::uint32_t>(text.length());
-    if (count.has_value() &&
-        static_cast<std::uint32_t>(*count) < length) {
-        length = static_cast<std::uint32_t>(*count);
-    }
-    const float line_height = static_cast<float>(current_font_->cfg().size);
+    assert(num_points >= 0);
 
-    out = vec2(0.f);
-    std::uint32_t s = offset;
-    while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
-        if (cp == unicode::codepoint_invalid)
-            continue;
-
-        if (cp < 0x20u) {
-            if (cp == U'\n') {
-                out.y += line_height;
-                continue;
-            }
-            if (cp == U'\r')
-                continue;
-
-            continue;
-        }
-
-        const auto* glyph = current_font_->find_glyph_no_fallback(cp);
-        if (glyph == nullptr)
-            return false;
-
-        out.x = (std::max)(out.x, glyph->advance_x);
-    }
-
-    return true;
+    add_convex_filled(
+        points,
+        static_cast<std::uint32_t>(num_points),
+        col
+    );
 }
 
-template <bool center, unicode::string_like String>
-inline std::uint32_t renderer2d::get_char_at_pos(const String& text, float pos)
+template<std::integral T>
+inline void drawlist2d::add_shadow_convex(const point_3d* points, T num_points, color_u32 col, float shadow_size, bool filled)
 {
-    if (pos <= 0.f)
-        return 0u;
+    assert(num_points >= 0);
 
-    const std::uint32_t length = static_cast<std::uint32_t>(text.length());
-
-    std::uint32_t s = 0u;
-    float x = 0.f;
-    float prev_width = 0.f;
-    while (s < length) {
-        const std::uint32_t start = s;
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
-        if (cp == unicode::codepoint_invalid)
-            continue;
-
-        if (cp < 0x20u) {
-            assert(cp != U'\n');
-            if (cp == U'\r')
-                continue;
-
-            continue;
-        }
-
-        const auto* glyph = current_font_->find_glyph_no_fallback(cp);
-        if (glyph == nullptr)
-            continue;
-
-        x += glyph->advance_x;
-        if constexpr (center) {
-            const float curr_center = x - glyph->advance_x * 0.5f;
-            const float prev_center = (x - prev_width * 0.5f - glyph->advance_x);
-            if (pos >= prev_center && pos < curr_center) {
-                return start;
-            }
-        }
-        else {
-            if (pos >= x &&
-                pos < x + glyph->advance_x) {
-                return start;
-            }
-        }
-        prev_width = glyph->advance_x;
-    }
-
-    return length;
+    add_shadow_convex(
+        points,
+        static_cast<std::uint32_t>(num_points),
+        col,
+        shadow_size,
+        filled
+    );
 }
 
-template <bool center, unicode::string_like String>
-inline bool renderer2d::get_char_at_pos_strict(const String& text, float pos, std::uint32_t& index)
+template<std::integral T>
+inline void drawlist2d::add_lines(const point_3d* points, T num_points, color_u32 col, float line_width, bool closed)
 {
-    if (pos <= 0.f) {
-        index = 0u;
-        return true;
-    }
+    assert(num_points >= 0);
 
-    const std::uint32_t length = static_cast<std::uint32_t>(text.length());
-
-    std::uint32_t s = 0u;
-    float x = 0.f;
-    float prev_width = 0.f;
-    while (s < length) {
-        const std::uint32_t start = s;
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
-        if (cp == unicode::codepoint_invalid)
-            continue;
-
-        if (cp < 0x20u) {
-            assert(cp != U'\n');
-            if (cp == U'\r')
-                continue;
-
-            continue;
-        }
-
-        const auto* glyph = current_font_->find_glyph_no_fallback(cp);
-        if (glyph == nullptr)
-            return false;
-
-        if constexpr (center) {
-            const float curr_center = x - glyph->advance_x * 0.5f;
-            const float prev_center = (x - prev_width * 0.5f - glyph->advance_x);
-            if (pos >= prev_center && pos < curr_center) {
-                index = start;
-                return true;
-            }
-        }
-        else {
-            if (pos >= x &&
-                pos < x + glyph->advance_x) {
-                index = start;
-                return true;
-            }
-        }
-        x += glyph->advance_x;
-        prev_width = glyph->advance_x;
-    }
-
-    index = length;
-
-    return true;
+    add_lines(
+        points,
+        static_cast<std::uint32_t>(num_points),
+        col,
+        line_width,
+        closed
+    );
 }
 
 r2_end_

@@ -2,22 +2,23 @@
 #include <r2/render_data.h>
 #include <r2/error.h>
 #include <r2/font/font_atlas.h>
+#include <r2/font/font.h>
 
 
 r2_begin_
 
-renderer2d::renderer2d()
+renderer::renderer()
 {
 }
 
-renderer2d::~renderer2d()
+renderer::~renderer()
 {
     destroyed_.store(true, std::memory_order_release);
     if (update_thread_.joinable())
         update_thread_.join();
 }
 
-error renderer2d::init(const platform_init_data& pinit, const backend_init_data& binit)
+error renderer::init(const platform_init_data& pinit, const backend_init_data& binit)
 {
     context_ = r2::context::make_context(pinit, binit, true);
     if (context_->has_error()) {
@@ -31,7 +32,7 @@ error renderer2d::init(const platform_init_data& pinit, const backend_init_data&
     return do_init();
 }
 
-error renderer2d::init(r2::context* ctx)
+error renderer::init(r2::context* ctx)
 {
     assert(ctx != nullptr);
 
@@ -40,7 +41,7 @@ error renderer2d::init(r2::context* ctx)
     return do_init();
 }
 
-error renderer2d::do_init()
+error renderer::do_init()
 {
     assert((bool)!render_data_);
     render_data_ = std::make_unique<r2::render_data>();
@@ -83,14 +84,14 @@ error renderer2d::do_init()
     return error(error_code::none);
 }
 
-void renderer2d::destroy()
+void renderer::destroy()
 {
     destroy_render();
     
     font_atlas_.reset();
 }
 
-void renderer2d::destroy_render()
+void renderer::destroy_render()
 {
     resources_created_ = false;
     is_initialized_ = false;
@@ -106,7 +107,7 @@ void renderer2d::destroy_render()
         update_thread_.join();
 }
 
-bool renderer2d::build_fonts()
+bool renderer::build_fonts()
 {
     assert(resources_created_ && "call init first");
 
@@ -127,7 +128,7 @@ bool renderer2d::build_fonts()
     return true;
 }
 
-bool renderer2d::create_font_texture()
+bool renderer::create_font_texture()
 {
     assert(font_atlas_->get_width() > 0 &&
            font_atlas_->get_height() > 0);
@@ -162,22 +163,28 @@ bool renderer2d::create_font_texture()
     return true;
 }
 
-void renderer2d::pre_resize()
+void renderer::pre_resize()
 {
     assert(is_initialized());
 
     context_->release_backbuffer();
 }
 
-void renderer2d::post_resize()
+bool renderer::post_resize()
 {
     assert(is_initialized());
 
     context_->acquire_backbuffer();
+    if (context_->has_error()) {
+        return false;
+    }
+
     update_display_size();
+
+    return true;
 }
 
-void renderer2d::update_display_size()
+void renderer::update_display_size()
 {
     display_size_ = r2::vec2(
         static_cast<float>(context_->get_backbuffer()->desc().width),
@@ -191,63 +198,47 @@ void renderer2d::update_display_size()
     render_data_->constant_buffer->update(&cb_data, sizeof(cb_data));
 }
 
-void renderer2d::set_flags(renderer_flags f)
+void renderer::set_flags(renderer_flags f)
 {
     flags_ = f;
 }
 
-font* renderer2d::add_font(const font_cfg& cfg)
+std::shared_ptr<font> renderer::add_font(const font_cfg& cfg)
 {
 #if defined(_DEBUG)
     assert_render_thread();
 #endif
     std::lock_guard<std::mutex> lock(font_mutex_);
 
-    fonts_.push_back(std::make_unique<font>(font_atlas_.get(), cfg));
+    fonts_.push_back(
+        std::make_shared<font>(font_atlas_.get(), cfg)
+    );
 
-    if (font_stack_.empty()) {
-        font_stack_.push_back(fonts_.back().get());
-    }
-    if (current_font_ == nullptr) {
-        current_font_ = fonts_.back().get();
-    }
-
-    return fonts_.back().get();
+    return fonts_.back();
 }
 
-void renderer2d::remove_font(font* font)
+void renderer::remove_font(font* font)
 {
 #if defined(_DEBUG)
     assert_render_thread();
 #endif
-    {
-        std::lock_guard<std::mutex> lock(font_mutex_);
-        for (auto it = fonts_.begin(); it != fonts_.end(); it++) {
-            if (it->get() == font) {
-                it->get()->destroy();
-                fonts_.erase(it);
-                break;
-            }
-        }
-    }
 
-    // clear font_stack and current font
-    if (current_font_ == font)
-        current_font_ = nullptr;
-    for (auto it = font_stack_.begin(); it != font_stack_.end();) {
-        if (*it == font)
-            it = font_stack_.erase(it);
-        else
-            it++;
+    std::lock_guard<std::mutex> lock(font_mutex_);
+    for (auto it = fonts_.begin(); it != fonts_.end(); it++) {
+        if (it->get() == font) {
+            it->get()->destroy();
+            fonts_.erase(it);
+            break;
+        }
     }
 }
 
-bool renderer2d::is_initialized()
+bool renderer::is_initialized()
 {
     return is_initialized_;
 }
 
-void renderer2d::update_fonts_on_frame()
+void renderer::update_fonts_on_frame()
 {
 #if defined(_DEBUG)
     assert_render_thread();
@@ -263,7 +254,7 @@ void renderer2d::update_fonts_on_frame()
     }
 }
 
-void renderer2d::setup_render_state()
+void renderer::setup_render_state()
 {
 #if defined(_DEBUG)
     assert_render_thread();
@@ -286,76 +277,43 @@ void renderer2d::setup_render_state()
     context_->setup_render_state();
 }
 
-void renderer2d::backup_render_state()
+void renderer::backup_render_state()
 {
     context_->backup_render_state();
 }
 
-void renderer2d::restore_render_state()
+void renderer::restore_render_state()
 {
     context_->restore_render_state();
 }
 
-void renderer2d::reset_render_data()
+void renderer::render(const drawlist_base& list)
 {
 #if defined(_DEBUG)
     assert_render_thread();
 #endif
-    assert(render_data_->font_view);
-    assert(!fonts_.empty());
+    assert(list.clip_rect_stack_.size() == 1u);
+    assert(list.texture_stack_.size() == 1u);
+    assert(list.font_stack_.size() == 1u);
 
-    aa_scale_ = 1.f;
-
-    vertices_.clear();
-    indices_.clear();
-    cmds_.clear();
-    clip_rect_stack_.clear();
-    texture_stack_.clear();
-    font_stack_.clear();
-
-    add_draw_cmd();
-    push_clip_rect(
-        rect(
-            0, 0,
-            static_cast<std::int32_t>(display_size_.x),
-            static_cast<std::int32_t>(display_size_.y)
-        ),
-        false
-    );
-    push_texture_id(
-        render_data_->font_view.get()
-    );
-    std::lock_guard<std::mutex> lock(font_mutex_);
-    push_font(fonts_[0].get());
-}
-
-void renderer2d::render()
-{
-#if defined(_DEBUG)
-    assert_render_thread();
-#endif
-    assert(clip_rect_stack_.size() == 1u);
-    assert(texture_stack_.size() == 1u);
-    assert(font_stack_.size() == 1u);
-
-    if (indices_.empty())
+    if (list.indices_.empty())
         return;
 
     // update buffers
     ensure_capacity(
-        static_cast<std::uint32_t>(indices_.size()),
-        static_cast<std::uint32_t>(vertices_.size())
+        static_cast<std::uint32_t>(list.indices_.size()),
+        static_cast<std::uint32_t>(list.vertices_.size())
     );
 
     render_data_->index_buffer->update(
-        indices_.data(),
-        indices_.size() * sizeof(index)
+        list.indices_.data(),
+        list.indices_.size() * sizeof(index)
     );
     assert(!render_data_->index_buffer->has_error());
 
     render_data_->vertex_buffer->update(
-        vertices_.data(),
-        vertices_.size() * sizeof(vertex)
+        list.vertices_.data(),
+        list.vertices_.size() * sizeof(vertex)
     );
     assert(!render_data_->vertex_buffer->has_error());
 
@@ -363,17 +321,17 @@ void renderer2d::render()
     context_->set_vertex_buffer(render_data_->vertex_buffer.get());
     context_->set_index_buffer(render_data_->index_buffer.get());
 
-    for (std::size_t i = 0u; i < cmds_.size(); i++) {
-        const auto& cmd = cmds_[i];
+    for (std::size_t i = 0u; i < list.cmds_.size(); i++) {
+        const auto& cmd = list.cmds_[i];
         assert(cmd.texture != nullptr);
 
         if (cmd.clip_rect.left >= cmd.clip_rect.right ||
             cmd.clip_rect.top >= cmd.clip_rect.bottom) [[unlikely]]
             continue;
 
-        const bool end = i == cmds_.size() - 1;
+        const bool end = i == list.cmds_.size() - 1;
         const std::uint32_t index_end = end ?
-            static_cast<std::uint32_t>(indices_.size()) : cmds_[i + 1].index_start;
+            static_cast<std::uint32_t>(list.indices_.size()) : list.cmds_[i + 1].index_start;
         assert(index_end >= cmd.index_start);
         const std::uint32_t count = index_end - cmd.index_start;
         if (count == 0u)
@@ -398,22 +356,32 @@ void renderer2d::render()
     }
 }
 
-void renderer2d::set_multisampled(bool multisample)
+void renderer::set_multisampled(bool multisample)
 {
-    multisample ?
-        context_->set_rasterizerstate(render_data_->rasterizer_state_ms.get()) :
-        context_->set_rasterizerstate(render_data_->rasterizer_state.get());
+    context_->set_rasterizerstate(
+        multisample ?
+            render_data_->rasterizer_state_ms.get() : render_data_->rasterizer_state.get()
+    );
+}
+
+void renderer::enable_depth(bool enabled)
+{
+    context_->set_depthstencilstate(
+        enabled ?
+            render_data_->depth_stencil_state_enabled.get() : render_data_->depth_stencil_state.get()
+    );
 }
 
 #include "shader.h"
 
-error renderer2d::create_resources()
+error renderer::create_resources()
 {
-    // Create vertex shader
+    // create vertex shader
     vertex_attribute_desc vs_desc[] = {
-        { "POSITION", 0, vertex_attribute_format::f32f32,         offsetof(vertex, pos), false, 0 },
-        { "TEXCOORD", 0, vertex_attribute_format::f32f32,         offsetof(vertex, uv),  false, 0 },
-        { "COLOR",    0, vertex_attribute_format::r8r8r8r8_unorm, offsetof(vertex, col), false, 0 },
+        { "POSITION", 0, vertex_attribute_format::f32f32,         offsetof(vertex, pos),   false, 0 },
+        { "COLOR",    0, vertex_attribute_format::r8r8r8r8_unorm, offsetof(vertex, col),   false, 0 },
+        { "TEXCOORD", 0, vertex_attribute_format::f32f32,         offsetof(vertex, uv),    false, 0 },
+        { "TEXCOORD", 1, vertex_attribute_format::f32,            offsetof(vertex, depth), false, 0 },
     };
 
     std::unique_ptr<compiled_shader> vs_data = context_->compile_vertexshader(
@@ -446,6 +414,7 @@ error renderer2d::create_resources()
         );
     }
 
+    // create pixel shader
     std::unique_ptr<compiled_shader> ps_data = context_->compile_pixelshader(
         &ps_source[0], sizeof(ps_source));
     if (ps_data->has_error())
@@ -471,7 +440,7 @@ error renderer2d::create_resources()
         );
     }
 
-    // Create constant buffer
+    // create constant buffer
     buffer_desc cbdesc;
     cbdesc.size_bytes = sizeof(vec4);
     cbdesc.dynamic    = false;
@@ -486,6 +455,7 @@ error renderer2d::create_resources()
         );
     }
 
+    // create blend state
     blendstate_desc bdesc;
     bdesc.independent_blend_enable = false;
     bdesc.alpha_to_coverage_enable = false;
@@ -507,11 +477,12 @@ error renderer2d::create_resources()
         );
     }
 
+    // create rasterizer state
     rasterizerstate_desc rdesc;
     rdesc.fill = fill_mode::solid;
     rdesc.cull = cull_mode::none;
     rdesc.scissor_enable = true;
-    rdesc.depth_clip_enable = true;
+    rdesc.depth_clip_enable = false;
 
     render_data_->rasterizer_state = context_->create_rasterizerstate(rdesc);
     if (render_data_->rasterizer_state->has_error()) {
@@ -533,15 +504,16 @@ error renderer2d::create_resources()
         );
     }
 
+    // create depth stencil state
     depthstencilstate_desc ddesc;
     ddesc.depth_enable = false;
-    ddesc.depth_write  = true;
+    ddesc.depth_write = false;
     ddesc.depth_func = comparison_func::always;
-    ddesc.stencil_enable  = false;
+    ddesc.stencil_enable = false;
     ddesc.front_face.func = comparison_func::always;
     ddesc.front_face.depth_fail_op =
-        ddesc.front_face.fail_op   =
-        ddesc.front_face.pass_op   = stencil_op::keep;
+        ddesc.front_face.fail_op =
+        ddesc.front_face.pass_op = stencil_op::keep;
     ddesc.back_face = ddesc.front_face;
 
     render_data_->depth_stencil_state = context_->create_depthstencilstate(ddesc);
@@ -553,7 +525,20 @@ error renderer2d::create_resources()
         );
     }
 
-    // Create texture sampler
+    ddesc.depth_enable = true;
+    ddesc.depth_write = false;
+    ddesc.depth_func = comparison_func::less_equal;
+
+    render_data_->depth_stencil_state_enabled = context_->create_depthstencilstate(ddesc);
+    if (render_data_->depth_stencil_state_enabled->has_error()) {
+        return error(
+            error_code::depth_stencil_state_create,
+            render_data_->depth_stencil_state_enabled->get_error(),
+            render_data_->depth_stencil_state_enabled->get_detail()
+        );
+    }
+
+    // create texture sampler
     sampler_desc sdesc;
     sdesc.compare_func = sampler_compare_func::none;
     sdesc.address_u =
@@ -572,7 +557,7 @@ error renderer2d::create_resources()
     return error(error_code::none);
 }
 
-void renderer2d::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_vertices)
+void renderer::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_vertices)
 {
     if (render_data_->index_count < num_indices ||
         !render_data_->index_buffer) {
@@ -613,7 +598,7 @@ void renderer2d::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_ve
     }
 }
 
-void renderer2d::font_update_thread()
+void renderer::font_update_thread()
 {
     while (!destroyed_.load(std::memory_order_acquire)) {
         {
@@ -627,7 +612,7 @@ void renderer2d::font_update_thread()
     }
 }
 
-texture_handle renderer2d::font_texture() const noexcept
+texture_handle renderer::font_texture() const noexcept
 {
     assert(render_data_);
     assert(render_data_->font_view);

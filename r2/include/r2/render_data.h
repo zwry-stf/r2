@@ -16,6 +16,7 @@ public:
     std::unique_ptr<rasterizerstate> rasterizer_state_ms;
     std::unique_ptr<sampler> sampler;
     std::unique_ptr<depthstencilstate> depth_stencil_state;
+    std::unique_ptr<depthstencilstate> depth_stencil_state_enabled;
     std::unique_ptr<texture2d> font_texture;
     std::unique_ptr<textureview> font_view;
 

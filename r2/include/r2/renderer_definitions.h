@@ -283,6 +283,7 @@ struct vertex {
     vec2 pos; // position
     vec2 uv;  // tex coord
     color_u32 col; // color
+    float depth{ 0.f }; // depth
 };
 
 typedef std::uint32_t index;
@@ -301,18 +302,23 @@ struct cmd_header {
     texture_handle texture;
 };
 
-namespace math
-{
+namespace math {
     inline constexpr float g_pi        = 3.14159265358979323846f;
     inline constexpr float g_2_pi      = g_pi * 2.f;
     inline constexpr float g_pi_div_2  = g_pi / 2.f;
     inline constexpr float g_1_div_2pi = 1.f / g_2_pi;
 }
 
+struct point_3d {
+    vec2 pos;
+    float depth;
+};
+
 struct shared_data {
     vec2 uv_white_px;
     vec4 shadow_uvs;
     std::vector<vec2> temp_buffer;
+    std::vector<point_3d> temp_buffer3d;
     std::vector<float> temp_buffer2;
 
     inline static constexpr std::uint32_t kBakedLinesMaxWidth = 63u;

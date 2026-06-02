@@ -80,6 +80,18 @@ d3d11_context::d3d11_context(const platform_init_data& pinit, IDXGISwapChain* sc
     backup_data_ = std::make_unique<backup_render_data>();
 }
 
+void d3d11_context::on_backend_change(IDXGISwapChain* sc)
+{
+    if (sc == nullptr) {
+        set_error(
+            std::to_underlying(d3d11_context_error::invalid_param)
+        );
+        return;
+    }
+
+    sc_.reset(sc);
+}
+
 /// get
 
 void d3d11_context::copy_subresource(framebuffer* dst, const framebuffer* src,
@@ -281,11 +293,15 @@ std::unique_ptr<texture2d> d3d11_context::create_texture2d(const texture_desc& d
 void d3d11_context::acquire_backbuffer()
 {
     d3d_pointer<ID3D11Texture2D> back_buffer;
-    HRESULT res = sc_->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&back_buffer);
-    if (FAILED(res)) {
+    const auto hr = sc_->GetBuffer(
+        0, /* Buffer */
+        __uuidof(ID3D11Texture2D),
+        (void**)back_buffer.address_of()
+    );
+    if (FAILED(hr)) {
         set_error(
             std::to_underlying(d3d11_context_error::backbuffer),
-            res
+            hr
         );
         return;
     }
@@ -300,6 +316,7 @@ void d3d11_context::acquire_backbuffer()
             std::to_underlying(d3d11_context_error::backbuffer),
             backbuffer_->get_detail()
         );
+        return;
     }
 
     D3D11_TEXTURE2D_DESC d;

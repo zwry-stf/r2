@@ -15,7 +15,9 @@ font::font(font_atlas* atlas, const font_cfg& cfg)
 {
 }
 
-font::~font() = default;
+font::~font() {
+    destroy();
+}
 
 constexpr wchar kDefaultGlyphsStart = 0x20u;
 constexpr wchar kDefaultGlyphsEnd = 0x7E;
@@ -159,9 +161,6 @@ void font::destroy()
             atlas_->remove_rect(glyph.rect_id);
         }
     }
-    glyphs_.clear();
-    glyph_lookup_.clear();
-    glyph_lookup_blurred_.clear();
 }
 
 bool font::add_font(const std::uint8_t* data, std::size_t data_size)

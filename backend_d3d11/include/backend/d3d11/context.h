@@ -26,6 +26,7 @@ public:
 
 public:
     virtual void acquire_backbuffer() override;
+    void on_backend_change(IDXGISwapChain* sc);
 
     /// get
     virtual void copy_subresource(framebuffer* dst, const framebuffer* src,
