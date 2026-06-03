@@ -26,6 +26,7 @@ public:
 
 public:
     virtual void acquire_backbuffer() override;
+    void release_swapchain();
     void on_backend_change(IDXGISwapChain* sc);
 
     /// get

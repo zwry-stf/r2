@@ -51,10 +51,8 @@ public:
     }
 
     void reset(_Class* v) noexcept {
-        if (v != value_) {
-            reset();
-            value_ = v;
-        }
+        reset();
+        value_ = v;
     }
 
     [[nodiscard]] _Class* get() const noexcept {

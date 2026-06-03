@@ -326,6 +326,11 @@ void d3d11_context::acquire_backbuffer()
     backbuffer_format_no_srgb_ = get_format_no_srgb(d.Format);
 }
 
+void d3d11_context::release_swapchain()
+{
+    sc_.reset();
+}
+
 std::unique_ptr<textureview> d3d11_context::create_textureview(texture2d* tex, const textureview_desc& desc)
 {
     return std::make_unique<d3d11_textureview>(this, to_native(tex), desc);
