@@ -89,6 +89,7 @@ void d3d11_context::on_backend_change(IDXGISwapChain* sc)
         return;
     }
 
+    sc->AddRef();
     sc_.reset(sc);
 }
 
