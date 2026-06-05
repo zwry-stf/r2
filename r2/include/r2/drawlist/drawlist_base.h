@@ -1,6 +1,7 @@
 #pragma once
 #include <r2/renderer_definitions.h>
 #include <r2/font/unicode.h>
+#include <r2/util/vector.h>
 
 #include <vector>
 #include <cstdint>
@@ -12,17 +13,17 @@ class drawlist_base {
 protected:
     shared_data* const shared_data_;
     class renderer* const renderer_;
-    std::vector<vertex> vertices_;
-    std::vector<index> indices_;
-    std::vector<draw_cmd> cmds_;
+    vector<vertex> vertices_;
+    vector<index> indices_;
+    vector<draw_cmd> cmds_;
     std::uint32_t vertex_ptr_;
-    std::vector<vec2> path_;
-    std::vector<point_3d> path3d_;
+    vector<vec2> path_;
+    vector<point_3d> path3d_;
     cmd_header header_;
 
-    std::vector<rect> clip_rect_stack_;
-    std::vector<texture_handle> texture_stack_;
-    std::vector<font*> font_stack_;
+    vector<rect> clip_rect_stack_;
+    vector<texture_handle> texture_stack_;
+    vector<font*> font_stack_;
     font* current_font_{ nullptr };
 
     friend class renderer;
