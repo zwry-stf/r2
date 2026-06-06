@@ -3,6 +3,7 @@
 #include <r2/error.h>
 #include <r2/font/font_atlas.h>
 #include <r2/font/font.h>
+#include <backend/util.h>
 
 
 r2_begin_
@@ -376,8 +377,8 @@ error renderer::create_resources()
     vertex_attribute_desc vs_desc[] = {
         { "POSITION", 0, vertex_attribute_format::f32f32,         offsetof(vertex, pos),   false, 0 },
         { "TEXCOORD", 0, vertex_attribute_format::f32f32,         offsetof(vertex, uv),    false, 0 },
-        { "COLOR",    0, vertex_attribute_format::r8r8r8r8_unorm, offsetof(vertex, col),   false, 0 },
         { "TEXCOORD", 1, vertex_attribute_format::f32,            offsetof(vertex, depth), false, 0 },
+        { "COLOR",    0, vertex_attribute_format::r8r8r8r8_unorm, offsetof(vertex, col),   false, 0 },
     };
 
     std::unique_ptr<compiled_shader> vs_data = context_->compile_vertexshader(
@@ -400,7 +401,7 @@ error renderer::create_resources()
         );
     }
 
-    render_data_->input_layout = context_->create_inputlayout(vs_desc, _countof(vs_desc),
+    render_data_->input_layout = context_->create_inputlayout(vs_desc, v_count_of(vs_desc),
         vs_data->data(), vs_data->size());
     if (render_data_->input_layout->has_error()) {
         return error(
@@ -566,7 +567,7 @@ void renderer::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_vert
         d.usage = buffer_usage::index;
         d.dynamic = true;
         d.size_bytes = count * sizeof(index);
-        d.ib_type = sizeof(index) == 4u ?
+        d.ib_type = sizeof(index) == sizeof(std::uint32_t) ?
             index_buffer_type::u32 : index_buffer_type::u16;
 
         render_data_->index_buffer = context_->create_buffer(d);

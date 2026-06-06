@@ -282,8 +282,13 @@ public:
 struct vertex {
     vec2 pos; // position
     vec2 uv;  // tex coord
+    float depth; // depth
     color_u32 col; // color
-    float depth{ 0.f }; // depth
+
+    constexpr vertex() noexcept = default;
+
+    constexpr vertex(vec2 p, vec2 u, color_u32 c, float d = 0.f) noexcept
+        : pos(p), uv(u), col(c), depth(d) { }
 };
 
 typedef std::uint32_t index;

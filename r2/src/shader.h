@@ -7,10 +7,10 @@ cbuffer cb : register(b0) {
 };
 
 struct VS_INPUT {
-    float2 pos : POSITION;
-    float4 col : COLOR0;
-    float2 uv  : TEXCOORD0;
+    float2 pos  : POSITION;
+    float2 uv   : TEXCOORD0;
     float depth : TEXCOORD1;
+    float4 col  : COLOR0;
 };
 
 struct PS_INPUT {
@@ -53,8 +53,8 @@ layout(std140) uniform ConstantBufferData {
 
 layout(location = 0) in vec2 aPos;
 layout(location = 1) in vec2 aUV;
-layout(location = 2) in vec4 aColor;
-layout(location = 3) in float aDepth;
+layout(location = 2) in float aDepth;
+layout(location = 3) in vec4 aColor;
 
 out vec4 vColor;
 out vec2 vUV;
