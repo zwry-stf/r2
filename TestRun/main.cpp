@@ -58,7 +58,7 @@ inline static global_data_t g_data;
 
 inline static r2::renderer g_renderer;
 inline static std::unique_ptr<r2::drawlist2d> g_drawlist;
-inline static std::shared_ptr<r2::font> g_font;
+inline static r2::font* g_font;
 
 
 // function def
@@ -150,7 +150,6 @@ int __stdcall WinMain(HINSTANCE /* instance */,
         t.join();
 
     g_drawlist.reset();
-    g_font.reset();
     g_renderer.destroy();
 
     destroy_backend();
@@ -484,8 +483,8 @@ void render_frame() {
         );
 
         g_drawlist->add_line_multicolor(
-            r2::vec2(200.f, 200.f),
-            r2::vec2(700.f, 500.f),
+            r2::point_3d(r2::vec2(200.f, 200.f), 1.f),
+            r2::point_3d(r2::vec2(700.f, 500.f), 0.5f),
             r2::color::red(),
             r2::color::blue(),
             20.f
