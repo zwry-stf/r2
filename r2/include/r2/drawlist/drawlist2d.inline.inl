@@ -465,8 +465,9 @@ inline void drawlist2d::add_image_outline(texture_handle texture, const vec2& mi
 inline void drawlist2d::add_image_rounded(texture_handle texture, const vec2& min, const vec2& max, float rounding, color_u32 col,
                                           const vec2& uv_min, const vec2& uv_max)
 {
-    if ((col & color::alpha_mask) == 0u) [[unlikely]]
+    if ((col & color::alpha_mask) == 0u) [[unlikely]] {
         return;
+    }
 
     push_texture_id(texture);
 
@@ -568,7 +569,6 @@ inline void drawlist2d::shade_vertices_depth(std::uint32_t vtx_start, std::uint3
 inline void drawlist2d::shade_vertices_depth(std::uint32_t vtx_start, std::uint32_t vtx_end, float depth)
 {
     assert(vtx_start <= vtx_end);
-
     assert(vtx_end <= vertices_.size());
 
     for (std::uint32_t i = vtx_start; i < vtx_end; i++) {
@@ -579,26 +579,46 @@ inline void drawlist2d::shade_vertices_depth(std::uint32_t vtx_start, std::uint3
 
 inline void drawlist2d::path_clear()
 {
+#ifdef _DEBUG
+    assert_render_thread();
+#endif // _DEBUG
+
     path_.clear();
 }
 
 inline void drawlist2d::path_clear3d()
 {
+#ifdef _DEBUG
+    assert_render_thread();
+#endif // _DEBUG
+
     path3d_.clear();
 }
 
 inline void drawlist2d::path_add_point(const vec2& p)
 {
+#ifdef _DEBUG
+    assert_render_thread();
+#endif // _DEBUG
+
     path_.emplace_back(p);
 }
 
 inline void drawlist2d::path_add_point(const vec2& p, float depth)
 {
+#ifdef _DEBUG
+    assert_render_thread();
+#endif // _DEBUG
+
     path3d_.emplace_back(p, depth);
 }
 
 inline void drawlist2d::path_add_point(const point_3d& p)
 {
+#ifdef _DEBUG
+    assert_render_thread();
+#endif // _DEBUG
+
     path3d_.emplace_back(p);
 }
 
@@ -728,6 +748,9 @@ inline void drawlist2d::path_stroke(color_u32 col, float line_width, bool closed
 template <float CharOffset, unicode::string_like String>
 inline void drawlist2d::add_text(const vec2& pos, color_u32 col, const String& text, bool blurred)
 {
+#ifdef _DEBUG
+    assert_render_thread();
+#endif // _DEBUG
     assert(current_font_ != nullptr);
 
     if ((col & color::alpha_mask) == 0u) [[unlikely]]

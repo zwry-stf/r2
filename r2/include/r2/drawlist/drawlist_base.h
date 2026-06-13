@@ -111,6 +111,9 @@ protected:
     template <typename O>
     void on_changed_header(const O& new_value, O draw_cmd::* field);
     draw_cmd& add_draw_cmd();
+#ifdef _DEBUG
+    void assert_render_thread();
+#endif // _DEBUG
 };
 
 r2_end_
