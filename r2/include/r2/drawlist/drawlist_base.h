@@ -106,6 +106,9 @@ public:
     [[nodiscard]] std::uint32_t vertex_ptr() const noexcept {
         return static_cast<std::uint32_t>(vertices_.size());
     }
+    [[nodiscard]] renderer* get_renderer() const noexcept {
+        return renderer_;
+    }
 
 protected:
     template <typename O>
