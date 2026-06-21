@@ -28,7 +28,7 @@ protected:
 
 public:
     renderer_base();
-    ~renderer_base();
+    virtual ~renderer_base();
 
 #if defined(_DEBUG)
     void assert_render_thread() const noexcept {

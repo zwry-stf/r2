@@ -16,9 +16,6 @@ font::font(font_atlas* atlas, const font_cfg& cfg)
 }
 
 font::~font() {
-    if (!is_destroyed_) {
-        destroy();
-    }
 }
 
 constexpr wchar kDefaultGlyphsStart = 0x20u;

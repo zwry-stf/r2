@@ -155,6 +155,9 @@ inline draw_cmd& drawlist_base::add_draw_cmd()
 template<typename O>
 inline void drawlist_base::on_changed_header(const O& new_value, O draw_cmd::* field)
 {
+#ifdef _DEBUG
+    assert_render_thread();
+#endif // _DEBUG
     assert(!cmds_.empty());
 
     if constexpr (std::is_same_v<O, decltype(draw_cmd::clip_rect)>) {

@@ -43,9 +43,14 @@ void drawlist2d::reset_states()
 
 void drawlist2d::add_convex_filled(const vec2* points, std::uint32_t num_points, color_u32 col)
 {
+#ifdef _DEBUG
+    assert_render_thread();
+#endif // _DEBUG
+
     if (num_points < 3u ||
-        (col & color::alpha_mask) == 0u) [[unlikely]]
+        (col & color::alpha_mask) == 0u) [[unlikely]] {
         return;
+    }
 
     const float aa_scale = renderer_->aa_scale_;
     const vec2 uv = shared_data_->uv_white_px;
@@ -292,9 +297,14 @@ void drawlist2d::add_shadow_convex(const vec2* points, std::uint32_t num_points,
 
 void drawlist2d::add_lines(const vec2* points, std::uint32_t num_points, color_u32 col, float line_width, bool closed)
 {
+#ifdef _DEBUG
+    assert_render_thread();
+#endif // _DEBUG
+
     if (num_points < 2u ||
-        (col & color::alpha_mask) == 0u) [[unlikely]]
+        (col & color::alpha_mask) == 0u) [[unlikely]] {
         return;
+    }
 
     assert(line_width >= 0.f && "line_width should not be negative");
 
