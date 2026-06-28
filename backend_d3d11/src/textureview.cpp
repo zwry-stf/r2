@@ -136,13 +136,22 @@ d3d11_textureview::d3d11_textureview(d3d11_context* ctx, d3d11_texture2d* tex, c
     }
 }
 
-d3d11_textureview::d3d11_textureview(d3d11_context* ctx, ID3D11ShaderResourceView* srv)
-    : r2::textureview(textureview_desc{}),
+d3d11_textureview::d3d11_textureview(d3d11_context* ctx, ID3D11ShaderResourceView* srv, ID3D11RenderTargetView* rtv)
+    : r2::textureview(
+        textureview_desc{.usage = rtv == nullptr ? 
+            r2::view_usage::shader_resource :
+            r2::view_usage::shader_resource | r2::view_usage::render_target 
+        }
+      ),
       d3d11_object(ctx),
       resource_(nullptr)
 {
     srv_.reset(srv);
     srv_->AddRef();
+    if (rtv != nullptr) {
+        rtv_.reset(rtv);
+        rtv_->AddRef();
+    }
 }
 
 d3d11_textureview::~d3d11_textureview()

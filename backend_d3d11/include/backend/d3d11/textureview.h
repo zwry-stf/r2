@@ -23,7 +23,7 @@ private:
 
 public:
     d3d11_textureview(d3d11_context* ctx, class d3d11_texture2d* tex, const textureview_desc& desc);
-    d3d11_textureview(d3d11_context* ctx, ID3D11ShaderResourceView* srv);
+    d3d11_textureview(d3d11_context* ctx, ID3D11ShaderResourceView* srv, ID3D11RenderTargetView* rtv = nullptr);
     ~d3d11_textureview();
 
 public:

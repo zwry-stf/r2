@@ -97,6 +97,9 @@ public:
     [[nodiscard]] const auto& cmd_header() const noexcept {
         return header_;
     }
+    [[nodiscard]] vertex& push_vertex() noexcept {
+        return vertices_.emplace_back();
+    }
     [[nodiscard]] vertex& get_vertex(std::uint32_t vtx_ptr) noexcept {
         return vertices_[vtx_ptr];
     }

@@ -107,7 +107,7 @@ inline void drawlist_base::push_texture_id(texture_handle texture)
 inline void drawlist_base::push_texture_id(textureview* texture)
 {
     assert(texture != nullptr && 
-           texture->desc().usage == view_usage::shader_resource);
+           texture->desc().usage & view_usage::shader_resource);
     push_texture_id(texture->native_texture_handle());
 }
 
