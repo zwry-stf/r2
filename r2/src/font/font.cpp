@@ -157,7 +157,7 @@ bool font::build(bool initial_build)
     }
 
     // fallback glyph
-    fallback_glyph_ = find_glyph('?');
+    fallback_glyph_ = glyph_lookup_['?'].index;
 
     return true;
 }
