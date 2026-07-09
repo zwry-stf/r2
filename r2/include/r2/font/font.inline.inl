@@ -6,8 +6,9 @@ r2_begin_
 
 inline const font_glyph* font::find_glyph(wchar c)
 {
-    if (c >= static_cast<wchar>(glyph_lookup_.size()))
-        return fallback_glyph_;
+    if (c >= static_cast<wchar>(glyph_lookup_.size())) {
+        return &glyphs_[fallback_glyph_];
+    }
     auto& i = glyph_lookup_[c];
     if (i.index == glyph_lookup_data::kInvalidIndex) [[unlikely]] {
         if (i.supported == 1u) {
@@ -18,7 +19,7 @@ inline const font_glyph* font::find_glyph(wchar c)
                 glyphs_to_rasterize_.emplace_back(c, false);
             }
         }
-        return fallback_glyph_;
+        return &glyphs_[fallback_glyph_];
     }
     glyphs_[i.index].last_access = frame_start_;
     assert(!glyphs_[i.index].blurred);
@@ -27,8 +28,9 @@ inline const font_glyph* font::find_glyph(wchar c)
 
 inline const font_glyph* font::find_glyph_blurred(wchar c)
 {
-    if (c >= static_cast<wchar>(glyph_lookup_blurred_.size()))
-        return fallback_glyph_;
+    if (c >= static_cast<wchar>(glyph_lookup_blurred_.size())) {
+        return &glyphs_[fallback_glyph_];
+    }
     auto& i = glyph_lookup_blurred_[c];
     if (i.index == glyph_lookup_data::kInvalidIndex) [[unlikely]] {
         if (i.supported == 1u) {
@@ -39,7 +41,7 @@ inline const font_glyph* font::find_glyph_blurred(wchar c)
                 glyphs_to_rasterize_.emplace_back(c, true);
             }
         }
-        return fallback_glyph_;
+        return &glyphs_[fallback_glyph_];
     }
     glyphs_[i.index].last_access = frame_start_;
     assert(glyphs_[i.index].blurred);
@@ -48,8 +50,9 @@ inline const font_glyph* font::find_glyph_blurred(wchar c)
 
 inline const font_glyph* font::find_glyph_no_fallback(wchar c)
 {
-    if (c >= static_cast<wchar>(glyph_lookup_.size()))
+    if (c >= static_cast<wchar>(glyph_lookup_.size())) {
         return nullptr;
+    }
     auto& i = glyph_lookup_[c];
     if (i.index == glyph_lookup_data::kInvalidIndex) [[unlikely]] {
         if (i.supported == 1u) {

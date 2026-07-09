@@ -63,7 +63,7 @@ private:
     std::vector<font_data> fonts_;
     bool is_destroyed_{ false };
 
-    const font_glyph* fallback_glyph_{ nullptr };
+    std::uint32_t fallback_glyph_{ glyph_lookup_data::kInvalidIndex };
 
     // 
     std::vector<font_glyph> glyphs_;

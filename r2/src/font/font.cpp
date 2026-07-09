@@ -49,15 +49,21 @@ void font::update_on_render()
         constexpr std::uint64_t kRemoveAge = 100000u;
 
         for (std::uint32_t idx = 0u; idx < glyphs_.size(); ++idx) {
-            auto& g = glyphs_[idx];
-            if (!g.visible)
+            if (idx == fallback_glyph_) {
                 continue;
+            }
+
+            auto& g = glyphs_[idx];
+            if (!g.visible) {
+                continue;
+            }
 
             if (frame_start_ > g.last_access &&
                 frame_start_ - g.last_access > kRemoveAge) {
-                if (g.codepoint > kDefaultGlyphsStart && 
-                    g.codepoint <= kDefaultGlyphsEnd)
+                if (g.codepoint > kDefaultGlyphsStart &&
+                    g.codepoint <= kDefaultGlyphsEnd) {
                     continue;
+                }
 
                 atlas_->remove_rect(g.rect_id);
 
