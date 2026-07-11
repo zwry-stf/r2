@@ -78,7 +78,9 @@ error renderer::do_init()
         }
     );
 
-    update_display_size();
+    if (!update_display_size()) {
+        return error(error_code::context_backbuffer);
+    }
 
     resources_created_ = true;
 
@@ -176,23 +178,32 @@ bool renderer::post_resize()
         return false;
     }
 
-    update_display_size();
+    if (!update_display_size()) {
+        return false;
+    }
 
     return true;
 }
 
-void renderer::update_display_size()
+bool renderer::update_display_size()
 {
     display_size_ = r2::vec2(
         static_cast<float>(context_->get_backbuffer()->desc().width),
         static_cast<float>(context_->get_backbuffer()->desc().height)
     );
 
+    if (display_size_.x == 0.f ||
+        display_size_.y == 0.f) {
+        return false;
+    }
+
     vec4 cb_data(
         display_size_.x, display_size_.y,
         0.f, 0.f
     );
     render_data_->constant_buffer->update(&cb_data, sizeof(cb_data));
+
+    return true;
 }
 
 void renderer::set_flags(renderer_flags f)

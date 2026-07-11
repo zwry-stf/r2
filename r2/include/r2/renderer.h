@@ -81,7 +81,7 @@ private:
     [[nodiscard]] error create_resources();
     void ensure_capacity(std::uint32_t num_indices, std::uint32_t num_vertices);
     void font_update_thread();
-    void update_display_size();
+    [[nodiscard]] bool update_display_size();
 
 public:
     [[nodiscard]] auto* context() const noexcept {
