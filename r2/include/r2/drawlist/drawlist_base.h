@@ -97,7 +97,11 @@ public:
     [[nodiscard]] const auto& cmd_header() const noexcept {
         return header_;
     }
+    void push_index(index index) noexcept {
+        indices_.emplace_back(index);
+    }
     [[nodiscard]] vertex& push_vertex() noexcept {
+        vertex_ptr_++;
         return vertices_.emplace_back();
     }
     [[nodiscard]] vertex& get_vertex(std::uint32_t vtx_ptr) noexcept {
@@ -109,8 +113,14 @@ public:
     [[nodiscard]] std::uint32_t vertex_ptr() const noexcept {
         return static_cast<std::uint32_t>(vertices_.size());
     }
+    [[nodiscard]] std::uint32_t vertex_ptr_relative() const noexcept {
+        return vertex_ptr_;
+    }
     [[nodiscard]] renderer* get_renderer() const noexcept {
         return renderer_;
+    }
+    [[nodiscard]] const r2::vec2& get_uv_white_px() const noexcept {
+        return shared_data_->uv_white_px;
     }
 
 protected:
