@@ -13,7 +13,6 @@ void drawlist2d::reset_states()
 #if defined(_DEBUG)
     renderer_->assert_render_thread();
 #endif
-    assert(renderer_->render_data_->font_view && "fonts not build");
     assert(!renderer_->fonts_.empty() && "no fonts added");
 
     vertices_.clear();
@@ -321,7 +320,7 @@ void drawlist2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
         const float fractional_line_width = line_width - integer_line_width;
 
         const bool use_texture = (renderer_->flags().anti_aliased_lines_use_tex) &&
-            (integer_line_width < shared_data::kBakedLinesMaxWidth) &&
+            (integer_line_width < shared_data::k_baked_lines_max_width) &&
             (fractional_line_width <= 0.00001f) && (aa_scale == 1.0f);
 
         shared_data_->temp_buffer.clear();
@@ -572,7 +571,7 @@ void drawlist2d::add_line_multicolor(const vec2& start_p, const vec2& end_p, col
     const int integer_line_width = static_cast<int>(line_width);
     const float fractional_line_width = line_width - integer_line_width;
     const bool use_texture = (renderer_->flags().anti_aliased_lines_use_tex) &&
-        (integer_line_width < shared_data::kBakedLinesMaxWidth) &&
+        (integer_line_width < shared_data::k_baked_lines_max_width) &&
         (fractional_line_width <= 0.00001f) && (aa_scale == 1.0f);
     shared_data_->temp_buffer.clear();
     shared_data_->temp_buffer.reserve(2u * ((use_texture || !thick_line) ? 3u : 5u));
@@ -926,7 +925,7 @@ void drawlist2d::add_lines(const point_3d* points, std::uint32_t num_points, col
         const int integer_line_width = static_cast<int>(line_width);
         const float fractional_line_width = line_width - integer_line_width;
         const bool use_texture = (renderer_->flags().anti_aliased_lines_use_tex) &&
-            (integer_line_width < shared_data::kBakedLinesMaxWidth) &&
+            (integer_line_width < shared_data::k_baked_lines_max_width) &&
             (fractional_line_width <= 0.00001f) && (aa_scale == 1.0f);
         shared_data_->temp_buffer.clear();
         shared_data_->temp_buffer.reserve(num_points * ((use_texture || !thick_line) ? 3u : 5u));
@@ -1143,7 +1142,7 @@ void drawlist2d::add_line_multicolor(const point_3d& start_p, const point_3d& en
     const int integer_line_width = static_cast<int>(line_width);
     const float fractional_line_width = line_width - integer_line_width;
     const bool use_texture = (renderer_->flags().anti_aliased_lines_use_tex) &&
-        (integer_line_width < shared_data::kBakedLinesMaxWidth) &&
+        (integer_line_width < shared_data::k_baked_lines_max_width) &&
         (fractional_line_width <= 0.00001f) && (aa_scale == 1.0f);
     shared_data_->temp_buffer.clear();
     shared_data_->temp_buffer.reserve(2u * ((use_texture || !thick_line) ? 3u : 5u));

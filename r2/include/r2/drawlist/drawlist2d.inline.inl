@@ -8,18 +8,20 @@ r2_begin_
 
 inline void drawlist2d::prim_rect(const vec2& min, const vec2& max, color_u32 col)
 {
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
+    auto* idx = indices_.append(6u);
+    idx[0] = vertex_ptr_ + 0u;
+    idx[1] = vertex_ptr_ + 1u;
+    idx[2] = vertex_ptr_ + 2u;
+    idx[3] = vertex_ptr_ + 0u;
+    idx[4] = vertex_ptr_ + 2u;
+    idx[5] = vertex_ptr_ + 3u;
 
     const vec2& uv = shared_data_->uv_white_px;
-    vertices_.emplace_back(vec2{ min.x, min.y }, uv, col);
-    vertices_.emplace_back(vec2{ min.x, max.y }, uv, col);
-    vertices_.emplace_back(vec2{ max.x, max.y }, uv, col);
-    vertices_.emplace_back(vec2{ max.x, min.y }, uv, col);
+    auto* vtx = vertices_.append(4u);
+    vtx[0] = vertex(vec2{ min.x, min.y }, uv, col);
+    vtx[1] = vertex(vec2{ min.x, max.y }, uv, col);
+    vtx[2] = vertex(vec2{ max.x, max.y }, uv, col);
+    vtx[3] = vertex(vec2{ max.x, min.y }, uv, col);
 
     vertex_ptr_ += 4u;
 }
@@ -35,9 +37,9 @@ inline void drawlist2d::add_rect(const vec2& min, const vec2& max, color_u32 col
 
     path_rect(
         min + offset,
-        max - offset, 
-        rounding, 
-        flags, 
+        max - offset,
+        rounding,
+        flags,
         corner_step
     );
     path_stroke(col, line_width, true);
@@ -54,7 +56,7 @@ inline void drawlist2d::add_rect_inner(const vec2& min, const vec2& max, color_u
     path_rect(
         min + offset,
         max - offset,
-        rounding, 
+        rounding,
         flags,
         corner_step
     );
@@ -67,84 +69,102 @@ inline void drawlist2d::add_rect_inner_fast(const vec2& min, const vec2& max, co
         return;
 
     // top
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
-
     const auto& uv = shared_data_->uv_white_px;
 
-    vertices_.emplace_back(min, uv, col);
-    vertices_.emplace_back(min + vec2(line_width), uv, col);
-    vertices_.emplace_back(vec2(max.x - line_width, min.y + line_width), uv, col);
-    vertices_.emplace_back(vec2(max.x, min.y), uv, col);
+    {
+        auto* idx = indices_.append(6u);
+        idx[0] = vertex_ptr_ + 0u;
+        idx[1] = vertex_ptr_ + 1u;
+        idx[2] = vertex_ptr_ + 2u;
+        idx[3] = vertex_ptr_ + 0u;
+        idx[4] = vertex_ptr_ + 2u;
+        idx[5] = vertex_ptr_ + 3u;
+
+        auto* vtx = vertices_.append(4u);
+        vtx[0] = vertex(min, uv, col);
+        vtx[1] = vertex(min + vec2(line_width), uv, col);
+        vtx[2] = vertex(vec2(max.x - line_width, min.y + line_width), uv, col);
+        vtx[3] = vertex(vec2(max.x, min.y), uv, col);
+    }
 
     vertex_ptr_ += 4u;
 
-    // bottom
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
+    {
+        // bottom
+        auto* idx = indices_.append(6u);
+        idx[0] = vertex_ptr_ + 0u;
+        idx[1] = vertex_ptr_ + 1u;
+        idx[2] = vertex_ptr_ + 2u;
+        idx[3] = vertex_ptr_ + 0u;
+        idx[4] = vertex_ptr_ + 2u;
+        idx[5] = vertex_ptr_ + 3u;
 
-    vertices_.emplace_back(vec2(min.x, max.y), uv, col);
-    vertices_.emplace_back(max, uv, col);
-    vertices_.emplace_back(vec2(max.x - line_width, max.y - line_width), uv, col);
-    vertices_.emplace_back(vec2(min.x + line_width, max.y - line_width), uv, col);
+        auto* vtx = vertices_.append(4u);
+        vtx[0] = vertex(vec2(min.x, max.y), uv, col);
+        vtx[1] = vertex(max, uv, col);
+        vtx[2] = vertex(vec2(max.x - line_width, max.y - line_width), uv, col);
+        vtx[3] = vertex(vec2(min.x + line_width, max.y - line_width), uv, col);
 
-    vertex_ptr_ += 4u;
+        vertex_ptr_ += 4u;
+    }
 
-    // left
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
+    {
+        // left
+        auto* idx = indices_.append(6u);
+        idx[0] = vertex_ptr_ + 0u;
+        idx[1] = vertex_ptr_ + 1u;
+        idx[2] = vertex_ptr_ + 2u;
+        idx[3] = vertex_ptr_ + 0u;
+        idx[4] = vertex_ptr_ + 2u;
+        idx[5] = vertex_ptr_ + 3u;
 
-    vertices_.emplace_back(min, uv, col);
-    vertices_.emplace_back(vec2(min.x, max.y), uv, col);
-    vertices_.emplace_back(vec2(min.x + line_width, max.y - line_width), uv, col);
-    vertices_.emplace_back(vec2(min.x + line_width, min.y + line_width), uv, col);
+        auto* vtx = vertices_.append(4u);
+        vtx[0] = vertex(min, uv, col);
+        vtx[1] = vertex(vec2(min.x, max.y), uv, col);
+        vtx[2] = vertex(vec2(min.x + line_width, max.y - line_width), uv, col);
+        vtx[3] = vertex(vec2(min.x + line_width, min.y + line_width), uv, col);
 
-    vertex_ptr_ += 4u;
+        vertex_ptr_ += 4u;
+    }
 
-    // right
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
+    {
+        // right
+        auto* idx = indices_.append(6u);
+        idx[0] = vertex_ptr_ + 0u;
+        idx[1] = vertex_ptr_ + 1u;
+        idx[2] = vertex_ptr_ + 2u;
+        idx[3] = vertex_ptr_ + 0u;
+        idx[4] = vertex_ptr_ + 2u;
+        idx[5] = vertex_ptr_ + 3u;
 
-    vertices_.emplace_back(vec2(max.x, min.y), uv, col);
-    vertices_.emplace_back(vec2(max.x - line_width, min.y + line_width), uv, col);
-    vertices_.emplace_back(vec2(max.x - line_width, max.y - line_width), uv, col);
-    vertices_.emplace_back(max, uv, col);
+        auto* vtx = vertices_.append(4u);
+        vtx[0] = vertex(vec2(max.x, min.y), uv, col);
+        vtx[1] = vertex(vec2(max.x - line_width, min.y + line_width), uv, col);
+        vtx[2] = vertex(vec2(max.x - line_width, max.y - line_width), uv, col);
+        vtx[3] = vertex(max, uv, col);
 
-    vertex_ptr_ += 4u;
+        vertex_ptr_ += 4u;
+    }
 }
 
 inline void drawlist2d::add_rect_filled_multicolor(const vec2& min, const vec2& max,
                                                    color_u32 col_tl, color_u32 col_tr, color_u32 col_br, color_u32 col_bl)
 {
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
+    auto* idx = indices_.append(6u);
+    idx[0] = vertex_ptr_ + 0u;
+    idx[1] = vertex_ptr_ + 1u;
+    idx[2] = vertex_ptr_ + 2u;
+    idx[3] = vertex_ptr_ + 0u;
+    idx[4] = vertex_ptr_ + 2u;
+    idx[5] = vertex_ptr_ + 3u;
 
     const auto& uv = shared_data_->uv_white_px;
 
-    vertices_.emplace_back(min, uv, col_tl);
-    vertices_.emplace_back(vec2{ min.x, max.y }, uv, col_bl);
-    vertices_.emplace_back(max, uv, col_br);
-    vertices_.emplace_back(vec2{ max.x, min.y }, uv, col_tr);
+    auto* vtx = vertices_.append(4u);
+    vtx[0] = vertex(min, uv, col_tl);
+    vtx[1] = vertex(vec2{ min.x, max.y }, uv, col_bl);
+    vtx[2] = vertex(max, uv, col_br);
+    vtx[3] = vertex(vec2{ max.x, min.y }, uv, col_tr);
 
     vertex_ptr_ += 4u;
 }
@@ -204,17 +224,19 @@ inline void drawlist2d::add_rect_filled_faded(const vec2& min, const vec2& max, 
             }
 
             if (fade_end < max.x) {
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 1u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 3u);
+                auto* idx = indices_.append(6u);
+                idx[0] = vertex_ptr_ + 0u;
+                idx[1] = vertex_ptr_ + 1u;
+                idx[2] = vertex_ptr_ + 2u;
+                idx[3] = vertex_ptr_ + 0u;
+                idx[4] = vertex_ptr_ + 2u;
+                idx[5] = vertex_ptr_ + 3u;
 
-                vertices_.emplace_back(vec2{ fade_start, min.y }, uv, col);
-                vertices_.emplace_back(vec2{ fade_end, min.y }, uv, faded_col);
-                vertices_.emplace_back(vec2{ fade_end, max.y }, uv, faded_col);
-                vertices_.emplace_back(vec2{ fade_start, max.y }, uv, col);
+                auto* vtx = vertices_.append(4u);
+                vtx[0] = vertex(vec2{ fade_start, min.y }, uv, col);
+                vtx[1] = vertex(vec2{ fade_end, min.y }, uv, faded_col);
+                vtx[2] = vertex(vec2{ fade_end, max.y }, uv, faded_col);
+                vtx[3] = vertex(vec2{ fade_start, max.y }, uv, col);
 
                 vertex_ptr_ += 4u;
 
@@ -223,21 +245,23 @@ inline void drawlist2d::add_rect_filled_faded(const vec2& min, const vec2& max, 
                 }
             }
             else {
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 1u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 3u);
+                auto* idx = indices_.append(6u);
+                idx[0] = vertex_ptr_ + 0u;
+                idx[1] = vertex_ptr_ + 1u;
+                idx[2] = vertex_ptr_ + 2u;
+                idx[3] = vertex_ptr_ + 0u;
+                idx[4] = vertex_ptr_ + 2u;
+                idx[5] = vertex_ptr_ + 3u;
 
                 const float t = (max.x - fade_start) / delta;
                 const color_u32 interp_col =
                     color(col).interp(color(faded_col), t);
 
-                vertices_.emplace_back(vec2{ fade_start, min.y }, uv, col);
-                vertices_.emplace_back(vec2{ max.x, min.y }, uv, interp_col);
-                vertices_.emplace_back(vec2{ max.x, max.y }, uv, interp_col);
-                vertices_.emplace_back(vec2{ fade_start, max.y }, uv, col);
+                auto* vtx = vertices_.append(4u);
+                vtx[0] = vertex(vec2{ fade_start, min.y }, uv, col);
+                vtx[1] = vertex(vec2{ max.x, min.y }, uv, interp_col);
+                vtx[2] = vertex(vec2{ max.x, max.y }, uv, interp_col);
+                vtx[3] = vertex(vec2{ fade_start, max.y }, uv, col);
 
                 vertex_ptr_ += 4u;
             }
@@ -252,17 +276,19 @@ inline void drawlist2d::add_rect_filled_faded(const vec2& min, const vec2& max, 
             const color_u32 col_left = color(col).interp(color(faded_col), t_left);
 
             if (fade_end < max.x) {
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 1u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 3u);
+                auto* idx = indices_.append(6u);
+                idx[0] = vertex_ptr_ + 0u;
+                idx[1] = vertex_ptr_ + 1u;
+                idx[2] = vertex_ptr_ + 2u;
+                idx[3] = vertex_ptr_ + 0u;
+                idx[4] = vertex_ptr_ + 2u;
+                idx[5] = vertex_ptr_ + 3u;
 
-                vertices_.emplace_back(min, uv, col_left);
-                vertices_.emplace_back(vec2{ fade_end, min.y }, uv, faded_col);
-                vertices_.emplace_back(vec2{ fade_end, max.y }, uv, faded_col);
-                vertices_.emplace_back(vec2{ min.x, max.y }, uv, col_left);
+                auto* vtx = vertices_.append(4u);
+                vtx[0] = vertex(min, uv, col_left);
+                vtx[1] = vertex(vec2{ fade_end, min.y }, uv, faded_col);
+                vtx[2] = vertex(vec2{ fade_end, max.y }, uv, faded_col);
+                vtx[3] = vertex(vec2{ min.x, max.y }, uv, col_left);
 
                 vertex_ptr_ += 4u;
 
@@ -271,17 +297,19 @@ inline void drawlist2d::add_rect_filled_faded(const vec2& min, const vec2& max, 
             else {
                 const color_u32 col_right = color(col).interp(color(faded_col), t_right);
 
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 1u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 3u);
+                auto* idx = indices_.append(6u);
+                idx[0] = vertex_ptr_ + 0u;
+                idx[1] = vertex_ptr_ + 1u;
+                idx[2] = vertex_ptr_ + 2u;
+                idx[3] = vertex_ptr_ + 0u;
+                idx[4] = vertex_ptr_ + 2u;
+                idx[5] = vertex_ptr_ + 3u;
 
-                vertices_.emplace_back(min, uv, col_left);
-                vertices_.emplace_back(vec2{ max.x, min.y }, uv, col_right);
-                vertices_.emplace_back(vec2{ max.x, max.y }, uv, col_right);
-                vertices_.emplace_back(vec2{ min.x, max.y }, uv, col_left);
+                auto* vtx = vertices_.append(4u);
+                vtx[0] = vertex(min, uv, col_left);
+                vtx[1] = vertex(vec2{ max.x, min.y }, uv, col_right);
+                vtx[2] = vertex(vec2{ max.x, max.y }, uv, col_right);
+                vtx[3] = vertex(vec2{ min.x, max.y }, uv, col_left);
 
                 vertex_ptr_ += 4u;
             }
@@ -297,8 +325,8 @@ inline void drawlist2d::add_shadow_rect_filled(const vec2& min, const vec2& max,
 
     path_rect(min, max, rounding, flags, corner_step);
     add_shadow_convex(
-        path_.data(), 
-        static_cast<std::uint32_t>(path_.size()), 
+        path_.data(),
+        static_cast<std::uint32_t>(path_.size()),
         col,
         shadow_size,
         true
@@ -321,22 +349,24 @@ inline void drawlist2d::add_quad_filled(const vec2& p1, const vec2& p2, const ve
     path_fill_convex(col);
 }
 
-inline void drawlist2d::add_quad_filled_multicolor(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4, 
+inline void drawlist2d::add_quad_filled_multicolor(const vec2& p1, const vec2& p2, const vec2& p3, const vec2& p4,
                                                    color_u32 col1, color_u32 col2, color_u32 col3, color_u32 col4)
 {
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
+    auto* idx = indices_.append(6u);
+    idx[0] = vertex_ptr_ + 0u;
+    idx[1] = vertex_ptr_ + 1u;
+    idx[2] = vertex_ptr_ + 2u;
+    idx[3] = vertex_ptr_ + 0u;
+    idx[4] = vertex_ptr_ + 2u;
+    idx[5] = vertex_ptr_ + 3u;
 
     const auto& uv = shared_data_->uv_white_px;
 
-    vertices_.emplace_back(p1, uv, col1);
-    vertices_.emplace_back(p2, uv, col2);
-    vertices_.emplace_back(p3, uv, col3);
-    vertices_.emplace_back(p4, uv, col4);
+    auto* vtx = vertices_.append(4u);
+    vtx[0] = vertex(p1, uv, col1);
+    vtx[1] = vertex(p2, uv, col2);
+    vtx[2] = vertex(p3, uv, col3);
+    vtx[3] = vertex(p4, uv, col4);
 
     vertex_ptr_ += 4u;
 }
@@ -359,17 +389,19 @@ inline void drawlist2d::add_image(texture_handle texture, const vec2& min, const
 
     push_texture_id(texture);
 
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
+    auto* idx = indices_.append(6u);
+    idx[0] = vertex_ptr_ + 0u;
+    idx[1] = vertex_ptr_ + 1u;
+    idx[2] = vertex_ptr_ + 2u;
+    idx[3] = vertex_ptr_ + 0u;
+    idx[4] = vertex_ptr_ + 2u;
+    idx[5] = vertex_ptr_ + 3u;
 
-    vertices_.emplace_back(min, uv_min, col);
-    vertices_.emplace_back(vec2{ min.x, max.y }, vec2{ uv_min.x, uv_max.y }, col);
-    vertices_.emplace_back(max, uv_max, col);
-    vertices_.emplace_back(vec2{ max.x, min.y }, vec2{ uv_max.x, uv_min.y }, col);
+    auto* vtx = vertices_.append(4u);
+    vtx[0] = vertex(min, uv_min, col);
+    vtx[1] = vertex(vec2{ min.x, max.y }, vec2{ uv_min.x, uv_max.y }, col);
+    vtx[2] = vertex(max, uv_max, col);
+    vtx[3] = vertex(vec2{ max.x, min.y }, vec2{ uv_max.x, uv_min.y }, col);
 
     vertex_ptr_ += 4u;
 
@@ -385,79 +417,99 @@ inline void drawlist2d::add_image_outline(texture_handle texture, const vec2& mi
     push_texture_id(texture);
 
     // top
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
+    {
+        auto* idx = indices_.append(6u);
+        idx[0] = vertex_ptr_ + 0u;
+        idx[1] = vertex_ptr_ + 1u;
+        idx[2] = vertex_ptr_ + 2u;
+        idx[3] = vertex_ptr_ + 0u;
+        idx[4] = vertex_ptr_ + 2u;
+        idx[5] = vertex_ptr_ + 3u;
 
-    vertices_.emplace_back(vec2{ min.x, min.y - outline_size }, uv_min, outline_col);
-    vertices_.emplace_back(vec2{ min.x, max.y - outline_size }, vec2{ uv_min.x, uv_max.y }, outline_col);
-    vertices_.emplace_back(vec2{ max.x, max.y - outline_size }, uv_max, outline_col);
-    vertices_.emplace_back(vec2{ max.x, min.y - outline_size }, vec2{ uv_max.x, uv_min.y }, outline_col);
-
-    vertex_ptr_ += 4u;
-
-    // bottom
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
-
-    vertices_.emplace_back(vec2{ min.x, min.y + outline_size }, uv_min, outline_col);
-    vertices_.emplace_back(vec2{ min.x, max.y + outline_size }, vec2{ uv_min.x, uv_max.y }, outline_col);
-    vertices_.emplace_back(vec2{ max.x, max.y + outline_size }, uv_max, outline_col);
-    vertices_.emplace_back(vec2{ max.x, min.y + outline_size }, vec2{ uv_max.x, uv_min.y }, outline_col);
+        auto* vtx = vertices_.append(4u);
+        vtx[0] = vertex(vec2{ min.x, min.y - outline_size }, uv_min, outline_col);
+        vtx[1] = vertex(vec2{ min.x, max.y - outline_size }, vec2{ uv_min.x, uv_max.y }, outline_col);
+        vtx[2] = vertex(vec2{ max.x, max.y - outline_size }, uv_max, outline_col);
+        vtx[3] = vertex(vec2{ max.x, min.y - outline_size }, vec2{ uv_max.x, uv_min.y }, outline_col);
+    }
 
     vertex_ptr_ += 4u;
 
-    // left
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
+    {
+        // bottom
+        auto* idx = indices_.append(6u);
+        idx[0] = vertex_ptr_ + 0u;
+        idx[1] = vertex_ptr_ + 1u;
+        idx[2] = vertex_ptr_ + 2u;
+        idx[3] = vertex_ptr_ + 0u;
+        idx[4] = vertex_ptr_ + 2u;
+        idx[5] = vertex_ptr_ + 3u;
 
-    vertices_.emplace_back(vec2{ min.x - outline_size, min.y }, uv_min, outline_col);
-    vertices_.emplace_back(vec2{ min.x - outline_size, max.y }, vec2{ uv_min.x, uv_max.y }, outline_col);
-    vertices_.emplace_back(vec2{ max.x - outline_size, max.y }, uv_max, outline_col);
-    vertices_.emplace_back(vec2{ max.x - outline_size, min.y }, vec2{ uv_max.x, uv_min.y }, outline_col);
+        auto* vtx = vertices_.append(4u);
+        vtx[0] = vertex(vec2{ min.x, min.y + outline_size }, uv_min, outline_col);
+        vtx[1] = vertex(vec2{ min.x, max.y + outline_size }, vec2{ uv_min.x, uv_max.y }, outline_col);
+        vtx[2] = vertex(vec2{ max.x, max.y + outline_size }, uv_max, outline_col);
+        vtx[3] = vertex(vec2{ max.x, min.y + outline_size }, vec2{ uv_max.x, uv_min.y }, outline_col);
 
-    vertex_ptr_ += 4u;
+        vertex_ptr_ += 4u;
+    }
 
-    // right
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
+    {
+        // left
+        auto* idx = indices_.append(6u);
+        idx[0] = vertex_ptr_ + 0u;
+        idx[1] = vertex_ptr_ + 1u;
+        idx[2] = vertex_ptr_ + 2u;
+        idx[3] = vertex_ptr_ + 0u;
+        idx[4] = vertex_ptr_ + 2u;
+        idx[5] = vertex_ptr_ + 3u;
 
-    vertices_.emplace_back(vec2{ min.x + outline_size, min.y }, uv_min, outline_col);
-    vertices_.emplace_back(vec2{ min.x + outline_size, max.y }, vec2{ uv_min.x, uv_max.y }, outline_col);
-    vertices_.emplace_back(vec2{ max.x + outline_size, max.y }, uv_max, outline_col);
-    vertices_.emplace_back(vec2{ max.x + outline_size, min.y }, vec2{ uv_max.x, uv_min.y }, outline_col);
+        auto* vtx = vertices_.append(4u);
+        vtx[0] = vertex(vec2{ min.x - outline_size, min.y }, uv_min, outline_col);
+        vtx[1] = vertex(vec2{ min.x - outline_size, max.y }, vec2{ uv_min.x, uv_max.y }, outline_col);
+        vtx[2] = vertex(vec2{ max.x - outline_size, max.y }, uv_max, outline_col);
+        vtx[3] = vertex(vec2{ max.x - outline_size, min.y }, vec2{ uv_max.x, uv_min.y }, outline_col);
 
-    vertex_ptr_ += 4u;
+        vertex_ptr_ += 4u;
+    }
 
-    // main
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 1u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 0u);
-    indices_.emplace_back(vertex_ptr_ + 2u);
-    indices_.emplace_back(vertex_ptr_ + 3u);
+    {
+        // right
+        auto* idx = indices_.append(6u);
+        idx[0] = vertex_ptr_ + 0u;
+        idx[1] = vertex_ptr_ + 1u;
+        idx[2] = vertex_ptr_ + 2u;
+        idx[3] = vertex_ptr_ + 0u;
+        idx[4] = vertex_ptr_ + 2u;
+        idx[5] = vertex_ptr_ + 3u;
 
-    vertices_.emplace_back(min, uv_min, col);
-    vertices_.emplace_back(vec2{ min.x, max.y }, vec2{ uv_min.x, uv_max.y }, col);
-    vertices_.emplace_back(max, uv_max, col);
-    vertices_.emplace_back(vec2{ max.x, min.y }, vec2{ uv_max.x, uv_min.y }, col);
+        auto* vtx = vertices_.append(4u);
+        vtx[0] = vertex(vec2{ min.x + outline_size, min.y }, uv_min, outline_col);
+        vtx[1] = vertex(vec2{ min.x + outline_size, max.y }, vec2{ uv_min.x, uv_max.y }, outline_col);
+        vtx[2] = vertex(vec2{ max.x + outline_size, max.y }, uv_max, outline_col);
+        vtx[3] = vertex(vec2{ max.x + outline_size, min.y }, vec2{ uv_max.x, uv_min.y }, outline_col);
 
-    vertex_ptr_ += 4u;
+        vertex_ptr_ += 4u;
+    }
+
+    {
+        // main
+        auto* idx = indices_.append(6u);
+        idx[0] = vertex_ptr_ + 0u;
+        idx[1] = vertex_ptr_ + 1u;
+        idx[2] = vertex_ptr_ + 2u;
+        idx[3] = vertex_ptr_ + 0u;
+        idx[4] = vertex_ptr_ + 2u;
+        idx[5] = vertex_ptr_ + 3u;
+
+        auto* vtx = vertices_.append(4u);
+        vtx[0] = vertex(min, uv_min, col);
+        vtx[1] = vertex(vec2{ min.x, max.y }, vec2{ uv_min.x, uv_max.y }, col);
+        vtx[2] = vertex(max, uv_max, col);
+        vtx[3] = vertex(vec2{ max.x, min.y }, vec2{ uv_max.x, uv_min.y }, col);
+
+        vertex_ptr_ += 4u;
+    }
 
     pop_texture_id();
 }
@@ -510,7 +562,7 @@ inline void drawlist2d::shade_vertices_uv(std::uint32_t vtx_start, std::uint32_t
     }
 }
 
-inline void drawlist2d::shade_vertices_col(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
+inline void drawlist2d::shade_vertices_col(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max,
                                            const color& col_tl, const color& col_tr, const color& col_br, const color& col_bl)
 {
     assert(vtx_start <= vtx_end);
@@ -538,7 +590,7 @@ inline void drawlist2d::shade_vertices_col(std::uint32_t vtx_start, std::uint32_
     }
 }
 
-inline void drawlist2d::shade_vertices_depth(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max, 
+inline void drawlist2d::shade_vertices_depth(std::uint32_t vtx_start, std::uint32_t vtx_end, const vec2& min, const vec2& max,
                                              float depth_tl, float depth_tr, float depth_br, float depth_bl)
 {
     assert(vtx_start <= vtx_end);
@@ -719,7 +771,7 @@ inline void drawlist2d::path_fill_convex(color_u32 col)
     }
 
     add_convex_filled(
-        path_.data(), 
+        path_.data(),
         static_cast<std::uint32_t>(path_.size()),
         col
     );
@@ -794,17 +846,19 @@ inline void drawlist2d::add_text(const vec2& pos, color_u32 col, const String& t
                 x1 >= header_.clip_rect.left &&
                 y0 <= header_.clip_rect.bottom &&
                 y1 >= header_.clip_rect.top) {
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 1u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 3u);
+                auto* idx = indices_.append(6u);
+                idx[0] = vertex_ptr_ + 0u;
+                idx[1] = vertex_ptr_ + 1u;
+                idx[2] = vertex_ptr_ + 2u;
+                idx[3] = vertex_ptr_ + 0u;
+                idx[4] = vertex_ptr_ + 2u;
+                idx[5] = vertex_ptr_ + 3u;
 
-                vertices_.emplace_back(vec2{ x0, y0 }, glyph->uv_min, col);
-                vertices_.emplace_back(vec2{ x0, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, col);
-                vertices_.emplace_back(vec2{ x1, y1 }, glyph->uv_max, col);
-                vertices_.emplace_back(vec2{ x1, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, col);
+                auto* vtx = vertices_.append(4u);
+                vtx[0] = vertex(vec2{ x0, y0 }, glyph->uv_min, col);
+                vtx[1] = vertex(vec2{ x0, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, col);
+                vtx[2] = vertex(vec2{ x1, y1 }, glyph->uv_max, col);
+                vtx[3] = vertex(vec2{ x1, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, col);
 
                 vertex_ptr_ += 4u;
             }
@@ -905,17 +959,19 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                             mid_left_pos = x0 + (x1 - x0) * d;
 
                             if (draw_no_fade) {
-                                indices_.emplace_back(vertex_ptr_ + 0u);
-                                indices_.emplace_back(vertex_ptr_ + 1u);
-                                indices_.emplace_back(vertex_ptr_ + 2u);
-                                indices_.emplace_back(vertex_ptr_ + 0u);
-                                indices_.emplace_back(vertex_ptr_ + 2u);
-                                indices_.emplace_back(vertex_ptr_ + 3u);
+                                auto* idx = indices_.append(6u);
+                                idx[0] = vertex_ptr_ + 0u;
+                                idx[1] = vertex_ptr_ + 1u;
+                                idx[2] = vertex_ptr_ + 2u;
+                                idx[3] = vertex_ptr_ + 0u;
+                                idx[4] = vertex_ptr_ + 2u;
+                                idx[5] = vertex_ptr_ + 3u;
 
-                                vertices_.emplace_back(vec2{ x0, y0 }, vec2{ uv_min.x, uv_min.y }, col);
-                                vertices_.emplace_back(vec2{ x0, y1 }, vec2{ uv_min.x, uv_max.y }, col);
-                                vertices_.emplace_back(vec2{ mid_left_pos, y1 }, vec2{ mid_left, uv_max.y }, col);
-                                vertices_.emplace_back(vec2{ mid_left_pos, y0 }, vec2{ mid_left, uv_min.y }, col);
+                                auto* vtx = vertices_.append(4u);
+                                vtx[0] = vertex(vec2{ x0, y0 }, vec2{ uv_min.x, uv_min.y }, col);
+                                vtx[1] = vertex(vec2{ x0, y1 }, vec2{ uv_min.x, uv_max.y }, col);
+                                vtx[2] = vertex(vec2{ mid_left_pos, y1 }, vec2{ mid_left, uv_max.y }, col);
+                                vtx[3] = vertex(vec2{ mid_left_pos, y0 }, vec2{ mid_left, uv_min.y }, col);
 
                                 vertex_ptr_ += 4u;
                             }
@@ -928,17 +984,19 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                             mid_right = uv_min.x + (uv_max.x - uv_min.x) * d;
                             mid_right_pos = x0 + (x1 - x0) * d;
                             if (draw_if_faded) {
-                                indices_.emplace_back(vertex_ptr_ + 0u);
-                                indices_.emplace_back(vertex_ptr_ + 1u);
-                                indices_.emplace_back(vertex_ptr_ + 2u);
-                                indices_.emplace_back(vertex_ptr_ + 0u);
-                                indices_.emplace_back(vertex_ptr_ + 2u);
-                                indices_.emplace_back(vertex_ptr_ + 3u);
+                                auto* idx = indices_.append(6u);
+                                idx[0] = vertex_ptr_ + 0u;
+                                idx[1] = vertex_ptr_ + 1u;
+                                idx[2] = vertex_ptr_ + 2u;
+                                idx[3] = vertex_ptr_ + 0u;
+                                idx[4] = vertex_ptr_ + 2u;
+                                idx[5] = vertex_ptr_ + 3u;
 
-                                vertices_.emplace_back(vec2{ mid_right_pos, y0 }, vec2{ mid_right, uv_min.y }, faded_col);
-                                vertices_.emplace_back(vec2{ mid_right_pos, y1 }, vec2{ mid_right, uv_max.y }, faded_col);
-                                vertices_.emplace_back(vec2{ x1, y1 }, vec2{ uv_max.x, uv_max.y }, faded_col);
-                                vertices_.emplace_back(vec2{ x1, y0 }, vec2{ uv_max.x, uv_min.y }, faded_col);
+                                auto* vtx = vertices_.append(4u);
+                                vtx[0] = vertex(vec2{ mid_right_pos, y0 }, vec2{ mid_right, uv_min.y }, faded_col);
+                                vtx[1] = vertex(vec2{ mid_right_pos, y1 }, vec2{ mid_right, uv_max.y }, faded_col);
+                                vtx[2] = vertex(vec2{ x1, y1 }, vec2{ uv_max.x, uv_max.y }, faded_col);
+                                vtx[3] = vertex(vec2{ x1, y0 }, vec2{ uv_max.x, uv_min.y }, faded_col);
 
                                 vertex_ptr_ += 4u;
                             }
@@ -966,17 +1024,19 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                         const float mid_uv = uv_min.x + (uv_max.x - uv_min.x) * d;
 
                         if (draw_no_fade) {
-                            indices_.emplace_back(vertex_ptr_ + 0u);
-                            indices_.emplace_back(vertex_ptr_ + 1u);
-                            indices_.emplace_back(vertex_ptr_ + 2u);
-                            indices_.emplace_back(vertex_ptr_ + 0u);
-                            indices_.emplace_back(vertex_ptr_ + 2u);
-                            indices_.emplace_back(vertex_ptr_ + 3u);
+                            auto* idx = indices_.append(6u);
+                            idx[0] = vertex_ptr_ + 0u;
+                            idx[1] = vertex_ptr_ + 1u;
+                            idx[2] = vertex_ptr_ + 2u;
+                            idx[3] = vertex_ptr_ + 0u;
+                            idx[4] = vertex_ptr_ + 2u;
+                            idx[5] = vertex_ptr_ + 3u;
 
-                            vertices_.emplace_back(vec2{ x0, y0 }, vec2{ uv_min.x, uv_min.y }, col);
-                            vertices_.emplace_back(vec2{ x0, y1 }, vec2{ uv_min.x, uv_max.y }, col);
-                            vertices_.emplace_back(vec2{ mid_pos, y1 }, vec2{ mid_uv, uv_max.y }, col);
-                            vertices_.emplace_back(vec2{ mid_pos, y0 }, vec2{ mid_uv, uv_min.y }, col);
+                            auto* vtx = vertices_.append(4u);
+                            vtx[0] = vertex(vec2{ x0, y0 }, vec2{ uv_min.x, uv_min.y }, col);
+                            vtx[1] = vertex(vec2{ x0, y1 }, vec2{ uv_min.x, uv_max.y }, col);
+                            vtx[2] = vertex(vec2{ mid_pos, y1 }, vec2{ mid_uv, uv_max.y }, col);
+                            vtx[3] = vertex(vec2{ mid_pos, y0 }, vec2{ mid_uv, uv_min.y }, col);
 
                             vertex_ptr_ += 4u;
                         }
@@ -990,17 +1050,19 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                 }
 
                 // middle/main quad
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 1u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
-                indices_.emplace_back(vertex_ptr_ + 3u);
+                auto* idx = indices_.append(6u);
+                idx[0] = vertex_ptr_ + 0u;
+                idx[1] = vertex_ptr_ + 1u;
+                idx[2] = vertex_ptr_ + 2u;
+                idx[3] = vertex_ptr_ + 0u;
+                idx[4] = vertex_ptr_ + 2u;
+                idx[5] = vertex_ptr_ + 3u;
 
-                vertices_.emplace_back(vec2{ mid_left_pos,  y0 }, vec2{ mid_left,  uv_min.y }, c_left);
-                vertices_.emplace_back(vec2{ mid_left_pos,  y1 }, vec2{ mid_left,  uv_max.y }, c_left);
-                vertices_.emplace_back(vec2{ mid_right_pos, y1 }, vec2{ mid_right, uv_max.y }, c_right);
-                vertices_.emplace_back(vec2{ mid_right_pos, y0 }, vec2{ mid_right, uv_min.y }, c_right);
+                auto* vtx = vertices_.append(4u);
+                vtx[0] = vertex(vec2{ mid_left_pos,  y0 }, vec2{ mid_left,  uv_min.y }, c_left);
+                vtx[1] = vertex(vec2{ mid_left_pos,  y1 }, vec2{ mid_left,  uv_max.y }, c_left);
+                vtx[2] = vertex(vec2{ mid_right_pos, y1 }, vec2{ mid_right, uv_max.y }, c_right);
+                vtx[3] = vertex(vec2{ mid_right_pos, y0 }, vec2{ mid_right, uv_min.y }, c_right);
 
                 vertex_ptr_ += 4u;
             }
@@ -1066,78 +1128,94 @@ inline void drawlist2d::add_text_outlined(const vec2& pos, color_u32 col, const 
 
                 if (draw_outline) {
                     // left
-                    indices_.emplace_back(vertex_ptr_ + 0u);
-                    indices_.emplace_back(vertex_ptr_ + 1u);
-                    indices_.emplace_back(vertex_ptr_ + 2u);
-                    indices_.emplace_back(vertex_ptr_ + 0u);
-                    indices_.emplace_back(vertex_ptr_ + 2u);
-                    indices_.emplace_back(vertex_ptr_ + 3u);
+                    auto* idx = indices_.append(6u);
+                    idx[0] = vertex_ptr_ + 0u;
+                    idx[1] = vertex_ptr_ + 1u;
+                    idx[2] = vertex_ptr_ + 2u;
+                    idx[3] = vertex_ptr_ + 0u;
+                    idx[4] = vertex_ptr_ + 2u;
+                    idx[5] = vertex_ptr_ + 3u;
 
-                    vertices_.emplace_back(vec2{ x0 - outline_width, y0 }, glyph->uv_min, outline_col);
-                    vertices_.emplace_back(vec2{ x0 - outline_width, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
-                    vertices_.emplace_back(vec2{ x1 - outline_width, y1 }, glyph->uv_max, outline_col);
-                    vertices_.emplace_back(vec2{ x1 - outline_width, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
-
-                    vertex_ptr_ += 4u;
-
-                    // right
-                    indices_.emplace_back(vertex_ptr_ + 0u);
-                    indices_.emplace_back(vertex_ptr_ + 1u);
-                    indices_.emplace_back(vertex_ptr_ + 2u);
-                    indices_.emplace_back(vertex_ptr_ + 0u);
-                    indices_.emplace_back(vertex_ptr_ + 2u);
-                    indices_.emplace_back(vertex_ptr_ + 3u);
-
-                    vertices_.emplace_back(vec2{ x0 + outline_width, y0 }, glyph->uv_min, outline_col);
-                    vertices_.emplace_back(vec2{ x0 + outline_width, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
-                    vertices_.emplace_back(vec2{ x1 + outline_width, y1 }, glyph->uv_max, outline_col);
-                    vertices_.emplace_back(vec2{ x1 + outline_width, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
+                    auto* vtx = vertices_.append(4u);
+                    vtx[0] = vertex(vec2{ x0 - outline_width, y0 }, glyph->uv_min, outline_col);
+                    vtx[1] = vertex(vec2{ x0 - outline_width, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
+                    vtx[2] = vertex(vec2{ x1 - outline_width, y1 }, glyph->uv_max, outline_col);
+                    vtx[3] = vertex(vec2{ x1 - outline_width, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
 
                     vertex_ptr_ += 4u;
 
-                    // top
-                    indices_.emplace_back(vertex_ptr_ + 0u);
-                    indices_.emplace_back(vertex_ptr_ + 1u);
-                    indices_.emplace_back(vertex_ptr_ + 2u);
-                    indices_.emplace_back(vertex_ptr_ + 0u);
-                    indices_.emplace_back(vertex_ptr_ + 2u);
-                    indices_.emplace_back(vertex_ptr_ + 3u);
+                    {
+                        // right
+                        auto* idx = indices_.append(6u);
+                        idx[0] = vertex_ptr_ + 0u;
+                        idx[1] = vertex_ptr_ + 1u;
+                        idx[2] = vertex_ptr_ + 2u;
+                        idx[3] = vertex_ptr_ + 0u;
+                        idx[4] = vertex_ptr_ + 2u;
+                        idx[5] = vertex_ptr_ + 3u;
 
-                    vertices_.emplace_back(vec2{ x0, y0 - outline_width }, glyph->uv_min, outline_col);
-                    vertices_.emplace_back(vec2{ x0, y1 - outline_width }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
-                    vertices_.emplace_back(vec2{ x1, y1 - outline_width }, glyph->uv_max, outline_col);
-                    vertices_.emplace_back(vec2{ x1, y0 - outline_width }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
+                        auto* vtx = vertices_.append(4u);
+                        vtx[0] = vertex(vec2{ x0 + outline_width, y0 }, glyph->uv_min, outline_col);
+                        vtx[1] = vertex(vec2{ x0 + outline_width, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
+                        vtx[2] = vertex(vec2{ x1 + outline_width, y1 }, glyph->uv_max, outline_col);
+                        vtx[3] = vertex(vec2{ x1 + outline_width, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
 
-                    vertex_ptr_ += 4u;
+                        vertex_ptr_ += 4u;
+                    }
 
-                    // bottom
-                    indices_.emplace_back(vertex_ptr_ + 0u);
-                    indices_.emplace_back(vertex_ptr_ + 1u);
-                    indices_.emplace_back(vertex_ptr_ + 2u);
-                    indices_.emplace_back(vertex_ptr_ + 0u);
-                    indices_.emplace_back(vertex_ptr_ + 2u);
-                    indices_.emplace_back(vertex_ptr_ + 3u);
+                    {
+                        // top
+                        auto* idx = indices_.append(6u);
+                        idx[0] = vertex_ptr_ + 0u;
+                        idx[1] = vertex_ptr_ + 1u;
+                        idx[2] = vertex_ptr_ + 2u;
+                        idx[3] = vertex_ptr_ + 0u;
+                        idx[4] = vertex_ptr_ + 2u;
+                        idx[5] = vertex_ptr_ + 3u;
 
-                    vertices_.emplace_back(vec2{ x0, y0 + outline_width }, glyph->uv_min, outline_col);
-                    vertices_.emplace_back(vec2{ x0, y1 + outline_width }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
-                    vertices_.emplace_back(vec2{ x1, y1 + outline_width }, glyph->uv_max, outline_col);
-                    vertices_.emplace_back(vec2{ x1, y0 + outline_width }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
+                        auto* vtx = vertices_.append(4u);
+                        vtx[0] = vertex(vec2{ x0, y0 - outline_width }, glyph->uv_min, outline_col);
+                        vtx[1] = vertex(vec2{ x0, y1 - outline_width }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
+                        vtx[2] = vertex(vec2{ x1, y1 - outline_width }, glyph->uv_max, outline_col);
+                        vtx[3] = vertex(vec2{ x1, y0 - outline_width }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
 
-                    vertex_ptr_ += 4u;
+                        vertex_ptr_ += 4u;
+                    }
+
+                    {
+                        // bottom
+                        auto* idx = indices_.append(6u);
+                        idx[0] = vertex_ptr_ + 0u;
+                        idx[1] = vertex_ptr_ + 1u;
+                        idx[2] = vertex_ptr_ + 2u;
+                        idx[3] = vertex_ptr_ + 0u;
+                        idx[4] = vertex_ptr_ + 2u;
+                        idx[5] = vertex_ptr_ + 3u;
+
+                        auto* vtx = vertices_.append(4u);
+                        vtx[0] = vertex(vec2{ x0, y0 + outline_width }, glyph->uv_min, outline_col);
+                        vtx[1] = vertex(vec2{ x0, y1 + outline_width }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
+                        vtx[2] = vertex(vec2{ x1, y1 + outline_width }, glyph->uv_max, outline_col);
+                        vtx[3] = vertex(vec2{ x1, y0 + outline_width }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
+
+                        vertex_ptr_ += 4u;
+                    }
                 }
 
                 if (draw_no_outline) {
-                    indices_.emplace_back(vertex_ptr_ + 0u);
-                    indices_.emplace_back(vertex_ptr_ + 1u);
-                    indices_.emplace_back(vertex_ptr_ + 2u);
-                    indices_.emplace_back(vertex_ptr_ + 0u);
-                    indices_.emplace_back(vertex_ptr_ + 2u);
-                    indices_.emplace_back(vertex_ptr_ + 3u);
+                    auto* idx = indices_.append(6u);
+                    idx[0] = vertex_ptr_ + 0u;
+                    idx[1] = vertex_ptr_ + 1u;
+                    idx[2] = vertex_ptr_ + 2u;
+                    idx[3] = vertex_ptr_ + 0u;
+                    idx[4] = vertex_ptr_ + 2u;
+                    idx[5] = vertex_ptr_ + 3u;
 
-                    vertices_.emplace_back(vec2{ x0, y0 }, glyph->uv_min, col);
-                    vertices_.emplace_back(vec2{ x0, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, col);
-                    vertices_.emplace_back(vec2{ x1, y1 }, glyph->uv_max, col);
-                    vertices_.emplace_back(vec2{ x1, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, col);
+                    auto* vtx = vertices_.append(4u);
+                    vtx[0] = vertex(vec2{ x0, y0 }, glyph->uv_min, col);
+                    vtx[1] = vertex(vec2{ x0, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, col);
+                    vtx[2] = vertex(vec2{ x1, y1 }, glyph->uv_max, col);
+                    vtx[3] = vertex(vec2{ x1, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, col);
 
                     vertex_ptr_ += 4u;
                 }

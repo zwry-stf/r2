@@ -21,13 +21,9 @@ renderer::~renderer()
 
 error renderer::init(const platform_init_data& pinit, const backend_init_data& binit)
 {
-    context_ = r2::context::make_context(pinit, binit, true);
-    if (context_->has_error()) {
-        return error(
-            error_code::context_initialization,
-            context_->get_error(),
-            context_->get_detail()
-        );
+    if (auto res = renderer_base::init(pinit, binit);
+        res != error(error_code::none)) {
+        return res;
     }
 
     return do_init();
@@ -35,9 +31,10 @@ error renderer::init(const platform_init_data& pinit, const backend_init_data& b
 
 error renderer::init(r2::context* ctx)
 {
-    assert(ctx != nullptr);
-
-    context_.reset(ctx);
+    if (auto res = renderer_base::init(ctx);
+        res != error(error_code::none)) {
+        return res;
+    }
 
     return do_init();
 }
@@ -127,41 +124,6 @@ bool renderer::build_fonts()
     return true;
 }
 
-bool renderer::create_font_texture()
-{
-    assert(font_atlas_->get_width() > 0 &&
-           font_atlas_->get_height() > 0);
-    assert(font_atlas_->get_width() * font_atlas_->get_height() == 
-           font_atlas_->get_data32().size());
-
-    texture_desc d{};
-    d.width = font_atlas_->get_width();
-    d.height = font_atlas_->get_height();
-    d.usage = texture_usage::shader_resource;
-    d.format = texture_format::rgba8_unorm;
-
-    render_data_->font_texture = context_->create_texture2d(
-        d, 
-        font_atlas_->get_data32().data()
-    );
-    if (render_data_->font_texture->has_error()) {
-        return false;
-    }
-
-    textureview_desc vd{};
-    render_data_->font_view = context_->create_textureview(
-        render_data_->font_texture.get(),
-        vd
-    );
-    if (render_data_->font_view->has_error()) {
-        return false;
-    }
-
-    font_atlas_->get_data32().clear();
-
-    return true;
-}
-
 void renderer::pre_resize()
 {
     assert(is_initialized());
@@ -206,11 +168,6 @@ bool renderer::update_display_size()
     return true;
 }
 
-void renderer::set_flags(renderer_flags f)
-{
-    flags_ = f;
-}
-
 font* renderer::add_font(const font_cfg& cfg)
 {
 #if defined(_DEBUG)
@@ -241,25 +198,29 @@ void renderer::remove_font(font* font)
     }
 }
 
-bool renderer::is_initialized()
-{
-    return is_initialized_;
-}
-
-void renderer::update_fonts_on_frame()
+bool renderer::update_fonts_on_frame()
 {
 #if defined(_DEBUG)
     assert_render_thread();
 #endif
     assert(render_data_);
-    assert(render_data_->font_texture);
-
-    atlas_update_queued_ = false;
 
     std::lock_guard<std::mutex> lock(font_mutex_);
     for (auto& font : fonts_) {
         font->update_on_render();
     }
+
+    if (font_atlas_->is_resize_queued()) {
+        for (auto& font : fonts_) {
+            font->update_uvs();
+        }
+    }
+
+    if (!font_atlas_->update_resize()) {
+        return false;
+    }
+
+    return true;
 }
 
 void renderer::setup_render_state()
@@ -295,7 +256,7 @@ void renderer::restore_render_state()
     context_->restore_render_state();
 }
 
-void renderer::render(const drawlist_base& list)
+bool renderer::render(const drawlist_base& list)
 {
 #if defined(_DEBUG)
     assert_render_thread();
@@ -304,57 +265,74 @@ void renderer::render(const drawlist_base& list)
     assert(list.texture_stack_.size() == 1u);
     assert(list.font_stack_.size() == 1u);
 
-    if (list.indices_.empty())
-        return;
+    if (list.indices_.empty()) {
+        return true;
+    }
 
     // update buffers
-    ensure_capacity(
+    if (!ensure_capacity(
         static_cast<std::uint32_t>(list.indices_.size()),
         static_cast<std::uint32_t>(list.vertices_.size())
-    );
+    )) [[unlikely]] {
+        return false;
+    }
 
     render_data_->index_buffer->update(
         list.indices_.data(),
         list.indices_.size() * sizeof(index)
     );
-    assert(!render_data_->index_buffer->has_error());
+    if (render_data_->index_buffer->has_error()) [[unlikely]] {
+        return false;
+    }
 
     render_data_->vertex_buffer->update(
         list.vertices_.data(),
         list.vertices_.size() * sizeof(vertex)
     );
-    assert(!render_data_->vertex_buffer->has_error());
+    if (render_data_->vertex_buffer->has_error()) [[unlikely]] {
+        return false;
+    }
 
     // draw
     context_->set_vertex_buffer(render_data_->vertex_buffer.get());
     context_->set_index_buffer(render_data_->index_buffer.get());
 
+    rect last_rect{ -1, -1, -1, -1 };
+    texture_handle last_texture{ nullptr };
     for (std::size_t i = 0u; i < list.cmds_.size(); i++) {
         const auto& cmd = list.cmds_[i];
         assert(cmd.texture != nullptr);
 
         if (cmd.clip_rect.left >= cmd.clip_rect.right ||
-            cmd.clip_rect.top >= cmd.clip_rect.bottom) [[unlikely]]
+            cmd.clip_rect.top >= cmd.clip_rect.bottom) [[unlikely]] {
             continue;
+        }
 
         const bool end = i == list.cmds_.size() - 1;
         const std::uint32_t index_end = end ?
             static_cast<std::uint32_t>(list.indices_.size()) : list.cmds_[i + 1].index_start;
         assert(index_end >= cmd.index_start);
         const std::uint32_t count = index_end - cmd.index_start;
-        if (count == 0u)
+        if (count == 0u) {
             continue;
+        }
 
         assert(count % 3 == 0);
 
         // bind + draw
-        context_->set_scissor_rect(cmd.clip_rect);
+        if (cmd.clip_rect != last_rect) {
+            context_->set_scissor_rect(cmd.clip_rect);
+            last_rect = cmd.clip_rect;
+        }
 
-        context_->set_texture_native(
-            cmd.texture,
-            shader_bind_type::ps, 
-            0u
-        );
+        if (cmd.texture != last_texture) {
+            context_->set_texture_native(
+                cmd.texture,
+                shader_bind_type::ps,
+                0u
+            );
+            last_texture = cmd.texture;
+        }
 
         context_->draw_indexed(
             count,
@@ -362,6 +340,8 @@ void renderer::render(const drawlist_base& list)
             cmd.vertex_start
         );
     }
+
+    return true;
 }
 
 void renderer::set_multisampled(bool multisample)
@@ -565,14 +545,19 @@ error renderer::create_resources()
     return error(error_code::none);
 }
 
-void renderer::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_vertices)
+bool renderer::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_vertices)
 {
     if (render_data_->index_count < num_indices ||
         !render_data_->index_buffer) {
         render_data_->index_buffer.reset();
 
-        std::uint32_t count = num_indices > render_data_->index_count ?
-            num_indices : render_data_->index_count;
+        constexpr std::uint32_t k_min_indices = 1000;
+        const auto count = std::max(
+            std::max(num_indices, render_data_->index_count),
+            k_min_indices
+        );
+
+        render_data_->index_count = count;
 
         buffer_desc d{};
         d.usage = buffer_usage::index;
@@ -582,15 +567,22 @@ void renderer::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_vert
             index_buffer_type::u32 : index_buffer_type::u16;
 
         render_data_->index_buffer = context_->create_buffer(d);
-        assert(!render_data_->index_buffer->has_error());
+        if (render_data_->index_buffer->has_error()) [[unlikely]] {
+            return false;
+        }
     }
 
     if (render_data_->vertex_count < num_vertices ||
         !render_data_->vertex_buffer) {
         render_data_->vertex_buffer.reset();
 
-        std::uint32_t count = num_vertices > render_data_->vertex_count ?
-            num_vertices : render_data_->vertex_count;
+        constexpr std::uint32_t k_min_vertices = 1000;
+        const auto count = std::max(
+            std::max(num_vertices, render_data_->vertex_count),
+            k_min_vertices
+        );
+
+        render_data_->vertex_count = count;
 
         buffer_desc d{};
         d.usage = buffer_usage::vertex;
@@ -599,11 +591,17 @@ void renderer::ensure_capacity(std::uint32_t num_indices, std::uint32_t num_vert
         d.vb_stride = sizeof(vertex);
 
         render_data_->vertex_buffer = context_->create_buffer(d);
-        assert(!render_data_->vertex_buffer->has_error());
+        if (render_data_->vertex_buffer->has_error()) [[unlikely]] {
+            return false;
+        }
 
         render_data_->input_layout->link(render_data_->vertex_buffer.get());
-        assert(!render_data_->input_layout->has_error());
+        if (render_data_->input_layout->has_error()) [[unlikely]] {
+            return false;
+        }
     }
+
+    return true;
 }
 
 void renderer::font_update_thread()

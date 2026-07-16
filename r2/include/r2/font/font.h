@@ -31,11 +31,11 @@ struct pending_glyph {
 };
 
 struct glyph_lookup_data {
-    inline static constexpr std::uint32_t kInvalidIndex = static_cast<std::uint32_t>(-1) & ~((1 << 30) | (1 << 31));
+    inline static constexpr std::uint32_t k_invalid_index = static_cast<std::uint32_t>(-1) & ~((1 << 30) | (1 << 31));
 
     std::uint32_t supported : 1 { 0u };
     std::uint32_t loading : 1 { 0u };
-    std::uint32_t index : 30 { kInvalidIndex };
+    std::uint32_t index : 30 { k_invalid_index };
 };
 
 struct font_range {
@@ -63,7 +63,7 @@ private:
     std::vector<font_data> fonts_;
     bool is_destroyed_{ false };
 
-    std::uint32_t fallback_glyph_{ glyph_lookup_data::kInvalidIndex };
+    std::uint32_t fallback_glyph_{ glyph_lookup_data::k_invalid_index };
 
     // 
     std::vector<font_glyph> glyphs_;
@@ -103,6 +103,7 @@ public:
     }
 
     void update_on_render();
+    void update_uvs();
     void update_worker();
     bool build(bool initial_build = false);
     void destroy();

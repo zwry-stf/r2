@@ -18,9 +18,6 @@ font::font(font_atlas* atlas, const font_cfg& cfg)
 font::~font() {
 }
 
-constexpr wchar kDefaultGlyphsStart = 0x20u;
-constexpr wchar kDefaultGlyphsEnd = 0x7E;
-
 void font::update_on_render()
 {
     frame_start_ += 1u;
@@ -43,9 +40,9 @@ void font::update_on_render()
     }
 
     // clean unused rects
-    constexpr auto kCleanupTime = std::chrono::seconds{ 20 };
+    constexpr auto k_cleanup_time = std::chrono::seconds{ 20 };
     const auto now = std::chrono::steady_clock::now();
-    if (now - last_cleanup_ > kCleanupTime) {
+    if (now - last_cleanup_ > k_cleanup_time) {
         constexpr std::uint64_t kRemoveAge = 100000u;
 
         for (std::uint32_t idx = 0u; idx < glyphs_.size(); ++idx) {
@@ -60,15 +57,10 @@ void font::update_on_render()
 
             if (frame_start_ > g.last_access &&
                 frame_start_ - g.last_access > kRemoveAge) {
-                if (g.codepoint > kDefaultGlyphsStart &&
-                    g.codepoint <= kDefaultGlyphsEnd) {
-                    continue;
-                }
-
                 atlas_->remove_rect(g.rect_id);
 
                 auto& e = g.blurred ? glyph_lookup_blurred_[g.codepoint] : glyph_lookup_[g.codepoint];
-                e.index = glyph_lookup_data::kInvalidIndex;
+                e.index = glyph_lookup_data::k_invalid_index;
                 e.loading = 0u;
 
                 g.visible = false;
@@ -77,6 +69,21 @@ void font::update_on_render()
         }
 
         last_cleanup_ = now;
+    }
+}
+
+void font::update_uvs()
+{
+    const auto m = vec2(1.f) / vec2(
+        static_cast<float>(atlas_->get_width()),
+        static_cast<float>(atlas_->get_height())
+    );
+    for (auto& g : glyphs_) {
+        if (!g.visible) {
+            continue;
+        }
+
+        atlas_->get_rect_uv(g.rect_id, g.uv_min, g.uv_max);
     }
 }
 
@@ -123,14 +130,18 @@ bool font::build(bool initial_build)
         build_weights();
     }
 
-    for (wchar i = kDefaultGlyphsStart; i <= kDefaultGlyphsEnd; i++) {
-        auto ret = rasterize_glyph(i, nullptr, false);
-        if (ret.failed)
-            continue;
+    constexpr wchar k_fallback_glyph = '?';
 
+    auto ret = rasterize_glyph(k_fallback_glyph, nullptr, false);
+    fallback_glyph_ = glyph_lookup_data::k_invalid_index;
+    if (!ret.failed) {
         apply_glyph(ret, initial_build /* init time */);
         private_buffer_.swap(ret.bitmap);
-    } 
+        if (!glyphs_.empty() &&
+            glyphs_.back().codepoint == k_fallback_glyph) {
+            fallback_glyph_ = static_cast<std::uint32_t>(glyphs_.size()) - 1;
+        }
+    }
 
     // build lookup table
     for (std::size_t i = 0u; i < glyphs_.size(); i++) {
@@ -142,22 +153,21 @@ bool font::build(bool initial_build)
     }
 
     // mark supported glyphs
-    for (std::uint32_t cp = kDefaultGlyphsStart; cp < unicode::codepoint_max; ++cp) {
-        auto& l = glyph_lookup_[cp];
+    for (std::uint32_t cp = 0x20; cp < unicode::codepoint_max; ++cp) {
         if (cp >= 0xD800u && cp <= 0xDFFFu) {
             continue;
         }
 
         if (get_font_data_for_char(cp) != nullptr) {
-            l.supported = true;
-            if (has_blur) {
-                glyph_lookup_blurred_[cp].supported = true;
-            }
+            glyph_lookup_[cp].supported = true;
         }
     }
 
-    // fallback glyph
-    fallback_glyph_ = glyph_lookup_['?'].index;
+    if (has_blur) {
+        for (std::size_t i = 0; i < glyph_lookup_.size(); i++) {
+            glyph_lookup_blurred_[i].supported = glyph_lookup_[i].supported;
+        }
+    }
 
     return true;
 }

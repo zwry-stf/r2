@@ -3,22 +3,28 @@
 #include <r2/renderer_base.h>
 #include <r2/render_data.h>
 
+#include <cstring>
+
 
 r2_begin_
 
-font_atlas::font_atlas(renderer_base* instance) noexcept
+font_atlas::font_atlas(renderer_base* instance, std::uint32_t max_width, std::uint32_t max_height) noexcept
     : renderer_(instance),
-      width_(kDefaultSize),
-      height_(kDefaultSize)
+      max_width_(max_width == 0 ? std::numeric_limits<std::uint32_t>::max() : max_width),
+      max_height_(max_height == 0 ? std::numeric_limits<std::uint32_t>::max() : max_height)
 {
 }
-
 
 bool font_atlas::check_side(std::uint32_t x, std::uint32_t y, std::uint32_t width, std::uint32_t height)
 {
 #if defined(_DEBUG)
     renderer_->assert_render_thread();
 #endif
+
+    if (x < padding_ ||
+        y < padding_) {
+        return false;
+    }
 
     const std::uint32_t x2 = x + width + padding_;
     const std::uint32_t y2 = y + height + padding_;
@@ -50,10 +56,13 @@ bool font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint3
     renderer_->assert_render_thread();
 #endif
 
-    assert(width + padding_ * 2u <= width_);
-    assert(height + padding_ * 2u <= height_);
     assert(width > 0u);
     assert(height > 0u);
+
+    if (width + padding_ * 2u > width_ ||
+        height + padding_ * 2u > height_) {
+        return false;
+    }
 
     if (rects_.empty()) {
         out_x = padding_;
@@ -64,7 +73,7 @@ bool font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint3
     for (const auto& r : rects_) {
         // check right
         std::uint32_t x = r.pos_x + r.width + padding_;
-        std::uint32_t y = r.pos_y;
+        std::uint32_t y = std::max(r.pos_y, padding_);
 
         if (check_side(x, y, width, height)) {
             out_x = x;
@@ -83,7 +92,7 @@ bool font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint3
         }
 
         // check below
-        x = r.pos_x;
+        x = std::max(r.pos_x, padding_);
         y = r.pos_y + r.height + padding_;
         if (check_side(x, y, width, height)) {
             out_x = x;
@@ -107,18 +116,17 @@ bool font_atlas::find_rect(std::uint32_t width, std::uint32_t height, std::uint3
 
 bool font_atlas::add_white_pixel()
 {
-    constexpr std::uint8_t kWhitePixel = 0xFFu;
+    constexpr std::uint8_t k_white_pixel = 0xFFu;
     auto rect_id = register_rect(1u, 1u);
     if (!rect_id) {
         return false;
     }
 
-    write_data_init(*rect_id, &kWhitePixel, 1u);
+    write_data_init(*rect_id, &k_white_pixel, 1u);
 
-    vec2 uv_min, uv_max;
-    get_rect_uv(*rect_id, uv_min, uv_max);
-
-    renderer_->shared_data_.uv_white_px = (uv_min + uv_max) * vec2(0.5f);
+    vec2 min, max;
+    get_rect_pos(*rect_id, min, max);
+    renderer_->shared_data_.pos_white_px = (min + max) * vec2(0.5f);
 
     return true;
 }
@@ -129,14 +137,14 @@ bool font_atlas::add_tex_lines()
         return true;
     }
 
-    auto rect_id = register_rect(shared_data::kBakedLinesMaxWidth + 2u, shared_data::kBakedLinesMaxWidth + 1u);
+    auto rect_id = register_rect(shared_data::k_baked_lines_max_width + 2u, shared_data::k_baked_lines_max_width + 1u);
     if (!rect_id) {
         return false;
     }
 
     const auto& r = this->get_rect(*rect_id);
 
-    for (std::uint32_t n = 0u; n < shared_data::kBakedLinesMaxWidth + 1u; n++) {
+    for (std::uint32_t n = 0u; n < shared_data::k_baked_lines_max_width + 1u; n++) {
         std::uint32_t y = n;
         std::uint32_t line_width = n;
 
@@ -171,11 +179,11 @@ bool font_atlas::add_tex_lines()
             static_cast<float>(r.pos_y + y + 1u)
         );
         float half_v = (uv0.y + uv1.y) * 0.5f;
-        renderer_->shared_data_.tex_uv_lines[n] = vec4(
-            uv0.x / static_cast<float>(width_),
-            half_v / static_cast<float>(height_), 
-            uv1.x / static_cast<float>(width_),
-            half_v / static_cast<float>(height_)
+        renderer_->shared_data_.tex_pos_lines[n] = vec4(
+            uv0.x,
+            half_v,
+            uv1.x,
+            half_v
         );
     }
 
@@ -184,35 +192,35 @@ bool font_atlas::add_tex_lines()
 
 bool font_atlas::add_shadow_tex()
 {
-    constexpr std::uint32_t kPadding = 1u;
-    constexpr std::uint32_t kShadowTexSize = 32u;
-    const std::uint32_t shadow_convex_size = kShadowTexSize + kPadding * 2u;
+    constexpr std::uint32_t k_padding = 1u;
+    constexpr std::uint32_t k_shadow_tex_size = 32u;
+    constexpr float k_shadow_falloff_power = 4.f;
+    constexpr float k_shadow_distance_field_offset = 3.8f;
+
+    const std::uint32_t shadow_convex_size = k_shadow_tex_size + k_padding * 2u;
     auto rect_id = register_rect(shadow_convex_size, shadow_convex_size);
     if (!rect_id) {
         return false;
     }
 
-    constexpr float kShadowFallowPower = 4.f;
-    constexpr float kShadowDistanceFieldOffset = 3.8f;
-
     std::vector<std::uint8_t> data(shadow_convex_size * shadow_convex_size);
 
-    const std::uint32_t side_min = kPadding;
-    const std::uint32_t side_max = shadow_convex_size - kPadding - 1u;
+    const std::uint32_t side_min = k_padding;
+    const std::uint32_t side_max = shadow_convex_size - k_padding - 1u;
 
     // calculate highest value for scale
-    const float max_size = r2::vec2(
+    const float max_size = vec2(
         static_cast<float>(side_max - side_min)
     ).length();
 
     auto calc_shadow = [&](float dist) 
         {
             float alpha = 1.f - std::min(
-                std::max(dist + kShadowDistanceFieldOffset, 0.f) /
-                std::max(max_size + kShadowDistanceFieldOffset, 0.001f),
+                std::max(dist + k_shadow_distance_field_offset, 0.f) /
+                std::max(max_size + k_shadow_distance_field_offset, 0.001f),
                 1.f
             );
-            return std::pow(alpha, kShadowFallowPower);
+            return std::pow(alpha, k_shadow_falloff_power);
         };
 
     float scale = calc_shadow(0.f);
@@ -239,18 +247,130 @@ bool font_atlas::add_shadow_tex()
 
     write_data_init(*rect_id, data.data(), data.size());
 
-    vec2 uv_min, uv_max;
-    get_rect_uv(*rect_id, uv_min, uv_max);
+    vec2 min, max;
+    get_rect_pos(*rect_id, min, max);
 
-    const vec2 offset = vec2(
-        static_cast<float>(kPadding) * 1.f / static_cast<float>(width_),
-        static_cast<float>(kPadding) * 1.f / static_cast<float>(height_)
+    min += vec2(static_cast<float>(k_padding));
+    max -= vec2(static_cast<float>(k_padding));
+
+    renderer_->shared_data_.shadow_positions = vec4(
+        min.x, min.y,
+        max.x, max.y
     );
 
-    renderer_->shared_data_.shadow_uvs = vec4(
-        uv_min.x + offset.x, uv_min.y + offset.y,
-        uv_max.x - offset.x, uv_max.y - offset.y
+    return true;
+}
+
+void font_atlas::grow_atlas()
+{
+    constexpr std::uint64_t k_grow_factor = 2;
+    constexpr std::uint64_t k_alignment = 64;
+    constexpr std::uint64_t k_min_size = 128;
+
+    const auto current_area = static_cast<std::uint64_t>(width_) * static_cast<std::uint64_t>(height_);
+    if (current_area > std::numeric_limits<std::uint64_t>::max() / k_grow_factor) {
+        return; // 64 bit integer overflow
+    }
+
+    const auto new_area = current_area * k_grow_factor;
+    const auto new_dim = static_cast<std::uint64_t>(
+        std::ceil(std::sqrt(static_cast<double>(new_area)))
     );
+
+    // align up to k_alignment
+    const auto new_dim_aligned = std::max(
+        ((new_dim + k_alignment - 1) / k_alignment) * k_alignment,
+        k_min_size
+    );
+    if (new_dim_aligned > std::numeric_limits<std::uint32_t>::max()) {
+        return; // 32 bit integer overflow
+    }
+
+    if (!resize_queued_) {
+        last_height_ = height_;
+        last_width_ = width_;
+    }
+    width_ = std::min(
+        static_cast<std::uint32_t>(new_dim_aligned),
+        max_width_
+    );
+    height_ = std::min(
+        static_cast<std::uint32_t>(new_dim_aligned),
+        max_height_
+    );
+    if (width_ == last_width_ &&
+        height_ == last_height_) {
+        return;
+    }
+
+    resize_queued_ = true;
+
+    if (in_init_) {
+        data32_.resize(width_ * height_);
+    }
+}
+
+void font_atlas::update_cached_uvs()
+{
+    const auto tex_mult = vec4(1.f) / vec4(
+        static_cast<float>(width_), static_cast<float>(height_),
+        static_cast<float>(width_), static_cast<float>(height_)
+    );
+
+    renderer_->shared_data_.uv_white_px = renderer_->shared_data_.pos_white_px *
+        vec2(tex_mult.x, tex_mult.y);
+
+    renderer_->shared_data_.shadow_uvs = renderer_->shared_data_.shadow_positions * tex_mult;
+
+    for (std::size_t i = 0; i < shared_data::k_baked_lines_max_width + 1u; i++) {
+        renderer_->shared_data_.tex_uv_lines[i] = renderer_->shared_data_.tex_pos_lines[i] * tex_mult;
+    }
+}
+
+bool font_atlas::create_font_texture()
+{
+    assert(width_ > 0 &&
+        height_ > 0);
+
+    auto* render_data = renderer_->render_data_.get();
+    auto* ctx = renderer_->context();
+
+    texture_desc d{};
+    d.width = width_;
+    d.height = height_;
+    d.usage = texture_usage::shader_resource | texture_usage::render_target;
+    d.format = texture_format::rgba8_unorm;
+
+    render_data->font_texture = ctx->create_texture2d(
+        d,
+        data32_.empty() ? nullptr : data32_.data()
+    );
+    if (render_data->font_texture->has_error()) {
+        return false;
+    }
+
+    textureview_desc vd{};
+    vd.usage = view_usage::shader_resource | view_usage::render_target;
+    render_data->font_view = ctx->create_textureview(
+        render_data->font_texture.get(),
+        vd
+    );
+    if (render_data->font_view->has_error()) {
+        return false;
+    }
+
+    framebuffer_desc fd{};
+    fd.color_attachment.view = render_data->font_view.get();
+
+    render_data->font_fbo = ctx->create_framebuffer(
+        fd
+    );
+    if (render_data->font_fbo->has_error()) {
+        return false;
+    }
+
+    data32_.clear();
+    data32_.shrink_to_fit();
 
     return true;
 }
@@ -263,7 +383,21 @@ std::optional<std::uint32_t> font_atlas::register_rect(std::uint32_t width, std:
 
     std::uint32_t x, y;
     if (!find_rect(width, height, x, y)) {
-        return std::nullopt;
+        const auto last_width = width_;
+        const auto last_height = height_;
+        const auto queue_resize = resize_queued_;
+        grow_atlas();
+
+        if (!find_rect(width, height, x, y)) {
+            /// undo grow
+            // we dont use member variables here,
+            // because its possible for a resize to already be queued before this function got called
+            width_ = last_width;
+            height_ = last_height;
+            resize_queued_ = queue_resize;
+
+            return std::nullopt;
+        }
     }
 
     if (!free_rect_slots_.empty()) {
@@ -293,16 +427,25 @@ void font_atlas::remove_rect(std::uint32_t id)
         return;
     }
 
+    auto& r = rects_[id];
+
+    temp_upload_clear_.resize(r.width * r.height, 0u);
+    write_data(
+        id,
+        temp_upload_clear_.data(),
+        temp_upload_clear_.size()
+    );
+
     // make "invisible" to "find_rect"
-    rects_[id].pos_x = 0;
-    rects_[id].pos_y = 0;
-    rects_[id].width = 0;
-    rects_[id].height = 0;
+    r.pos_x = 0;
+    r.pos_y = 0;
+    r.width = 0;
+    r.height = 0;
 
     free_rect_slots_.push_back(id);
 }
 
-void font_atlas::get_rect_uv(std::uint32_t id, vec2& uv_min, vec2& uv_max) const
+void font_atlas::get_rect_pos(std::uint32_t id, vec2& min, vec2& max) const
 {
 #if defined(_DEBUG)
     renderer_->assert_render_thread();
@@ -312,11 +455,20 @@ void font_atlas::get_rect_uv(std::uint32_t id, vec2& uv_min, vec2& uv_max) const
 
     auto& r = rects_[id];
 
-    uv_min.x = static_cast<float>(r.pos_x) / static_cast<float>(width_);
-    uv_min.y = static_cast<float>(r.pos_y) / static_cast<float>(height_);
+    min.x = static_cast<float>(r.pos_x);
+    min.y = static_cast<float>(r.pos_y);
 
-    uv_max.x = uv_min.x + static_cast<float>(r.width) / static_cast<float>(width_);
-    uv_max.y = uv_min.y + static_cast<float>(r.height) / static_cast<float>(height_);
+    max.x = min.x + static_cast<float>(r.width);
+    max.y = min.y + static_cast<float>(r.height);
+}
+
+void font_atlas::get_rect_uv(std::uint32_t id, vec2& uv_min, vec2& uv_max) const
+{
+    get_rect_pos(id, uv_min, uv_max);
+
+    const auto m = vec2(1.f) / vec2(static_cast<float>(width_), static_cast<float>(height_));
+    uv_min *= m;
+    uv_max *= m;
 }
 
 atlas_rect font_atlas::get_rect(std::uint32_t id)
@@ -332,22 +484,51 @@ atlas_rect font_atlas::get_rect(std::uint32_t id)
 
 void font_atlas::write_data(std::uint32_t id, const std::uint8_t* data, std::size_t size)
 {
-    std::vector<std::uint32_t> rgba(size);
-
-    for (std::uint32_t i = 0; i < size; ++i) {
-        constexpr std::uint8_t white = 0xffu;
-        rgba[i] = white | (white << 8) | (white << 16) | (data[i] << 24);
+    if (temp_upload_.size() < size) {
+        temp_upload_.resize(size);
     }
 
-    return write_data(id, rgba.data(), rgba.size());
+    auto* dst = temp_upload_.data();
+
+    for (std::size_t i = 0u; i < size; ++i) {
+        dst[i] = 0x00ffffffu |
+            (static_cast<std::uint32_t>(data[i]) << 24u);
+    }
+
+    return write_data(id, dst, size);
 }
 
 void font_atlas::write_data(std::uint32_t id, const std::uint32_t* data, std::size_t size)
 {
+    if (resize_queued_) {
+        std::vector<std::uint32_t> buf;
+        buf.assign(data, data + size);
+        write_data(id, std::move(buf));
+        return;
+    }
+
     assert(renderer_->render_data());
     assert(renderer_->render_data()->font_texture);
 
-    atlas_rect r = get_rect(id);
+    write_data(get_rect(id), data, size);
+}
+
+void font_atlas::write_data(std::uint32_t id, std::vector<std::uint32_t> data)
+{
+    if (resize_queued_) {
+        rect_writes_.emplace_back(
+            get_rect(id),
+            std::move(data)
+        );
+        return;
+    }
+
+    return write_data(id, data.data(), data.size());
+}
+
+void font_atlas::write_data(const atlas_rect& r, const std::uint32_t* data, std::size_t size)
+{
+    assert(!resize_queued_);
     assert(r.width * r.height == size);
     (void)size;
 
@@ -385,8 +566,71 @@ void font_atlas::write_data_init(std::uint32_t id, const std::uint8_t* data, std
     }
 }
 
+bool font_atlas::update_resize()
+{
+#if defined(_DEBUG)
+    renderer_->assert_render_thread();
+#endif
+
+    if (resize_queued_) {
+        resize_queued_ = false;
+
+        auto* render_data = renderer_->render_data_.get();
+        auto* ctx = renderer_->context();
+
+        auto old_texture = std::move(render_data->font_texture);
+        auto old_view = std::move(render_data->font_view);
+        auto old_fbo = std::move(render_data->font_fbo);
+
+        if (!create_font_texture()) {
+            return false;
+        }
+
+        if (old_fbo) {
+            ctx->clear_framebuffer(render_data->font_fbo.get());
+        }
+
+        // copy old atlas onto new atlas
+        if (last_width_ > 0 &&
+            last_height_ > 0) {
+            assert(old_fbo);
+            const auto r = rect(
+                0, 0, // left, top
+                last_width_, last_height_
+            );
+
+            ctx->copy_subresource(
+                render_data->font_fbo.get(),
+                old_fbo.get(),
+                r,
+                r
+            );
+        }
+
+        update_cached_uvs();
+
+        if (resize_callback_) {
+            resize_callback_();
+        }
+    }
+
+    // update pending writes
+    for (auto& w : rect_writes_) {
+        write_data(
+            w.rect,
+            w.data.data(),
+            w.data.size()
+        );
+    }
+
+    rect_writes_.clear();
+
+    return true;
+}
+
 bool font_atlas::build()
 {
+    in_init_ = true;
     data32_.resize(width_ * height_);
 
     if (!add_white_pixel()) {
@@ -400,6 +644,9 @@ bool font_atlas::build()
     if (!add_shadow_tex()) {
         return false;
     }
+
+    update_cached_uvs();
+    in_init_ = false;
 
     return true;
 }

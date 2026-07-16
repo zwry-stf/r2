@@ -19,9 +19,10 @@ public:
     std::unique_ptr<depthstencilstate> depth_stencil_state_enabled;
     std::unique_ptr<texture2d> font_texture;
     std::unique_ptr<textureview> font_view;
+    std::unique_ptr<framebuffer> font_fbo;
 
-    std::uint32_t vertex_count{ 1000 };
-    std::uint32_t index_count{ 2000 };
+    std::uint32_t vertex_count{ 0 };
+    std::uint32_t index_count{ 0 };
 };
 
 r2_end_
