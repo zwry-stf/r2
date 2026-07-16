@@ -1,12 +1,13 @@
 #pragma once
 #include <backend/context.h>
 #include "renderer_definitions.h"
-#include "font/unicode.h"
+#include "error.h"
 
 #include <vector>
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <cassert>
 
 
 r2_begin_
@@ -14,9 +15,9 @@ r2_begin_
 class renderer_base {
 protected:
     renderer_flags flags_{};
-
     bool is_initialized_{ false };
 
+    std::unique_ptr<context> context_;
     std::unique_ptr<class render_data> render_data_;
     shared_data shared_data_;
 
@@ -36,21 +37,30 @@ public:
             std::this_thread::get_id() == render_thread_id_);
     }
 
-    void set_render_thread(const std::thread::id& id) {
+    void set_render_thread(const std::thread::id& id) noexcept {
         render_thread_id_ = id;
     }
 #endif
 
 public:
-    void set_flags(renderer_flags f);
+    [[nodiscard]] virtual error init(const platform_init_data& pinit, const backend_init_data& binit);
+    [[nodiscard]] virtual error init(r2::context* ctx);
 
-    [[nodiscard]] bool is_initialized();
+    void set_flags(renderer_flags f) noexcept {
+        flags_ = f;
+    }
 
 public:
-    [[nodiscard]] const auto* render_data() const noexcept {
+    [[nodiscard]] bool is_initialized() const noexcept {
+        return is_initialized_;
+    }
+    [[nodiscard]] context* context() const noexcept {
+        return context_.get();
+    }
+    [[nodiscard]] const render_data* render_data() const noexcept {
         return render_data_.get();
     }
-    [[nodiscard]] auto flags() const noexcept {
+    [[nodiscard]] renderer_flags flags() const noexcept {
         return flags_;
     }
 };

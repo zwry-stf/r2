@@ -118,8 +118,7 @@ int __stdcall WinMain(HINSTANCE /* instance */,
         show_error_and_exit("failed to add fonts.");
     }
 
-    if (!g_renderer.build_fonts() ||
-        !g_renderer.create_font_texture()) {
+    if (!g_renderer.build_fonts()) {
         show_error_and_exit("failed to build fonts.");
     }
 
@@ -371,6 +370,7 @@ void render_frame() {
         g_font->build();
     }
 
+    (void)g_renderer.update_fonts_on_frame();
     g_drawlist->reset_states();
     g_renderer.setup_render_state();
 
@@ -535,9 +535,7 @@ void render_frame() {
         change_font = true;
     }
 
-    g_renderer.render(*g_drawlist);
-
-    g_renderer.update_fonts_on_frame();
+    (void)g_renderer.render(*g_drawlist);
 }
 
 void render_thread() {

@@ -320,14 +320,17 @@ struct point_3d {
 };
 
 struct shared_data {
+    vec2 pos_white_px;
     vec2 uv_white_px;
+    vec4 shadow_positions;
     vec4 shadow_uvs;
     std::vector<vec2> temp_buffer;
     std::vector<point_3d> temp_buffer3d;
     std::vector<float> temp_buffer2;
 
-    inline static constexpr std::uint32_t kBakedLinesMaxWidth = 63u;
-    vec4 tex_uv_lines[kBakedLinesMaxWidth + 1u]{};
+    inline static constexpr std::uint32_t k_baked_lines_max_width = 63u;
+    vec4 tex_pos_lines[k_baked_lines_max_width + 1u]{};
+    vec4 tex_uv_lines[k_baked_lines_max_width + 1u]{};
 };
 
 struct font_cfg {
@@ -337,7 +340,7 @@ struct font_cfg {
     std::int32_t offset_x{ 0 };
     std::int32_t offset_y{ 0 };
     std::uint32_t glow_radius{ 0u };
-    float glow_strength{ 2. };
+    float glow_strength{ 2.f };
 };
 
 struct renderer_flags {

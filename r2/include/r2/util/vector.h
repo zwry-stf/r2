@@ -180,6 +180,11 @@ public:
         new (&data_[size_]) T(std::forward<Args>(args)...);
         return data_[size_++];
     }
+    [[nodiscard]] T* append(size_type count) {
+        const auto offset = size_;
+        resize(size_ + count);
+        return data_ + offset;
+    }
 
 public:
     [[nodiscard]] v_always_inline bool empty() const noexcept {
