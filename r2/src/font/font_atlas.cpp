@@ -427,11 +427,20 @@ void font_atlas::remove_rect(std::uint32_t id)
         return;
     }
 
+    auto& r = rects_[id];
+
+    temp_upload_clear_.resize(r.width * r.height, 0u);
+    write_data(
+        id,
+        temp_upload_clear_.data(),
+        temp_upload_clear_.size()
+    );
+
     // make "invisible" to "find_rect"
-    rects_[id].pos_x = 0;
-    rects_[id].pos_y = 0;
-    rects_[id].width = 0;
-    rects_[id].height = 0;
+    r.pos_x = 0;
+    r.pos_y = 0;
+    r.width = 0;
+    r.height = 0;
 
     free_rect_slots_.push_back(id);
 }
@@ -498,56 +507,39 @@ void font_atlas::write_data(std::uint32_t id, const std::uint32_t* data, std::si
         return;
     }
 
-    assert(!resize_queued_);
     assert(renderer_->render_data());
     assert(renderer_->render_data()->font_texture);
 
-    atlas_rect r = get_rect(id);
-    assert(r.width * r.height == size);
-    (void)size;
-
-    assert(r.pos_x >= padding_ && r.pos_y >= padding_);
-    assert(r.pos_x + r.width + padding_ <= width_);
-    assert(r.pos_y + r.height + padding_ <= height_);
-
-    const std::uint32_t upload_width = r.width + padding_ * 2u;
-    const std::uint32_t upload_height = r.height + padding_ * 2u;
-    const std::size_t upload_size =
-        static_cast<std::size_t>(upload_width) * static_cast<std::size_t>(upload_height);
-
-    constexpr std::uint32_t k_transparent_white = 0x00ffffffu;
-    temp_upload_padding_.assign(upload_size, k_transparent_white);
-
-    for (std::uint32_t y = 0u; y < r.height; ++y) {
-        const auto* src_row = data + static_cast<std::size_t>(y) * r.width;
-        auto* dst_row = temp_upload_padding_.data() +
-            static_cast<std::size_t>(y + padding_) * upload_width + padding_;
-
-        std::memcpy(
-            dst_row,
-            src_row,
-            static_cast<std::size_t>(r.width) * sizeof(std::uint32_t)
-        );
-    }
-
-    renderer_->render_data()->font_texture->update(
-        temp_upload_padding_.data(),
-        upload_width * sizeof(std::uint32_t),
-        r.pos_x - padding_,
-        r.pos_y - padding_,
-        upload_width,
-        upload_height
-    );
+    write_data(get_rect(id), data, size);
 }
 
 void font_atlas::write_data(std::uint32_t id, std::vector<std::uint32_t> data)
 {
     if (resize_queued_) {
-        rect_writes_.emplace_back(id, std::move(data));
+        rect_writes_.emplace_back(
+            get_rect(id),
+            std::move(data)
+        );
         return;
     }
 
     return write_data(id, data.data(), data.size());
+}
+
+void font_atlas::write_data(const atlas_rect& r, const std::uint32_t* data, std::size_t size)
+{
+    assert(!resize_queued_);
+    assert(r.width * r.height == size);
+    (void)size;
+
+    renderer_->render_data()->font_texture->update(
+        data,
+        r.width * sizeof(std::uint32_t),
+        r.pos_x,
+        r.pos_y,
+        r.width,
+        r.height
+    );
 }
 
 void font_atlas::write_data_init(std::uint32_t id, const std::uint8_t* data, std::size_t size)
@@ -616,13 +608,18 @@ bool font_atlas::update_resize()
         }
 
         update_cached_uvs();
+
+        if (resize_callback_) {
+            resize_callback_();
+        }
     }
 
     // update pending writes
     for (auto& w : rect_writes_) {
         write_data(
-            w.rect_id,
-            std::move(w.data)
+            w.rect,
+            w.data.data(),
+            w.data.size()
         );
     }
 
