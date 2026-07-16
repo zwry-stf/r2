@@ -54,8 +54,11 @@ public:
         return std::make_unique<T>(&shared_data_, this);
     }
 
-public:
     /// frame
+public:
+    // must be called before:
+    // drawlist2d::reset_states
+    // renderer::render
     [[nodiscard]] bool update_fonts_on_frame();
     void setup_render_state();
     void backup_render_state();
