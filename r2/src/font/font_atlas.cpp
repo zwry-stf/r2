@@ -386,9 +386,18 @@ std::optional<std::uint32_t> font_atlas::register_rect(std::uint32_t width, std:
         const auto last_width = width_;
         const auto last_height = height_;
         const auto queue_resize = resize_queued_;
-        grow_atlas();
+        bool found = false;
+        constexpr int k_max_grows = 8;
+        for (int i = 0; i < k_max_grows; i++) {
+            grow_atlas();
 
-        if (!find_rect(width, height, x, y)) {
+            if (find_rect(width, height, x, y)) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
             /// undo grow
             // we dont use member variables here,
             // because its possible for a resize to already be queued before this function got called
