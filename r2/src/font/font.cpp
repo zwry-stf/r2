@@ -562,8 +562,8 @@ pending_glyph font::rasterize_glyph(wchar c, font_data* data, bool blurred)
     const int over_h = y1 - y0;
     const int blur_size = blurred ?
         static_cast<int>(cfg_.glow_radius) : 0;
-    const int width = over_w + blur_size * 2;
-    const int height = over_h + blur_size * 2;
+    int width = over_w + blur_size * 2;
+    int height = over_h + blur_size * 2;
 
     if (width <= 0 || height <= 0) {
         e.visible = false;
@@ -666,6 +666,9 @@ pending_glyph font::rasterize_glyph(wchar c, font_data* data, bool blurred)
             oh, ov,
             dx, dy
         );
+
+        width = width2;
+        height = height2;
     }
 
     if (blurred) {
