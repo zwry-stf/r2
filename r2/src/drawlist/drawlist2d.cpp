@@ -8,6 +8,19 @@
 
 r2_begin_
 
+[[nodiscard]] inline static vec2 miter_normal(vec2 dm) noexcept {
+    const float d2 = dm.x * dm.x + dm.y * dm.y;
+    if (d2 > 1e-7f) {
+        float inv_len2 = 1.f / d2;
+        if (inv_len2 > 100.f) {
+            inv_len2 = 100.f;
+        }
+        dm.x *= inv_len2;
+        dm.y *= inv_len2;
+    }
+    return dm;
+}
+
 void drawlist2d::reset_states()
 {
 #if defined(_DEBUG)
@@ -366,7 +379,7 @@ void drawlist2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
                     (temp_normals[i1].x + temp_normals[i2].x) * 0.5f,
                     (temp_normals[i1].y + temp_normals[i2].y) * 0.5f
                 );
-                dm = dm.normalize(100.f);
+                dm = miter_normal(dm);
                 dm *= vec2(half_draw_size);
 
                 vec2* out_vtx = &temp_points[i2 * 2u];
@@ -446,7 +459,7 @@ void drawlist2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
                     (temp_normals[i1].x + temp_normals[i2].x) * 0.5f,
                     (temp_normals[i1].y + temp_normals[i2].y) * 0.5f
                 );
-                dm = dm.normalize(100.f);
+                dm = miter_normal(dm);
 
                 vec2 dm_out = dm * vec2(half_inner_line_width + aa_scale);
                 vec2 dm_in = dm * vec2(half_inner_line_width);
@@ -593,7 +606,7 @@ void drawlist2d::add_line_multicolor(const vec2& start_p, const vec2& end_p, col
             (temp_normals[0].x + temp_normals[1].x) * 0.5f,
             (temp_normals[0].y + temp_normals[1].y) * 0.5f
         );
-        dm = dm.normalize(100.f);
+        dm = miter_normal(dm);
         dm *= vec2(half_draw_size);
         temp_points[2] = end + dm;
         temp_points[3] = end - dm;
@@ -655,7 +668,7 @@ void drawlist2d::add_line_multicolor(const vec2& start_p, const vec2& end_p, col
             (temp_normals[0].x + temp_normals[1].x) * 0.5f,
             (temp_normals[0].y + temp_normals[1].y) * 0.5f
         );
-        dm = dm.normalize(100.f);
+        dm = miter_normal(dm);
         vec2 dm_out = dm * vec2(half_inner_line_width + aa_scale);
         vec2 dm_in = dm * vec2(half_inner_line_width);
         temp_points[4] = end + dm_out;
@@ -964,7 +977,7 @@ void drawlist2d::add_lines(const point_3d* points, std::uint32_t num_points, col
                     (temp_normals[i1].x + temp_normals[i2].x) * 0.5f,
                     (temp_normals[i1].y + temp_normals[i2].y) * 0.5f
                 );
-                dm = dm.normalize(100.f);
+                dm = miter_normal(dm);
                 dm *= vec2(half_draw_size);
                 vec2* out_vtx = &temp_points[i2 * 2u];
                 out_vtx[0].x = points[i2].pos.x + dm.x;
@@ -1035,7 +1048,7 @@ void drawlist2d::add_lines(const point_3d* points, std::uint32_t num_points, col
                     (temp_normals[i1].x + temp_normals[i2].x) * 0.5f,
                     (temp_normals[i1].y + temp_normals[i2].y) * 0.5f
                 );
-                dm = dm.normalize(100.f);
+                dm = miter_normal(dm);
                 vec2 dm_out = dm * vec2(half_inner_line_width + aa_scale);
                 vec2 dm_in = dm * vec2(half_inner_line_width);
                 vec2* out_vtx = &temp_points[i2 * 4];
@@ -1164,7 +1177,7 @@ void drawlist2d::add_line_multicolor(const point_3d& start_p, const point_3d& en
             (temp_normals[0].x + temp_normals[1].x) * 0.5f,
             (temp_normals[0].y + temp_normals[1].y) * 0.5f
         );
-        dm = dm.normalize(100.f);
+        dm = miter_normal(dm);
         dm *= vec2(half_draw_size);
         temp_points[2] = end + dm;
         temp_points[3] = end - dm;
@@ -1226,7 +1239,7 @@ void drawlist2d::add_line_multicolor(const point_3d& start_p, const point_3d& en
             (temp_normals[0].x + temp_normals[1].x) * 0.5f,
             (temp_normals[0].y + temp_normals[1].y) * 0.5f
         );
-        dm = dm.normalize(100.f);
+        dm = miter_normal(dm);
         vec2 dm_out = dm * vec2(half_inner_line_width + aa_scale);
         vec2 dm_in = dm * vec2(half_inner_line_width);
         temp_points[4] = end + dm_out;
