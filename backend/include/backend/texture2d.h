@@ -42,8 +42,7 @@ struct texture_desc {
     texture_usage usage = texture_usage::shader_resource;
     texture_format format = texture_format::rgba8_unorm;
 
-    struct
-    {
+    struct {
         std::uint32_t count = 1;
         std::uint32_t quality = 0;
     } sample_desc;
