@@ -10,6 +10,7 @@ r2_begin_
 
 renderer::renderer()
 {
+    font_atlas_ = std::make_unique<r2::font_atlas>(this);
 }
 
 renderer::~renderer()
@@ -43,9 +44,6 @@ error renderer::do_init()
 {
     assert((bool)!render_data_);
     render_data_ = std::make_unique<r2::render_data>();
-    if (!font_atlas_)
-        font_atlas_ = std::make_unique<r2::font_atlas>(this);
-
     // d3d11 does not require any bidning during resource creation
 #if defined(R2_BACKEND_OPENGL)
     backup_render_state();
@@ -103,6 +101,18 @@ void renderer::destroy()
     font_atlas_.reset();
 }
 
+bool renderer::prepare_fonts()
+{
+    std::lock_guard<std::mutex> lock(font_mutex_);
+    for (auto& font : fonts_) {
+        if (!font->prepare()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool renderer::build_fonts()
 {
     assert(resources_created_ && "call init first");
@@ -111,7 +121,6 @@ bool renderer::build_fonts()
         return false;
     }
 
-    // fonts
     std::lock_guard<std::mutex> lock(font_mutex_);
     for (auto& font : fonts_) {
         if (!font->build(true /* initial build */)) {

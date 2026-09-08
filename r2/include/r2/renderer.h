@@ -40,6 +40,7 @@ public:
     [[nodiscard]] virtual error init(r2::context* ctx) override;
     void destroy();
 
+    [[nodiscard]] bool prepare_fonts();
     [[nodiscard]] bool build_fonts();
 
     void pre_resize();

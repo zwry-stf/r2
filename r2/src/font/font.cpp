@@ -117,10 +117,13 @@ void font::update_worker()
     }
 }
 
-bool font::build(bool initial_build)
+bool font::prepare()
 {
     assert(!fonts_.empty());
-    assert(frame_start_ == 0u);
+
+    if (prepared_) {
+        return true;
+    }
 
     const bool has_blur = cfg_.glow_radius > 0u;
 
@@ -128,6 +131,35 @@ bool font::build(bool initial_build)
     if (has_blur) {
         glyph_lookup_blurred_.resize(unicode::codepoint_max);
         build_weights();
+    }
+
+    for (std::uint32_t cp = 0x20; cp < unicode::codepoint_max; ++cp) {
+        if (cp >= 0xD800u && cp <= 0xDFFFu) {
+            continue;
+        }
+
+        if (get_font_data_for_char(cp) != nullptr) {
+            glyph_lookup_[cp].supported = true;
+        }
+    }
+
+    if (has_blur) {
+        for (std::size_t i = 0u; i < glyph_lookup_.size(); i++) {
+            glyph_lookup_blurred_[i].supported = glyph_lookup_[i].supported;
+        }
+    }
+
+    prepared_ = true;
+
+    return true;
+}
+
+bool font::build(bool initial_build)
+{
+    assert(frame_start_ == 0u);
+
+    if (!prepare()) {
+        return false;
     }
 
     constexpr wchar k_fallback_glyph = '?';
@@ -149,23 +181,6 @@ bool font::build(bool initial_build)
         if (static_cast<std::size_t>(g.codepoint) < glyph_lookup_.size()) {
             auto& e = glyph_lookup_[g.codepoint];
             e.index = static_cast<std::uint32_t>(i);
-        }
-    }
-
-    // mark supported glyphs
-    for (std::uint32_t cp = 0x20; cp < unicode::codepoint_max; ++cp) {
-        if (cp >= 0xD800u && cp <= 0xDFFFu) {
-            continue;
-        }
-
-        if (get_font_data_for_char(cp) != nullptr) {
-            glyph_lookup_[cp].supported = true;
-        }
-    }
-
-    if (has_blur) {
-        for (std::size_t i = 0; i < glyph_lookup_.size(); i++) {
-            glyph_lookup_blurred_[i].supported = glyph_lookup_[i].supported;
         }
     }
 
@@ -219,8 +234,9 @@ bool font::add_font(const std::uint8_t* data, std::size_t data_size, std::vector
         data,
         0
     );
-    if (ok == 0)
+    if (ok == 0) {
         return false;
+    }
 
     return true;
 }

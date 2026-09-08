@@ -62,6 +62,7 @@ private:
     const font_cfg cfg_;
     std::vector<font_data> fonts_;
     bool is_destroyed_{ false };
+    bool prepared_{ false };
 
     std::uint32_t fallback_glyph_{ glyph_lookup_data::k_invalid_index };
 
@@ -105,6 +106,7 @@ public:
     void update_on_render();
     void update_uvs();
     void update_worker();
+    bool prepare();
     bool build(bool initial_build = false);
     void destroy();
 
