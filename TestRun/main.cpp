@@ -493,14 +493,14 @@ void render_frame() {
 
     // fps 
     {
-        constexpr float kUpdateTime = 0.5f;
+        constexpr float k_update_time = 0.5f;
         static int counted = 0;
         static float current = 0.f;
         static std::chrono::steady_clock::time_point last_update;
 
         auto time_now = std::chrono::steady_clock::now();
         const float elapsed = std::chrono::duration<float>(time_now - last_update).count();
-        if (elapsed > kUpdateTime) {
+        if (elapsed > k_update_time) {
             current = static_cast<float>(counted) / elapsed;
 
             counted = 0;

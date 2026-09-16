@@ -109,8 +109,8 @@ gl_inputlayout::gl_inputlayout(gl_context* ctx, const vertex_attribute_desc* des
 
     glBindVertexArray(vao_);
 
-    const GLuint kVertexBinding = 0;
-    const GLuint kInstanceBinding = 1;
+    const GLuint k_vertex_binding = 0;
+    const GLuint k_instance_binding = 1;
 
     if (ctx->has_version(4, 3)) {
         std::uint32_t last_offset = static_cast<std::uint32_t>(-1);
@@ -118,7 +118,7 @@ gl_inputlayout::gl_inputlayout(gl_context* ctx, const vertex_attribute_desc* des
             const auto& a = desc[i];
             const GLuint attrib_index = i;
             const gl_attr_info info = to_gl_attr_info(a.format);
-            const GLuint binding = a.per_instance ? kInstanceBinding : kVertexBinding;
+            const GLuint binding = a.per_instance ? k_instance_binding : k_vertex_binding;
 
             glEnableVertexAttribArray(attrib_index);
 

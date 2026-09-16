@@ -683,15 +683,15 @@ inline void drawlist2d::path_arc_to(const vec2& center, float radius, float step
     assert(radius >= 0.5f);
     assert(step > 0.0f);
 
-    constexpr float kStart = (static_cast<float>(a_min_of_12) / 12.0f) * math::g_2_pi;
-    constexpr float kEnd   = (static_cast<float>(a_max_of_12) / 12.0f) * math::g_2_pi;
+    constexpr float k_start = (static_cast<float>(a_min_of_12) / 12.0f) * math::g_2_pi;
+    constexpr float k_end   = (static_cast<float>(a_max_of_12) / 12.0f) * math::g_2_pi;
 
-    const float span = kEnd - kStart;
+    const float span = k_end - k_start;
     const int n = (std::max)(1, static_cast<int>(std::ceil(span / step)));
     const float delta = span / static_cast<float>(n);
 
-    float s = std::sin(kStart);
-    float c = std::cos(kStart);
+    float s = std::sin(k_start);
+    float c = std::cos(k_start);
     const float sd = std::sin(delta);
     const float cd = std::cos(delta);
 

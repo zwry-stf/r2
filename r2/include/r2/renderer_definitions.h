@@ -107,7 +107,7 @@ typedef std::uint32_t color_u32;
 
 class color {
 private:
-    inline static constexpr float kIntToFloat = 1.f / 255.f;
+    inline static constexpr float k_int_to_float = 1.f / 255.f;
 
 public:
     float r, g, b, a;
@@ -122,10 +122,10 @@ public:
         : color(r, g, b, 1.f) { }
     template <std::integral T>
     v_always_inline constexpr color(T r, T g, T b, T a) noexcept
-        : r(static_cast<float>(r) * kIntToFloat),
-          g(static_cast<float>(g) * kIntToFloat), 
-          b(static_cast<float>(b) * kIntToFloat),
-          a(static_cast<float>(a) * kIntToFloat) { }
+        : r(static_cast<float>(r) * k_int_to_float),
+          g(static_cast<float>(g) * k_int_to_float), 
+          b(static_cast<float>(b) * k_int_to_float),
+          a(static_cast<float>(a) * k_int_to_float) { }
     template <std::integral T>
     v_always_inline constexpr color(T r, T g, T b) noexcept
         : color(r, g, b, T(255)) { }
@@ -167,7 +167,7 @@ public:
     }
     template <std::integral T>
     [[nodiscard]] v_always_inline constexpr color alpha(T m) const noexcept {
-        return color(r, g, b, a * static_cast<float>(m) * kIntToFloat);
+        return color(r, g, b, a * static_cast<float>(m) * k_int_to_float);
     }
     [[nodiscard]] v_always_inline constexpr color transparent() const noexcept {
         return color(r, g, b, 0.f);

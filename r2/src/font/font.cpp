@@ -43,7 +43,7 @@ void font::update_on_render()
     constexpr auto k_cleanup_time = std::chrono::seconds{ 20 };
     const auto now = std::chrono::steady_clock::now();
     if (now - last_cleanup_ > k_cleanup_time) {
-        constexpr std::uint64_t kRemoveAge = 100000u;
+        constexpr std::uint64_t k_remove_age = 100000u;
 
         for (std::uint32_t idx = 0u; idx < glyphs_.size(); ++idx) {
             if (idx == fallback_glyph_) {
@@ -56,7 +56,7 @@ void font::update_on_render()
             }
 
             if (frame_start_ > g.last_access &&
-                frame_start_ - g.last_access > kRemoveAge) {
+                frame_start_ - g.last_access > k_remove_age) {
                 atlas_->remove_rect(g.rect_id);
 
                 auto& e = g.blurred ? glyph_lookup_blurred_[g.codepoint] : glyph_lookup_[g.codepoint];
