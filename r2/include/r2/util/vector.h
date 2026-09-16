@@ -32,7 +32,7 @@ private:
     inline static constexpr bool k_is_trivially_destructible = std::is_trivially_destructible_v<T>;
 
 private:
-    value_type* data_;
+    value_type* data_{};
     size_type size_{};
     size_type capacity_{};
 
@@ -129,7 +129,11 @@ public:
         }
         else {
             if (new_size > capacity_) {
-                reallocate(new_size);
+                size_type new_cap = calculate_growth(capacity_);
+                if (new_cap < new_size) {
+                    new_cap = new_size;
+                }
+                reallocate(new_cap);
             }
             static_assert(std::default_initializable<T>);
             if constexpr (!k_is_trivially_constructible) {
@@ -257,7 +261,7 @@ public:
 
 private:
     [[nodiscard]] v_always_inline static size_type calculate_growth(size_type current) noexcept {
-        return current < 8 ? 8 : (current * 3 / 2);
+        return current < 8 ? 8 : (current * 2);
     }
     void reallocate(size_type new_size) {
         assert(new_size > capacity_);

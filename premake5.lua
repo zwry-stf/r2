@@ -11,6 +11,15 @@ workspace "r2"
     language "C++"
     cppdialect "C++23"
     staticruntime "Off"
+
+    filter "configurations:Debug"
+        optimize "Off"
+        symbols "On"
+    filter "configurations:Release"
+        optimize "Speed"
+        symbols "Off"
+        inlining "Auto"
+    filter {}
     
     startproject "TestRun"
 

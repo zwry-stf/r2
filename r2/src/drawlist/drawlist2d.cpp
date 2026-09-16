@@ -21,6 +21,12 @@ r2_begin_
     return dm;
 }
 
+v_always_inline static void write_tri(index* idx, index a, index b, index c) noexcept {
+    idx[0] = a;
+    idx[1] = b;
+    idx[2] = c;
+}
+
 void drawlist2d::reset_states()
 {
 #if defined(_DEBUG)
@@ -70,66 +76,71 @@ void drawlist2d::add_convex_filled(const vec2* points, std::uint32_t num_points,
     if (renderer_->flags().anti_aliased_fill) {
         const std::uint32_t vtx_inner_idx = vertex_ptr_;
         const std::uint32_t vtx_outer_idx = vertex_ptr_ + 1u;
+        auto* idx = indices_.append((num_points - 2u) * 3u + num_points * 6u);
         for (std::uint32_t i = 2u; i < num_points; i++) {
-            indices_.emplace_back(vtx_inner_idx);
-            indices_.emplace_back(vtx_inner_idx + ((i - 1u) << 1u));
-            indices_.emplace_back(vtx_inner_idx + (i << 1u));
+            write_tri(idx, vtx_inner_idx, vtx_inner_idx + ((i - 1u) << 1u), vtx_inner_idx + (i << 1u));
+            idx += 3;
         }
 
-        shared_data_->temp_buffer.clear();
         shared_data_->temp_buffer.resize(num_points);
+        auto* temp = shared_data_->temp_buffer.data();
         for (std::uint32_t i0 = num_points - 1u, i1 = 0u; i1 < num_points; i0 = i1++) {
             const vec2& p0 = points[i0];
             const vec2& p1 = points[i1];
             vec2 d = (p0 - p1).normalize();
-            shared_data_->temp_buffer[i0].x = d.y;
-            shared_data_->temp_buffer[i0].y = -d.x;
+            temp[i0].x = d.y;
+            temp[i0].y = -d.x;
         }
 
         const color_u32 col_no_alpha = col & ~color::alpha_mask;
+        const float aa_half = aa_scale * 0.5f;
+        auto* vtx = vertices_.append(num_points * 2u);
         for (std::uint32_t i0 = num_points - 1u, i1 = 0u; i1 < num_points; i0 = i1++) {
-            const vec2& n0 = shared_data_->temp_buffer[i0];
-            const vec2& n1 = shared_data_->temp_buffer[i1];
+            const vec2& n0 = temp[i0];
+            const vec2& n1 = temp[i1];
 
             vec2 dm = ((n0 + n1) * vec2(0.5f)).normalize(100.f);
 
-            dm.x *= aa_scale * 0.5f;
-            dm.y *= aa_scale * 0.5f;
+            dm.x *= aa_half;
+            dm.y *= aa_half;
 
-            vertices_.emplace_back(
+            vtx[0] = vertex(
                 vec2{ points[i1].x - dm.x, points[i1].y - dm.y },
                 uv,
                 col
             );
-
-            vertices_.emplace_back(
+            vtx[1] = vertex(
                 vec2{ points[i1].x + dm.x, points[i1].y + dm.y },
                 uv,
                 col_no_alpha
             );
+            vtx += 2;
 
-            vertex_ptr_ += 2u;
-
-            indices_.emplace_back(vtx_inner_idx + (i1 << 1u));
-            indices_.emplace_back(vtx_inner_idx + (i0 << 1u));
-            indices_.emplace_back(vtx_outer_idx + (i0 << 1u));
-            indices_.emplace_back(vtx_outer_idx + (i0 << 1u));
-            indices_.emplace_back(vtx_outer_idx + (i1 << 1u));
-            indices_.emplace_back(vtx_inner_idx + (i1 << 1u));
+            write_tri(idx,
+                vtx_inner_idx + (i1 << 1u),
+                vtx_inner_idx + (i0 << 1u),
+                vtx_outer_idx + (i0 << 1u));
+            write_tri(idx + 3,
+                vtx_outer_idx + (i0 << 1u),
+                vtx_outer_idx + (i1 << 1u),
+                vtx_inner_idx + (i1 << 1u));
+            idx += 6;
         }
+        vertex_ptr_ += num_points * 2u;
     }
     else {
+        auto* vtx = vertices_.append(num_points);
         for (std::uint32_t i = 0u; i < num_points; i++) {
-            vertices_.emplace_back(
+            vtx[i] = vertex(
                 points[i],
                 uv,
                 col
             );
         }
+        auto* idx = indices_.append((num_points - 2u) * 3u);
         for (std::uint32_t i = 2u; i < num_points; i++) {
-            indices_.emplace_back(vertex_ptr_);
-            indices_.emplace_back(vertex_ptr_ + i - 1u);
-            indices_.emplace_back(vertex_ptr_ + i);
+            write_tri(idx, vertex_ptr_, vertex_ptr_ + i - 1u, vertex_ptr_ + i);
+            idx += 3;
         }
         vertex_ptr_ += num_points;
     }
@@ -165,6 +176,9 @@ void drawlist2d::add_shadow_convex(const vec2* points, std::uint32_t num_points,
     const vec2 solid_to_edge_delta_texels = (edge_uv - solid_uv) * tex_size;
 
     const std::uint32_t num_edges = num_points;
+
+    vertices_.reserve(vertices_.size() + num_edges * 10u + (filled ? num_points : 0u));
+    indices_.reserve(indices_.size() + num_edges * 12u + (filled ? (num_points - 2u) * 3u : 0u));
 
     shared_data_->temp_buffer.resize(num_edges);
     shared_data_->temp_buffer2.resize(num_edges);
@@ -251,13 +265,13 @@ void drawlist2d::add_shadow_convex(const vec2* points, std::uint32_t num_points,
                 const vec2 outer_edge_start = edge_start + (prev_edge_normal * expanded_thickness);
                 const vec2 outer_edge_end = edge_start + (edge_normal * expanded_thickness);
 
-                vertices_.emplace_back(edge_start, solid_uv, col);
-                vertices_.emplace_back(outer_edge_end, expanded_edge_uv, col);
-                vertices_.emplace_back(outer_edge_start, other_edge_uv, col);
+                auto* vtx = vertices_.append(3u);
+                vtx[0] = vertex(edge_start, solid_uv, col);
+                vtx[1] = vertex(outer_edge_end, expanded_edge_uv, col);
+                vtx[2] = vertex(outer_edge_start, other_edge_uv, col);
 
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 1u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
+                auto* idx = indices_.append(3u);
+                write_tri(idx, vertex_ptr_ + 0u, vertex_ptr_ + 1u, vertex_ptr_ + 2u);
 
                 vertex_ptr_ += 3u;
 
@@ -272,17 +286,15 @@ void drawlist2d::add_shadow_convex(const vec2* points, std::uint32_t num_points,
             const vec2 scaled_edge_uv_start = solid_uv + ((edge_uv - solid_uv) * vec2(size_scale_start));
             const vec2 scaled_edge_uv_end = solid_uv + ((edge_uv - solid_uv) * vec2(size_scale_end));
 
-            vertices_.emplace_back(edge_start, solid_uv, col);
-            vertices_.emplace_back(edge_end, solid_uv, col);
-            vertices_.emplace_back(outer_edge_end, scaled_edge_uv_end, col);
-            vertices_.emplace_back(outer_edge_start, scaled_edge_uv_start, col);
+            auto* vtx = vertices_.append(4u);
+            vtx[0] = vertex(edge_start, solid_uv, col);
+            vtx[1] = vertex(edge_end, solid_uv, col);
+            vtx[2] = vertex(outer_edge_end, scaled_edge_uv_end, col);
+            vtx[3] = vertex(outer_edge_start, scaled_edge_uv_start, col);
 
-            indices_.emplace_back(vertex_ptr_ + 0u);
-            indices_.emplace_back(vertex_ptr_ + 1u);
-            indices_.emplace_back(vertex_ptr_ + 2u);
-            indices_.emplace_back(vertex_ptr_ + 0u);
-            indices_.emplace_back(vertex_ptr_ + 2u);
-            indices_.emplace_back(vertex_ptr_ + 3u);
+            auto* idx = indices_.append(6u);
+            write_tri(idx, vertex_ptr_ + 0u, vertex_ptr_ + 1u, vertex_ptr_ + 2u);
+            write_tri(idx + 3, vertex_ptr_ + 0u, vertex_ptr_ + 2u, vertex_ptr_ + 3u);
 
             vertex_ptr_ += 4u;
         }
@@ -291,17 +303,18 @@ void drawlist2d::add_shadow_convex(const vec2* points, std::uint32_t num_points,
     }
 
     [[likely]] if (filled) {
+        auto* vtx = vertices_.append(num_points);
         for (std::uint32_t i = 0u; i < num_points; i++) {
-            vertices_.emplace_back(
+            vtx[i] = vertex(
                 points[i],
                 solid_uv,
                 col
             );
         }
+        auto* idx = indices_.append((num_points - 2u) * 3u);
         for (std::uint32_t i = 2u; i < num_points; i++) {
-            indices_.emplace_back(vertex_ptr_);
-            indices_.emplace_back(vertex_ptr_ + i - 1u);
-            indices_.emplace_back(vertex_ptr_ + i);
+            write_tri(idx, vertex_ptr_, vertex_ptr_ + i - 1u, vertex_ptr_ + i);
+            idx += 3;
         }
         vertex_ptr_ += num_points;
     }
@@ -336,8 +349,7 @@ void drawlist2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
             (integer_line_width < shared_data::k_baked_lines_max_width) &&
             (fractional_line_width <= 0.00001f) && (aa_scale == 1.0f);
 
-        shared_data_->temp_buffer.clear();
-        shared_data_->temp_buffer.reserve(num_points * ((use_texture || !thick_line) ? 3u : 5u));
+        shared_data_->temp_buffer.resize(num_points * ((use_texture || !thick_line) ? 3u : 5u));
         vec2* temp_normals = shared_data_->temp_buffer.data();
         vec2* temp_points = temp_normals + num_points;
 
@@ -368,6 +380,7 @@ void drawlist2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
                     points[num_points - 1u] - temp_normals[num_points - 1u] * vec2(half_draw_size);
             }
 
+            auto* idx = indices_.append(count * (use_texture ? 6u : 12u));
             std::uint32_t idx1 = vertex_ptr_;
             for (std::uint32_t i1 = 0u; i1 < count; i1++)
             {
@@ -389,26 +402,16 @@ void drawlist2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
                 out_vtx[1].y = points[i2].y - dm.y;
 
                 if (use_texture) {
-                    indices_.emplace_back(idx2 + 0u);
-                    indices_.emplace_back(idx1 + 0u);
-                    indices_.emplace_back(idx1 + 1u);
-                    indices_.emplace_back(idx2 + 1u);
-                    indices_.emplace_back(idx1 + 1u);
-                    indices_.emplace_back(idx2 + 0u);
+                    write_tri(idx, idx2 + 0u, idx1 + 0u, idx1 + 1u);
+                    write_tri(idx + 3, idx2 + 1u, idx1 + 1u, idx2 + 0u);
+                    idx += 6;
                 }
                 else {
-                    indices_.emplace_back(idx2 + 0u);
-                    indices_.emplace_back(idx2 + 0u);
-                    indices_.emplace_back(idx1 + 2u);
-                    indices_.emplace_back(idx1 + 2u);
-                    indices_.emplace_back(idx2 + 2u);
-                    indices_.emplace_back(idx2 + 0u);
-                    indices_.emplace_back(idx2 + 1u);
-                    indices_.emplace_back(idx1 + 1u);
-                    indices_.emplace_back(idx1 + 0u);
-                    indices_.emplace_back(idx1 + 0u);
-                    indices_.emplace_back(idx2 + 0u);
-                    indices_.emplace_back(idx2 + 1u);
+                    write_tri(idx, idx2 + 0u, idx2 + 0u, idx1 + 2u);
+                    write_tri(idx + 3, idx1 + 2u, idx2 + 2u, idx2 + 0u);
+                    write_tri(idx + 6, idx2 + 1u, idx1 + 1u, idx1 + 0u);
+                    write_tri(idx + 9, idx1 + 0u, idx2 + 0u, idx2 + 1u);
+                    idx += 12;
                 }
 
                 idx1 = idx2;
@@ -418,21 +421,23 @@ void drawlist2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
                 vec4 tex_uvs = shared_data_->tex_uv_lines[integer_line_width];
                 const vec2 tex_uv0(tex_uvs.x, tex_uvs.y);
                 const vec2 tex_uv1(tex_uvs.z, tex_uvs.w);
+                auto* vtx = vertices_.append(num_points * 2u);
                 for (std::uint32_t i = 0u; i < num_points; i++) {
-                    vertices_.emplace_back(temp_points[i * 2u + 0u], tex_uv0, col);
-                    vertices_.emplace_back(temp_points[i * 2u + 1u], tex_uv1, col);
-
-                    vertex_ptr_ += 2u;
+                    vtx[0] = vertex(temp_points[i * 2u + 0u], tex_uv0, col);
+                    vtx[1] = vertex(temp_points[i * 2u + 1u], tex_uv1, col);
+                    vtx += 2;
                 }
+                vertex_ptr_ += num_points * 2u;
             }
             else {
+                auto* vtx = vertices_.append(num_points * 3u);
                 for (std::uint32_t i = 0u; i < num_points; i++) {
-                    vertices_.emplace_back(points[i], opaque_uv, col);
-                    vertices_.emplace_back(temp_points[i * 2u + 0u], opaque_uv, col_no_alpha);
-                    vertices_.emplace_back(temp_points[i * 2u + 1u], opaque_uv, col_no_alpha);
-
-                    vertex_ptr_ += 3u;
+                    vtx[0] = vertex(points[i], opaque_uv, col);
+                    vtx[1] = vertex(temp_points[i * 2u + 0u], opaque_uv, col_no_alpha);
+                    vtx[2] = vertex(temp_points[i * 2u + 1u], opaque_uv, col_no_alpha);
+                    vtx += 3;
                 }
+                vertex_ptr_ += num_points * 3u;
             }
         }
         else {
@@ -450,6 +455,7 @@ void drawlist2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
                 temp_points[points_last * 4u + 3u] = points[points_last] - temp_normals[points_last] * vec2(half_inner_line_width + aa_scale);
             }
 
+            auto* idx = indices_.append(count * 18u);
             std::uint32_t idx1 = vertex_ptr_;
             for (std::uint32_t i1 = 0u; i1 < count; i1++) {
                 const std::uint32_t i2 = (i1 + 1u) == num_points ? 0u : (i1 + 1u);
@@ -474,44 +480,31 @@ void drawlist2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
                 out_vtx[3].x = points[i2].x - dm_out.x;
                 out_vtx[3].y = points[i2].y - dm_out.y;
 
-                indices_.emplace_back(idx2 + 1u);
-                indices_.emplace_back(idx1 + 1u);
-                indices_.emplace_back(idx1 + 2u);
-
-                indices_.emplace_back(idx1 + 2u);
-                indices_.emplace_back(idx2 + 2u);
-                indices_.emplace_back(idx2 + 1u);
-
-                indices_.emplace_back(idx2 + 1u);
-                indices_.emplace_back(idx1 + 1u);
-                indices_.emplace_back(idx1 + 0u);
-
-                indices_.emplace_back(idx1 + 0u);
-                indices_.emplace_back(idx2 + 0u);
-                indices_.emplace_back(idx2 + 1u);
-
-                indices_.emplace_back(idx2 + 2u);
-                indices_.emplace_back(idx1 + 2u);
-                indices_.emplace_back(idx1 + 3u);
-
-                indices_.emplace_back(idx1 + 3u);
-                indices_.emplace_back(idx2 + 3u);
-                indices_.emplace_back(idx2 + 2u);
+                write_tri(idx, idx2 + 1u, idx1 + 1u, idx1 + 2u);
+                write_tri(idx + 3, idx1 + 2u, idx2 + 2u, idx2 + 1u);
+                write_tri(idx + 6, idx2 + 1u, idx1 + 1u, idx1 + 0u);
+                write_tri(idx + 9, idx1 + 0u, idx2 + 0u, idx2 + 1u);
+                write_tri(idx + 12, idx2 + 2u, idx1 + 2u, idx1 + 3u);
+                write_tri(idx + 15, idx1 + 3u, idx2 + 3u, idx2 + 2u);
+                idx += 18;
 
                 idx1 = idx2;
             }
 
+            auto* vtx = vertices_.append(num_points * 4u);
             for (std::uint32_t i = 0; i < num_points; i++) {
-                vertices_.emplace_back(temp_points[i * 4u + 0u], opaque_uv, col_no_alpha);
-                vertices_.emplace_back(temp_points[i * 4u + 1u], opaque_uv, col);
-                vertices_.emplace_back(temp_points[i * 4u + 2u], opaque_uv, col);
-                vertices_.emplace_back(temp_points[i * 4u + 3u], opaque_uv, col_no_alpha);
-
-                vertex_ptr_ += 4u;
+                vtx[0] = vertex(temp_points[i * 4u + 0u], opaque_uv, col_no_alpha);
+                vtx[1] = vertex(temp_points[i * 4u + 1u], opaque_uv, col);
+                vtx[2] = vertex(temp_points[i * 4u + 2u], opaque_uv, col);
+                vtx[3] = vertex(temp_points[i * 4u + 3u], opaque_uv, col_no_alpha);
+                vtx += 4;
             }
+            vertex_ptr_ += num_points * 4u;
         }
     }
     else {
+        auto* vtx = vertices_.append(count * 4u);
+        auto* idx = indices_.append(count * 6u);
         for (std::uint32_t i1 = 0u; i1 < count; i1++) {
             const std::uint32_t i2 = (i1 + 1u) == num_points ? 0u : i1 + 1u;
             const vec2& p1 = points[i1];
@@ -524,17 +517,15 @@ void drawlist2d::add_lines(const vec2* points, std::uint32_t num_points, color_u
             d = d.normalize();
             d *= vec2(line_width * 0.5f);
 
-            vertices_.emplace_back(vec2{ p1.x + d.y, p1.y - d.x }, opaque_uv, col);
-            vertices_.emplace_back(vec2{ p2.x + d.y, p2.y - d.x }, opaque_uv, col);
-            vertices_.emplace_back(vec2{ p2.x - d.y, p2.y + d.x }, opaque_uv, col);
-            vertices_.emplace_back(vec2{ p1.x - d.y, p1.y + d.x }, opaque_uv, col);
+            vtx[0] = vertex(vec2{ p1.x + d.y, p1.y - d.x }, opaque_uv, col);
+            vtx[1] = vertex(vec2{ p2.x + d.y, p2.y - d.x }, opaque_uv, col);
+            vtx[2] = vertex(vec2{ p2.x - d.y, p2.y + d.x }, opaque_uv, col);
+            vtx[3] = vertex(vec2{ p1.x - d.y, p1.y + d.x }, opaque_uv, col);
+            vtx += 4;
 
-            indices_.emplace_back(vertex_ptr_ + 0u);
-            indices_.emplace_back(vertex_ptr_ + 1u);
-            indices_.emplace_back(vertex_ptr_ + 2u);
-            indices_.emplace_back(vertex_ptr_ + 0u);
-            indices_.emplace_back(vertex_ptr_ + 2u);
-            indices_.emplace_back(vertex_ptr_ + 3u);
+            write_tri(idx, vertex_ptr_ + 0u, vertex_ptr_ + 1u, vertex_ptr_ + 2u);
+            write_tri(idx + 3, vertex_ptr_ + 0u, vertex_ptr_ + 2u, vertex_ptr_ + 3u);
+            idx += 6;
 
             vertex_ptr_ += 4u;
         }
@@ -566,16 +557,14 @@ void drawlist2d::add_line_multicolor(const vec2& start_p, const vec2& end_p, col
     const color_u32 col_no_alpha_start = col_start & ~color::alpha_mask;
     const color_u32 col_no_alpha_end = col_end & ~color::alpha_mask;
     if (!renderer_->flags().anti_aliased_lines) [[unlikely]] {
-        indices_.push_back(vertex_ptr_ + 0u);
-        indices_.push_back(vertex_ptr_ + 1u);
-        indices_.push_back(vertex_ptr_ + 2u);
-        indices_.push_back(vertex_ptr_ + 0u);
-        indices_.push_back(vertex_ptr_ + 2u);
-        indices_.push_back(vertex_ptr_ + 3u);
-        vertices_.emplace_back(start - n, opaque_uv, col_start);
-        vertices_.emplace_back(start + n, opaque_uv, col_start);
-        vertices_.emplace_back(end + n, opaque_uv, col_end);
-        vertices_.emplace_back(end - n, opaque_uv, col_end);
+        auto* idx = indices_.append(6u);
+        write_tri(idx, vertex_ptr_ + 0u, vertex_ptr_ + 1u, vertex_ptr_ + 2u);
+        write_tri(idx + 3, vertex_ptr_ + 0u, vertex_ptr_ + 2u, vertex_ptr_ + 3u);
+        auto* vtx = vertices_.append(4u);
+        vtx[0] = vertex(start - n, opaque_uv, col_start);
+        vtx[1] = vertex(start + n, opaque_uv, col_start);
+        vtx[2] = vertex(end + n, opaque_uv, col_end);
+        vtx[3] = vertex(end - n, opaque_uv, col_end);
         vertex_ptr_ += 4u;
         return;
     }
@@ -586,8 +575,7 @@ void drawlist2d::add_line_multicolor(const vec2& start_p, const vec2& end_p, col
     const bool use_texture = (renderer_->flags().anti_aliased_lines_use_tex) &&
         (integer_line_width < shared_data::k_baked_lines_max_width) &&
         (fractional_line_width <= 0.00001f) && (aa_scale == 1.0f);
-    shared_data_->temp_buffer.clear();
-    shared_data_->temp_buffer.reserve(2u * ((use_texture || !thick_line) ? 3u : 5u));
+    shared_data_->temp_buffer.resize(2u * ((use_texture || !thick_line) ? 3u : 5u));
     vec2* temp_normals = shared_data_->temp_buffer.data();
     vec2* temp_points = temp_normals + 2u;
     temp_normals[0].x = dir.y;
@@ -611,44 +599,36 @@ void drawlist2d::add_line_multicolor(const vec2& start_p, const vec2& end_p, col
         temp_points[2] = end + dm;
         temp_points[3] = end - dm;
         if (use_texture) {
-            indices_.emplace_back(idx2 + 0u);
-            indices_.emplace_back(idx1 + 0u);
-            indices_.emplace_back(idx1 + 1u);
-            indices_.emplace_back(idx2 + 1u);
-            indices_.emplace_back(idx1 + 1u);
-            indices_.emplace_back(idx2 + 0u);
+            auto* idx = indices_.append(6u);
+            write_tri(idx, idx2 + 0u, idx1 + 0u, idx1 + 1u);
+            write_tri(idx + 3, idx2 + 1u, idx1 + 1u, idx2 + 0u);
         }
         else {
-            indices_.emplace_back(idx2 + 0u);
-            indices_.emplace_back(idx2 + 0u);
-            indices_.emplace_back(idx1 + 2u);
-            indices_.emplace_back(idx1 + 2u);
-            indices_.emplace_back(idx2 + 2u);
-            indices_.emplace_back(idx2 + 0u);
-            indices_.emplace_back(idx2 + 1u);
-            indices_.emplace_back(idx1 + 1u);
-            indices_.emplace_back(idx1 + 0u);
-            indices_.emplace_back(idx1 + 0u);
-            indices_.emplace_back(idx2 + 0u);
-            indices_.emplace_back(idx2 + 1u);
+            auto* idx = indices_.append(12u);
+            write_tri(idx, idx2 + 0u, idx2 + 0u, idx1 + 2u);
+            write_tri(idx + 3, idx1 + 2u, idx2 + 2u, idx2 + 0u);
+            write_tri(idx + 6, idx2 + 1u, idx1 + 1u, idx1 + 0u);
+            write_tri(idx + 9, idx1 + 0u, idx2 + 0u, idx2 + 1u);
         }
         if (use_texture) {
             vec4 tex_uvs = shared_data_->tex_uv_lines[integer_line_width];
             const vec2 tex_uv0(tex_uvs.x, tex_uvs.y);
             const vec2 tex_uv1(tex_uvs.z, tex_uvs.w);
-            vertices_.emplace_back(temp_points[0], tex_uv0, col_start);
-            vertices_.emplace_back(temp_points[1], tex_uv1, col_start);
-            vertices_.emplace_back(temp_points[2], tex_uv0, col_end);
-            vertices_.emplace_back(temp_points[3], tex_uv1, col_end);
+            auto* vtx = vertices_.append(4u);
+            vtx[0] = vertex(temp_points[0], tex_uv0, col_start);
+            vtx[1] = vertex(temp_points[1], tex_uv1, col_start);
+            vtx[2] = vertex(temp_points[2], tex_uv0, col_end);
+            vtx[3] = vertex(temp_points[3], tex_uv1, col_end);
             vertex_ptr_ += 4u;
         }
         else {
-            vertices_.emplace_back(start, opaque_uv, col_start);
-            vertices_.emplace_back(temp_points[0], opaque_uv, col_no_alpha_start);
-            vertices_.emplace_back(temp_points[1], opaque_uv, col_no_alpha_start);
-            vertices_.emplace_back(end, opaque_uv, col_end);
-            vertices_.emplace_back(temp_points[2], opaque_uv, col_no_alpha_end);
-            vertices_.emplace_back(temp_points[3], opaque_uv, col_no_alpha_end);
+            auto* vtx = vertices_.append(6u);
+            vtx[0] = vertex(start, opaque_uv, col_start);
+            vtx[1] = vertex(temp_points[0], opaque_uv, col_no_alpha_start);
+            vtx[2] = vertex(temp_points[1], opaque_uv, col_no_alpha_start);
+            vtx[3] = vertex(end, opaque_uv, col_end);
+            vtx[4] = vertex(temp_points[2], opaque_uv, col_no_alpha_end);
+            vtx[5] = vertex(temp_points[3], opaque_uv, col_no_alpha_end);
             vertex_ptr_ += 6u;
         }
     }
@@ -676,33 +656,23 @@ void drawlist2d::add_line_multicolor(const vec2& start_p, const vec2& end_p, col
         temp_points[6] = end - dm_in;
         temp_points[7] = end - dm_out;
 
-        indices_.emplace_back(idx2 + 1u);
-        indices_.emplace_back(idx1 + 1u);
-        indices_.emplace_back(idx1 + 2u);
-        indices_.emplace_back(idx1 + 2u);
-        indices_.emplace_back(idx2 + 2u);
-        indices_.emplace_back(idx2 + 1u);
-        indices_.emplace_back(idx2 + 1u);
-        indices_.emplace_back(idx1 + 1u);
-        indices_.emplace_back(idx1 + 0u);
-        indices_.emplace_back(idx1 + 0u);
-        indices_.emplace_back(idx2 + 0u);
-        indices_.emplace_back(idx2 + 1u);
-        indices_.emplace_back(idx2 + 2u);
-        indices_.emplace_back(idx1 + 2u);
-        indices_.emplace_back(idx1 + 3u);
-        indices_.emplace_back(idx1 + 3u);
-        indices_.emplace_back(idx2 + 3u);
-        indices_.emplace_back(idx2 + 2u);
+        auto* idx = indices_.append(18u);
+        write_tri(idx, idx2 + 1u, idx1 + 1u, idx1 + 2u);
+        write_tri(idx + 3, idx1 + 2u, idx2 + 2u, idx2 + 1u);
+        write_tri(idx + 6, idx2 + 1u, idx1 + 1u, idx1 + 0u);
+        write_tri(idx + 9, idx1 + 0u, idx2 + 0u, idx2 + 1u);
+        write_tri(idx + 12, idx2 + 2u, idx1 + 2u, idx1 + 3u);
+        write_tri(idx + 15, idx1 + 3u, idx2 + 3u, idx2 + 2u);
 
-        vertices_.emplace_back(temp_points[0], opaque_uv, col_no_alpha_start);
-        vertices_.emplace_back(temp_points[1], opaque_uv, col_start);
-        vertices_.emplace_back(temp_points[2], opaque_uv, col_start);
-        vertices_.emplace_back(temp_points[3], opaque_uv, col_no_alpha_start);
-        vertices_.emplace_back(temp_points[4], opaque_uv, col_no_alpha_end);
-        vertices_.emplace_back(temp_points[5], opaque_uv, col_end);
-        vertices_.emplace_back(temp_points[6], opaque_uv, col_end);
-        vertices_.emplace_back(temp_points[7], opaque_uv, col_no_alpha_end);
+        auto* vtx = vertices_.append(8u);
+        vtx[0] = vertex(temp_points[0], opaque_uv, col_no_alpha_start);
+        vtx[1] = vertex(temp_points[1], opaque_uv, col_start);
+        vtx[2] = vertex(temp_points[2], opaque_uv, col_start);
+        vtx[3] = vertex(temp_points[3], opaque_uv, col_no_alpha_start);
+        vtx[4] = vertex(temp_points[4], opaque_uv, col_no_alpha_end);
+        vtx[5] = vertex(temp_points[5], opaque_uv, col_end);
+        vtx[6] = vertex(temp_points[6], opaque_uv, col_end);
+        vtx[7] = vertex(temp_points[7], opaque_uv, col_no_alpha_end);
         vertex_ptr_ += 8u;
     }
 }
@@ -720,61 +690,68 @@ void drawlist2d::add_convex_filled(const point_3d* points, std::uint32_t num_poi
     if (renderer_->flags().anti_aliased_fill) {
         const std::uint32_t vtx_inner_idx = vertex_ptr_;
         const std::uint32_t vtx_outer_idx = vertex_ptr_ + 1u;
+        auto* idx = indices_.append((num_points - 2u) * 3u + num_points * 6u);
         for (std::uint32_t i = 2u; i < num_points; i++) {
-            indices_.emplace_back(vtx_inner_idx);
-            indices_.emplace_back(vtx_inner_idx + ((i - 1u) << 1u));
-            indices_.emplace_back(vtx_inner_idx + (i << 1u));
+            write_tri(idx, vtx_inner_idx, vtx_inner_idx + ((i - 1u) << 1u), vtx_inner_idx + (i << 1u));
+            idx += 3;
         }
-        shared_data_->temp_buffer3d.clear();
         shared_data_->temp_buffer3d.resize(num_points);
+        auto* temp = shared_data_->temp_buffer3d.data();
         for (std::uint32_t i0 = num_points - 1u, i1 = 0u; i1 < num_points; i0 = i1++) {
             const vec2& p0 = points[i0].pos;
             const vec2& p1 = points[i1].pos;
             vec2 d = (p0 - p1).normalize();
-            shared_data_->temp_buffer3d[i0].pos.x = d.y;
-            shared_data_->temp_buffer3d[i0].pos.y = -d.x;
+            temp[i0].pos.x = d.y;
+            temp[i0].pos.y = -d.x;
         }
         const color_u32 col_no_alpha = col & ~color::alpha_mask;
+        const float aa_half = aa_scale * 0.5f;
+        auto* vtx = vertices_.append(num_points * 2u);
         for (std::uint32_t i0 = num_points - 1u, i1 = 0u; i1 < num_points; i0 = i1++) {
-            const vec2& n0 = shared_data_->temp_buffer3d[i0].pos;
-            const vec2& n1 = shared_data_->temp_buffer3d[i1].pos;
+            const vec2& n0 = temp[i0].pos;
+            const vec2& n1 = temp[i1].pos;
             vec2 dm = ((n0 + n1) * vec2(0.5f)).normalize(100.f);
-            dm.x *= aa_scale * 0.5f;
-            dm.y *= aa_scale * 0.5f;
-            vertices_.emplace_back(
+            dm.x *= aa_half;
+            dm.y *= aa_half;
+            vtx[0] = vertex(
                 vec2{ points[i1].pos.x - dm.x, points[i1].pos.y - dm.y },
                 uv,
                 col,
                 points[i1].depth
             );
-            vertices_.emplace_back(
+            vtx[1] = vertex(
                 vec2{ points[i1].pos.x + dm.x, points[i1].pos.y + dm.y },
                 uv,
                 col_no_alpha,
                 points[i1].depth
             );
-            vertex_ptr_ += 2u;
-            indices_.emplace_back(vtx_inner_idx + (i1 << 1u));
-            indices_.emplace_back(vtx_inner_idx + (i0 << 1u));
-            indices_.emplace_back(vtx_outer_idx + (i0 << 1u));
-            indices_.emplace_back(vtx_outer_idx + (i0 << 1u));
-            indices_.emplace_back(vtx_outer_idx + (i1 << 1u));
-            indices_.emplace_back(vtx_inner_idx + (i1 << 1u));
+            vtx += 2;
+            write_tri(idx,
+                vtx_inner_idx + (i1 << 1u),
+                vtx_inner_idx + (i0 << 1u),
+                vtx_outer_idx + (i0 << 1u));
+            write_tri(idx + 3,
+                vtx_outer_idx + (i0 << 1u),
+                vtx_outer_idx + (i1 << 1u),
+                vtx_inner_idx + (i1 << 1u));
+            idx += 6;
         }
+        vertex_ptr_ += num_points * 2u;
     }
     else {
+        auto* vtx = vertices_.append(num_points);
         for (std::uint32_t i = 0u; i < num_points; i++) {
-            vertices_.emplace_back(
+            vtx[i] = vertex(
                 points[i].pos,
                 uv,
                 col,
                 points[i].depth
             );
         }
+        auto* idx = indices_.append((num_points - 2u) * 3u);
         for (std::uint32_t i = 2u; i < num_points; i++) {
-            indices_.emplace_back(vertex_ptr_);
-            indices_.emplace_back(vertex_ptr_ + i - 1u);
-            indices_.emplace_back(vertex_ptr_ + i);
+            write_tri(idx, vertex_ptr_, vertex_ptr_ + i - 1u, vertex_ptr_ + i);
+            idx += 3;
         }
         vertex_ptr_ += num_points;
     }
@@ -804,6 +781,8 @@ void drawlist2d::add_shadow_convex(const point_3d* points, std::uint32_t num_poi
     const vec2 edge_uv = vec2(uv_min_in.x, uv_max_in.y);
     const vec2 solid_to_edge_delta_texels = (edge_uv - solid_uv) * tex_size;
     const std::uint32_t num_edges = num_points;
+    vertices_.reserve(vertices_.size() + num_edges * 10u + (filled ? num_points : 0u));
+    indices_.reserve(indices_.size() + num_edges * 12u + (filled ? (num_points - 2u) * 3u : 0u));
     shared_data_->temp_buffer.resize(num_edges);
     shared_data_->temp_buffer2.resize(num_edges);
     auto* edge_size_scales = shared_data_->temp_buffer2.data();
@@ -872,12 +851,12 @@ void drawlist2d::add_shadow_convex(const point_3d* points, std::uint32_t num_poi
                 const vec2 expanded_thickness = vec2(shadow_size * size_scale_start);
                 const vec2 outer_edge_start = edge_start + (prev_edge_normal * expanded_thickness);
                 const vec2 outer_edge_end = edge_start + (edge_normal * expanded_thickness);
-                vertices_.emplace_back(edge_start, solid_uv, col, edge_start_depth);
-                vertices_.emplace_back(outer_edge_end, expanded_edge_uv, col, edge_start_depth);
-                vertices_.emplace_back(outer_edge_start, other_edge_uv, col, edge_start_depth);
-                indices_.emplace_back(vertex_ptr_ + 0u);
-                indices_.emplace_back(vertex_ptr_ + 1u);
-                indices_.emplace_back(vertex_ptr_ + 2u);
+                auto* vtx = vertices_.append(3u);
+                vtx[0] = vertex(edge_start, solid_uv, col, edge_start_depth);
+                vtx[1] = vertex(outer_edge_end, expanded_edge_uv, col, edge_start_depth);
+                vtx[2] = vertex(outer_edge_start, other_edge_uv, col, edge_start_depth);
+                auto* idx = indices_.append(3u);
+                write_tri(idx, vertex_ptr_ + 0u, vertex_ptr_ + 1u, vertex_ptr_ + 2u);
                 vertex_ptr_ += 3u;
                 prev_edge_normal = edge_normal;
             }
@@ -888,34 +867,33 @@ void drawlist2d::add_shadow_convex(const point_3d* points, std::uint32_t num_poi
             const vec2 outer_edge_end = edge_end + (edge_normal * vec2(shadow_size * size_scale_end));
             const vec2 scaled_edge_uv_start = solid_uv + ((edge_uv - solid_uv) * vec2(size_scale_start));
             const vec2 scaled_edge_uv_end = solid_uv + ((edge_uv - solid_uv) * vec2(size_scale_end));
-            vertices_.emplace_back(edge_start, solid_uv, col, edge_start_depth);
-            vertices_.emplace_back(edge_end, solid_uv, col, edge_end_depth);
-            vertices_.emplace_back(outer_edge_end, scaled_edge_uv_end, col, edge_end_depth);
-            vertices_.emplace_back(outer_edge_start, scaled_edge_uv_start, col, edge_start_depth);
-            indices_.emplace_back(vertex_ptr_ + 0u);
-            indices_.emplace_back(vertex_ptr_ + 1u);
-            indices_.emplace_back(vertex_ptr_ + 2u);
-            indices_.emplace_back(vertex_ptr_ + 0u);
-            indices_.emplace_back(vertex_ptr_ + 2u);
-            indices_.emplace_back(vertex_ptr_ + 3u);
+            auto* vtx = vertices_.append(4u);
+            vtx[0] = vertex(edge_start, solid_uv, col, edge_start_depth);
+            vtx[1] = vertex(edge_end, solid_uv, col, edge_end_depth);
+            vtx[2] = vertex(outer_edge_end, scaled_edge_uv_end, col, edge_end_depth);
+            vtx[3] = vertex(outer_edge_start, scaled_edge_uv_start, col, edge_start_depth);
+            auto* idx = indices_.append(6u);
+            write_tri(idx, vertex_ptr_ + 0u, vertex_ptr_ + 1u, vertex_ptr_ + 2u);
+            write_tri(idx + 3, vertex_ptr_ + 0u, vertex_ptr_ + 2u, vertex_ptr_ + 3u);
             vertex_ptr_ += 4u;
         }
         edge_start = edge_end;
         edge_start_depth = edge_end_depth;
     }
     [[likely]] if (filled) {
+        auto* vtx = vertices_.append(num_points);
         for (std::uint32_t i = 0u; i < num_points; i++) {
-            vertices_.emplace_back(
+            vtx[i] = vertex(
                 points[i].pos,
                 solid_uv,
                 col,
                 points[i].depth
             );
         }
+        auto* idx = indices_.append((num_points - 2u) * 3u);
         for (std::uint32_t i = 2u; i < num_points; i++) {
-            indices_.emplace_back(vertex_ptr_);
-            indices_.emplace_back(vertex_ptr_ + i - 1u);
-            indices_.emplace_back(vertex_ptr_ + i);
+            write_tri(idx, vertex_ptr_, vertex_ptr_ + i - 1u, vertex_ptr_ + i);
+            idx += 3;
         }
         vertex_ptr_ += num_points;
     }
@@ -940,8 +918,7 @@ void drawlist2d::add_lines(const point_3d* points, std::uint32_t num_points, col
         const bool use_texture = (renderer_->flags().anti_aliased_lines_use_tex) &&
             (integer_line_width < shared_data::k_baked_lines_max_width) &&
             (fractional_line_width <= 0.00001f) && (aa_scale == 1.0f);
-        shared_data_->temp_buffer.clear();
-        shared_data_->temp_buffer.reserve(num_points * ((use_texture || !thick_line) ? 3u : 5u));
+        shared_data_->temp_buffer.resize(num_points * ((use_texture || !thick_line) ? 3u : 5u));
         vec2* temp_normals = shared_data_->temp_buffer.data();
         vec2* temp_points = temp_normals + num_points;
         for (std::uint32_t i1 = 0u; i1 < count; i1++) {
@@ -967,6 +944,7 @@ void drawlist2d::add_lines(const point_3d* points, std::uint32_t num_points, col
                 temp_points[(num_points - 1u) * 2u + 1u] =
                     points[num_points - 1u].pos - temp_normals[num_points - 1u] * vec2(half_draw_size);
             }
+            auto* idx = indices_.append(count * (use_texture ? 6u : 12u));
             std::uint32_t idx1 = vertex_ptr_;
             for (std::uint32_t i1 = 0u; i1 < count; i1++)
             {
@@ -985,26 +963,16 @@ void drawlist2d::add_lines(const point_3d* points, std::uint32_t num_points, col
                 out_vtx[1].x = points[i2].pos.x - dm.x;
                 out_vtx[1].y = points[i2].pos.y - dm.y;
                 if (use_texture) {
-                    indices_.emplace_back(idx2 + 0u);
-                    indices_.emplace_back(idx1 + 0u);
-                    indices_.emplace_back(idx1 + 1u);
-                    indices_.emplace_back(idx2 + 1u);
-                    indices_.emplace_back(idx1 + 1u);
-                    indices_.emplace_back(idx2 + 0u);
+                    write_tri(idx, idx2 + 0u, idx1 + 0u, idx1 + 1u);
+                    write_tri(idx + 3, idx2 + 1u, idx1 + 1u, idx2 + 0u);
+                    idx += 6;
                 }
                 else {
-                    indices_.emplace_back(idx2 + 0u);
-                    indices_.emplace_back(idx2 + 0u);
-                    indices_.emplace_back(idx1 + 2u);
-                    indices_.emplace_back(idx1 + 2u);
-                    indices_.emplace_back(idx2 + 2u);
-                    indices_.emplace_back(idx2 + 0u);
-                    indices_.emplace_back(idx2 + 1u);
-                    indices_.emplace_back(idx1 + 1u);
-                    indices_.emplace_back(idx1 + 0u);
-                    indices_.emplace_back(idx1 + 0u);
-                    indices_.emplace_back(idx2 + 0u);
-                    indices_.emplace_back(idx2 + 1u);
+                    write_tri(idx, idx2 + 0u, idx2 + 0u, idx1 + 2u);
+                    write_tri(idx + 3, idx1 + 2u, idx2 + 2u, idx2 + 0u);
+                    write_tri(idx + 6, idx2 + 1u, idx1 + 1u, idx1 + 0u);
+                    write_tri(idx + 9, idx1 + 0u, idx2 + 0u, idx2 + 1u);
+                    idx += 12;
                 }
                 idx1 = idx2;
             }
@@ -1012,19 +980,23 @@ void drawlist2d::add_lines(const point_3d* points, std::uint32_t num_points, col
                 vec4 tex_uvs = shared_data_->tex_uv_lines[integer_line_width];
                 const vec2 tex_uv0(tex_uvs.x, tex_uvs.y);
                 const vec2 tex_uv1(tex_uvs.z, tex_uvs.w);
+                auto* vtx = vertices_.append(num_points * 2u);
                 for (std::uint32_t i = 0u; i < num_points; i++) {
-                    vertices_.emplace_back(temp_points[i * 2u + 0u], tex_uv0, col, points[i].depth);
-                    vertices_.emplace_back(temp_points[i * 2u + 1u], tex_uv1, col, points[i].depth);
-                    vertex_ptr_ += 2u;
+                    vtx[0] = vertex(temp_points[i * 2u + 0u], tex_uv0, col, points[i].depth);
+                    vtx[1] = vertex(temp_points[i * 2u + 1u], tex_uv1, col, points[i].depth);
+                    vtx += 2;
                 }
+                vertex_ptr_ += num_points * 2u;
             }
             else {
+                auto* vtx = vertices_.append(num_points * 3u);
                 for (std::uint32_t i = 0u; i < num_points; i++) {
-                    vertices_.emplace_back(points[i].pos, opaque_uv, col, points[i].depth);
-                    vertices_.emplace_back(temp_points[i * 2u + 0u], opaque_uv, col_no_alpha, points[i].depth);
-                    vertices_.emplace_back(temp_points[i * 2u + 1u], opaque_uv, col_no_alpha, points[i].depth);
-                    vertex_ptr_ += 3u;
+                    vtx[0] = vertex(points[i].pos, opaque_uv, col, points[i].depth);
+                    vtx[1] = vertex(temp_points[i * 2u + 0u], opaque_uv, col_no_alpha, points[i].depth);
+                    vtx[2] = vertex(temp_points[i * 2u + 1u], opaque_uv, col_no_alpha, points[i].depth);
+                    vtx += 3;
                 }
+                vertex_ptr_ += num_points * 3u;
             }
         }
         else {
@@ -1040,6 +1012,7 @@ void drawlist2d::add_lines(const point_3d* points, std::uint32_t num_points, col
                 temp_points[points_last * 4u + 2u] = points[points_last].pos - temp_normals[points_last] * vec2(half_inner_line_width);
                 temp_points[points_last * 4u + 3u] = points[points_last].pos - temp_normals[points_last] * vec2(half_inner_line_width + aa_scale);
             }
+            auto* idx = indices_.append(count * 18u);
             std::uint32_t idx1 = vertex_ptr_;
             for (std::uint32_t i1 = 0u; i1 < count; i1++) {
                 const std::uint32_t i2 = (i1 + 1u) == num_points ? 0u : (i1 + 1u);
@@ -1060,36 +1033,29 @@ void drawlist2d::add_lines(const point_3d* points, std::uint32_t num_points, col
                 out_vtx[2].y = points[i2].pos.y - dm_in.y;
                 out_vtx[3].x = points[i2].pos.x - dm_out.x;
                 out_vtx[3].y = points[i2].pos.y - dm_out.y;
-                indices_.emplace_back(idx2 + 1u);
-                indices_.emplace_back(idx1 + 1u);
-                indices_.emplace_back(idx1 + 2u);
-                indices_.emplace_back(idx1 + 2u);
-                indices_.emplace_back(idx2 + 2u);
-                indices_.emplace_back(idx2 + 1u);
-                indices_.emplace_back(idx2 + 1u);
-                indices_.emplace_back(idx1 + 1u);
-                indices_.emplace_back(idx1 + 0u);
-                indices_.emplace_back(idx1 + 0u);
-                indices_.emplace_back(idx2 + 0u);
-                indices_.emplace_back(idx2 + 1u);
-                indices_.emplace_back(idx2 + 2u);
-                indices_.emplace_back(idx1 + 2u);
-                indices_.emplace_back(idx1 + 3u);
-                indices_.emplace_back(idx1 + 3u);
-                indices_.emplace_back(idx2 + 3u);
-                indices_.emplace_back(idx2 + 2u);
+                write_tri(idx, idx2 + 1u, idx1 + 1u, idx1 + 2u);
+                write_tri(idx + 3, idx1 + 2u, idx2 + 2u, idx2 + 1u);
+                write_tri(idx + 6, idx2 + 1u, idx1 + 1u, idx1 + 0u);
+                write_tri(idx + 9, idx1 + 0u, idx2 + 0u, idx2 + 1u);
+                write_tri(idx + 12, idx2 + 2u, idx1 + 2u, idx1 + 3u);
+                write_tri(idx + 15, idx1 + 3u, idx2 + 3u, idx2 + 2u);
+                idx += 18;
                 idx1 = idx2;
             }
+            auto* vtx = vertices_.append(num_points * 4u);
             for (std::uint32_t i = 0; i < num_points; i++) {
-                vertices_.emplace_back(temp_points[i * 4u + 0u], opaque_uv, col_no_alpha, points[i].depth);
-                vertices_.emplace_back(temp_points[i * 4u + 1u], opaque_uv, col, points[i].depth);
-                vertices_.emplace_back(temp_points[i * 4u + 2u], opaque_uv, col, points[i].depth);
-                vertices_.emplace_back(temp_points[i * 4u + 3u], opaque_uv, col_no_alpha, points[i].depth);
-                vertex_ptr_ += 4u;
+                vtx[0] = vertex(temp_points[i * 4u + 0u], opaque_uv, col_no_alpha, points[i].depth);
+                vtx[1] = vertex(temp_points[i * 4u + 1u], opaque_uv, col, points[i].depth);
+                vtx[2] = vertex(temp_points[i * 4u + 2u], opaque_uv, col, points[i].depth);
+                vtx[3] = vertex(temp_points[i * 4u + 3u], opaque_uv, col_no_alpha, points[i].depth);
+                vtx += 4;
             }
+            vertex_ptr_ += num_points * 4u;
         }
     }
     else {
+        auto* vtx = vertices_.append(count * 4u);
+        auto* idx = indices_.append(count * 6u);
         for (std::uint32_t i1 = 0u; i1 < count; i1++) {
             const std::uint32_t i2 = (i1 + 1u) == num_points ? 0u : i1 + 1u;
             const vec2& p1 = points[i1].pos;
@@ -1100,16 +1066,14 @@ void drawlist2d::add_lines(const point_3d* points, std::uint32_t num_points, col
             );
             d = d.normalize();
             d *= vec2(line_width * 0.5f);
-            vertices_.emplace_back(vec2{ p1.x + d.y, p1.y - d.x }, opaque_uv, col, points[i1].depth);
-            vertices_.emplace_back(vec2{ p2.x + d.y, p2.y - d.x }, opaque_uv, col, points[i2].depth);
-            vertices_.emplace_back(vec2{ p2.x - d.y, p2.y + d.x }, opaque_uv, col, points[i2].depth);
-            vertices_.emplace_back(vec2{ p1.x - d.y, p1.y + d.x }, opaque_uv, col, points[i1].depth);
-            indices_.emplace_back(vertex_ptr_ + 0u);
-            indices_.emplace_back(vertex_ptr_ + 1u);
-            indices_.emplace_back(vertex_ptr_ + 2u);
-            indices_.emplace_back(vertex_ptr_ + 0u);
-            indices_.emplace_back(vertex_ptr_ + 2u);
-            indices_.emplace_back(vertex_ptr_ + 3u);
+            vtx[0] = vertex(vec2{ p1.x + d.y, p1.y - d.x }, opaque_uv, col, points[i1].depth);
+            vtx[1] = vertex(vec2{ p2.x + d.y, p2.y - d.x }, opaque_uv, col, points[i2].depth);
+            vtx[2] = vertex(vec2{ p2.x - d.y, p2.y + d.x }, opaque_uv, col, points[i2].depth);
+            vtx[3] = vertex(vec2{ p1.x - d.y, p1.y + d.x }, opaque_uv, col, points[i1].depth);
+            vtx += 4;
+            write_tri(idx, vertex_ptr_ + 0u, vertex_ptr_ + 1u, vertex_ptr_ + 2u);
+            write_tri(idx + 3, vertex_ptr_ + 0u, vertex_ptr_ + 2u, vertex_ptr_ + 3u);
+            idx += 6;
             vertex_ptr_ += 4u;
         }
     }
@@ -1137,16 +1101,14 @@ void drawlist2d::add_line_multicolor(const point_3d& start_p, const point_3d& en
     const color_u32 col_no_alpha_start = col_start & ~color::alpha_mask;
     const color_u32 col_no_alpha_end = col_end & ~color::alpha_mask;
     if (!renderer_->flags().anti_aliased_lines) [[unlikely]] {
-        indices_.push_back(vertex_ptr_ + 0u);
-        indices_.push_back(vertex_ptr_ + 1u);
-        indices_.push_back(vertex_ptr_ + 2u);
-        indices_.push_back(vertex_ptr_ + 0u);
-        indices_.push_back(vertex_ptr_ + 2u);
-        indices_.push_back(vertex_ptr_ + 3u);
-        vertices_.emplace_back(start - n, opaque_uv, col_start, start_p.depth);
-        vertices_.emplace_back(start + n, opaque_uv, col_start, start_p.depth);
-        vertices_.emplace_back(end + n, opaque_uv, col_end, end_p.depth);
-        vertices_.emplace_back(end - n, opaque_uv, col_end, end_p.depth);
+        auto* idx = indices_.append(6u);
+        write_tri(idx, vertex_ptr_ + 0u, vertex_ptr_ + 1u, vertex_ptr_ + 2u);
+        write_tri(idx + 3, vertex_ptr_ + 0u, vertex_ptr_ + 2u, vertex_ptr_ + 3u);
+        auto* vtx = vertices_.append(4u);
+        vtx[0] = vertex(start - n, opaque_uv, col_start, start_p.depth);
+        vtx[1] = vertex(start + n, opaque_uv, col_start, start_p.depth);
+        vtx[2] = vertex(end + n, opaque_uv, col_end, end_p.depth);
+        vtx[3] = vertex(end - n, opaque_uv, col_end, end_p.depth);
         vertex_ptr_ += 4u;
         return;
     }
@@ -1157,8 +1119,7 @@ void drawlist2d::add_line_multicolor(const point_3d& start_p, const point_3d& en
     const bool use_texture = (renderer_->flags().anti_aliased_lines_use_tex) &&
         (integer_line_width < shared_data::k_baked_lines_max_width) &&
         (fractional_line_width <= 0.00001f) && (aa_scale == 1.0f);
-    shared_data_->temp_buffer.clear();
-    shared_data_->temp_buffer.reserve(2u * ((use_texture || !thick_line) ? 3u : 5u));
+    shared_data_->temp_buffer.resize(2u * ((use_texture || !thick_line) ? 3u : 5u));
     vec2* temp_normals = shared_data_->temp_buffer.data();
     vec2* temp_points = temp_normals + 2u;
     temp_normals[0].x = dir.y;
@@ -1182,44 +1143,36 @@ void drawlist2d::add_line_multicolor(const point_3d& start_p, const point_3d& en
         temp_points[2] = end + dm;
         temp_points[3] = end - dm;
         if (use_texture) {
-            indices_.emplace_back(idx2 + 0u);
-            indices_.emplace_back(idx1 + 0u);
-            indices_.emplace_back(idx1 + 1u);
-            indices_.emplace_back(idx2 + 1u);
-            indices_.emplace_back(idx1 + 1u);
-            indices_.emplace_back(idx2 + 0u);
+            auto* idx = indices_.append(6u);
+            write_tri(idx, idx2 + 0u, idx1 + 0u, idx1 + 1u);
+            write_tri(idx + 3, idx2 + 1u, idx1 + 1u, idx2 + 0u);
         }
         else {
-            indices_.emplace_back(idx2 + 0u);
-            indices_.emplace_back(idx2 + 0u);
-            indices_.emplace_back(idx1 + 2u);
-            indices_.emplace_back(idx1 + 2u);
-            indices_.emplace_back(idx2 + 2u);
-            indices_.emplace_back(idx2 + 0u);
-            indices_.emplace_back(idx2 + 1u);
-            indices_.emplace_back(idx1 + 1u);
-            indices_.emplace_back(idx1 + 0u);
-            indices_.emplace_back(idx1 + 0u);
-            indices_.emplace_back(idx2 + 0u);
-            indices_.emplace_back(idx2 + 1u);
+            auto* idx = indices_.append(12u);
+            write_tri(idx, idx2 + 0u, idx2 + 0u, idx1 + 2u);
+            write_tri(idx + 3, idx1 + 2u, idx2 + 2u, idx2 + 0u);
+            write_tri(idx + 6, idx2 + 1u, idx1 + 1u, idx1 + 0u);
+            write_tri(idx + 9, idx1 + 0u, idx2 + 0u, idx2 + 1u);
         }
         if (use_texture) {
             vec4 tex_uvs = shared_data_->tex_uv_lines[integer_line_width];
             const vec2 tex_uv0(tex_uvs.x, tex_uvs.y);
             const vec2 tex_uv1(tex_uvs.z, tex_uvs.w);
-            vertices_.emplace_back(temp_points[0], tex_uv0, col_start, start_p.depth);
-            vertices_.emplace_back(temp_points[1], tex_uv1, col_start, start_p.depth);
-            vertices_.emplace_back(temp_points[2], tex_uv0, col_end, end_p.depth);
-            vertices_.emplace_back(temp_points[3], tex_uv1, col_end, end_p.depth);
+            auto* vtx = vertices_.append(4u);
+            vtx[0] = vertex(temp_points[0], tex_uv0, col_start, start_p.depth);
+            vtx[1] = vertex(temp_points[1], tex_uv1, col_start, start_p.depth);
+            vtx[2] = vertex(temp_points[2], tex_uv0, col_end, end_p.depth);
+            vtx[3] = vertex(temp_points[3], tex_uv1, col_end, end_p.depth);
             vertex_ptr_ += 4u;
         }
         else {
-            vertices_.emplace_back(start, opaque_uv, col_start, start_p.depth);
-            vertices_.emplace_back(temp_points[0], opaque_uv, col_no_alpha_start, start_p.depth);
-            vertices_.emplace_back(temp_points[1], opaque_uv, col_no_alpha_start, start_p.depth);
-            vertices_.emplace_back(end, opaque_uv, col_end, end_p.depth);
-            vertices_.emplace_back(temp_points[2], opaque_uv, col_no_alpha_end, end_p.depth);
-            vertices_.emplace_back(temp_points[3], opaque_uv, col_no_alpha_end, end_p.depth);
+            auto* vtx = vertices_.append(6u);
+            vtx[0] = vertex(start, opaque_uv, col_start, start_p.depth);
+            vtx[1] = vertex(temp_points[0], opaque_uv, col_no_alpha_start, start_p.depth);
+            vtx[2] = vertex(temp_points[1], opaque_uv, col_no_alpha_start, start_p.depth);
+            vtx[3] = vertex(end, opaque_uv, col_end, end_p.depth);
+            vtx[4] = vertex(temp_points[2], opaque_uv, col_no_alpha_end, end_p.depth);
+            vtx[5] = vertex(temp_points[3], opaque_uv, col_no_alpha_end, end_p.depth);
             vertex_ptr_ += 6u;
         }
     }
@@ -1246,32 +1199,22 @@ void drawlist2d::add_line_multicolor(const point_3d& start_p, const point_3d& en
         temp_points[5] = end + dm_in;
         temp_points[6] = end - dm_in;
         temp_points[7] = end - dm_out;
-        indices_.emplace_back(idx2 + 1u);
-        indices_.emplace_back(idx1 + 1u);
-        indices_.emplace_back(idx1 + 2u);
-        indices_.emplace_back(idx1 + 2u);
-        indices_.emplace_back(idx2 + 2u);
-        indices_.emplace_back(idx2 + 1u);
-        indices_.emplace_back(idx2 + 1u);
-        indices_.emplace_back(idx1 + 1u);
-        indices_.emplace_back(idx1 + 0u);
-        indices_.emplace_back(idx1 + 0u);
-        indices_.emplace_back(idx2 + 0u);
-        indices_.emplace_back(idx2 + 1u);
-        indices_.emplace_back(idx2 + 2u);
-        indices_.emplace_back(idx1 + 2u);
-        indices_.emplace_back(idx1 + 3u);
-        indices_.emplace_back(idx1 + 3u);
-        indices_.emplace_back(idx2 + 3u);
-        indices_.emplace_back(idx2 + 2u);
-        vertices_.emplace_back(temp_points[0], opaque_uv, col_no_alpha_start, start_p.depth);
-        vertices_.emplace_back(temp_points[1], opaque_uv, col_start, start_p.depth);
-        vertices_.emplace_back(temp_points[2], opaque_uv, col_start, start_p.depth);
-        vertices_.emplace_back(temp_points[3], opaque_uv, col_no_alpha_start, start_p.depth);
-        vertices_.emplace_back(temp_points[4], opaque_uv, col_no_alpha_end, end_p.depth);
-        vertices_.emplace_back(temp_points[5], opaque_uv, col_end, end_p.depth);
-        vertices_.emplace_back(temp_points[6], opaque_uv, col_end, end_p.depth);
-        vertices_.emplace_back(temp_points[7], opaque_uv, col_no_alpha_end, end_p.depth);
+        auto* idx = indices_.append(18u);
+        write_tri(idx, idx2 + 1u, idx1 + 1u, idx1 + 2u);
+        write_tri(idx + 3, idx1 + 2u, idx2 + 2u, idx2 + 1u);
+        write_tri(idx + 6, idx2 + 1u, idx1 + 1u, idx1 + 0u);
+        write_tri(idx + 9, idx1 + 0u, idx2 + 0u, idx2 + 1u);
+        write_tri(idx + 12, idx2 + 2u, idx1 + 2u, idx1 + 3u);
+        write_tri(idx + 15, idx1 + 3u, idx2 + 3u, idx2 + 2u);
+        auto* vtx = vertices_.append(8u);
+        vtx[0] = vertex(temp_points[0], opaque_uv, col_no_alpha_start, start_p.depth);
+        vtx[1] = vertex(temp_points[1], opaque_uv, col_start, start_p.depth);
+        vtx[2] = vertex(temp_points[2], opaque_uv, col_start, start_p.depth);
+        vtx[3] = vertex(temp_points[3], opaque_uv, col_no_alpha_start, start_p.depth);
+        vtx[4] = vertex(temp_points[4], opaque_uv, col_no_alpha_end, end_p.depth);
+        vtx[5] = vertex(temp_points[5], opaque_uv, col_end, end_p.depth);
+        vtx[6] = vertex(temp_points[6], opaque_uv, col_end, end_p.depth);
+        vtx[7] = vertex(temp_points[7], opaque_uv, col_no_alpha_end, end_p.depth);
         vertex_ptr_ += 8u;
     }
 }

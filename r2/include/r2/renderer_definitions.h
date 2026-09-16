@@ -1,8 +1,8 @@
 #pragma once
 #include <backend/context.h>
+#include <r2/util/vector.h>
 #include <cassert>
 #include <cmath>
-#include <vector>
 #include <algorithm>
 
 
@@ -324,9 +324,9 @@ struct shared_data {
     vec2 uv_white_px;
     vec4 shadow_positions;
     vec4 shadow_uvs;
-    std::vector<vec2> temp_buffer;
-    std::vector<point_3d> temp_buffer3d;
-    std::vector<float> temp_buffer2;
+    vector<vec2> temp_buffer;
+    vector<point_3d> temp_buffer3d;
+    vector<float> temp_buffer2;
 
     inline static constexpr std::uint32_t k_baked_lines_max_width = 63u;
     vec4 tex_pos_lines[k_baked_lines_max_width + 1u]{};

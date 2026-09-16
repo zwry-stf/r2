@@ -695,8 +695,9 @@ inline void drawlist2d::path_arc_to(const vec2& center, float radius, float step
     const float sd = std::sin(delta);
     const float cd = std::cos(delta);
 
+    auto* out = path_.append(static_cast<std::uint32_t>(n + 1));
     for (int j = 0; j <= n; ++j) {
-        path_.emplace_back(center.x + s * radius, center.y + c * radius);
+        out[j] = vec2(center.x + s * radius, center.y + c * radius);
 
         if (j != n) {
             const float s_next = s * cd + c * sd;
@@ -719,10 +720,11 @@ inline void drawlist2d::path_rect(const vec2& min, const vec2& max, float roundi
 
     if (rounding < 0.5f ||
         flags == e_rounding_flags::rounding_none) {
-        path_add_point(min);
-        path_add_point(vec2(max.x, min.y));
-        path_add_point(max);
-        path_add_point(vec2(min.x, max.y));
+        auto* p = path_.append(4u);
+        p[0] = min;
+        p[1] = vec2(max.x, min.y);
+        p[2] = max;
+        p[3] = vec2(min.x, max.y);
     }
     else {
         const float rounding_tl = flags & e_rounding_flags::rounding_topleft ? rounding : 0.f;
