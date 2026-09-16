@@ -9,6 +9,164 @@
 
 r2_begin_
 
+[[nodiscard]] static std::uint16_t read_u16_be(const std::uint8_t* p) noexcept {
+    return static_cast<std::uint16_t>((p[0] << 8) | p[1]);
+}
+
+[[nodiscard]] static std::uint32_t read_u32_be(const std::uint8_t* p) noexcept {
+    return (static_cast<std::uint32_t>(p[0]) << 24) |
+           (static_cast<std::uint32_t>(p[1]) << 16) |
+           (static_cast<std::uint32_t>(p[2]) << 8) |
+           static_cast<std::uint32_t>(p[3]);
+}
+
+[[nodiscard]] static bool ranges_cover_all(const std::vector<font_range>& ranges) noexcept {
+    for (const auto& r : ranges) {
+        if (r.range_min == 0 &&
+            r.range_max >= unicode::codepoint_max) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] static bool codepoint_in_ranges(std::uint32_t cp, const std::vector<font_range>& ranges) noexcept {
+    const auto c = static_cast<wchar>(cp);
+    for (const auto& r : ranges) {
+        if (c >= r.range_min &&
+            c <= r.range_max) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void mark_supported_codepoint(std::vector<glyph_lookup_data>& lookup, std::uint32_t cp,
+                                     bool check_ranges, const std::vector<font_range>& ranges) noexcept {
+    if (cp < 0x20u ||
+        cp >= lookup.size()) {
+        return;
+    }
+    if (cp >= 0xD800u &&
+        cp <= 0xDFFFu) {
+        return;
+    }
+    if (check_ranges &&
+        !codepoint_in_ranges(cp, ranges)) {
+        return;
+    }
+    lookup[cp].supported = 1u;
+}
+
+static void mark_supported_brute(const stbtt_fontinfo* info, std::vector<glyph_lookup_data>& lookup,
+                                 const std::vector<font_range>& ranges) {
+    const bool check_ranges = !ranges_cover_all(ranges);
+    for (std::uint32_t cp = 0x20u; cp < unicode::codepoint_max; ++cp) {
+        if (cp >= 0xD800u &&
+            cp <= 0xDFFFu) {
+            continue;
+        }
+        if (check_ranges &&
+            !codepoint_in_ranges(cp, ranges)) {
+            continue;
+        }
+        if (stbtt_FindGlyphIndex(info, static_cast<int>(cp)) != 0) {
+            lookup[cp].supported = 1u;
+        }
+    }
+}
+
+static bool mark_supported_from_cmap(const stbtt_fontinfo* info, std::vector<glyph_lookup_data>& lookup,
+                                     const std::vector<font_range>& ranges) {
+    if (info == nullptr ||
+        info->data == nullptr ||
+        info->index_map == 0) {
+        return false;
+    }
+
+    const auto* data = info->data;
+    const auto index_map = static_cast<std::uint32_t>(info->index_map);
+    const std::uint16_t format = read_u16_be(data + index_map);
+    const bool check_ranges = !ranges_cover_all(ranges);
+
+    auto mark_glyph = [&](std::uint32_t cp, std::uint32_t glyph) {
+        if (glyph != 0u) {
+            mark_supported_codepoint(lookup, cp, check_ranges, ranges);
+        }
+    };
+
+    if (format == 0) {
+        const std::uint16_t bytes = read_u16_be(data + index_map + 2);
+        if (bytes <= 6) {
+            return true;
+        }
+        const std::uint32_t count = static_cast<std::uint32_t>(bytes - 6);
+        for (std::uint32_t cp = 0u; cp < count; ++cp) {
+            mark_glyph(cp, data[index_map + 6u + cp]);
+        }
+        return true;
+    }
+    if (format == 6) {
+        const std::uint32_t first = read_u16_be(data + index_map + 6);
+        const std::uint32_t count = read_u16_be(data + index_map + 8);
+        for (std::uint32_t i = 0u; i < count; ++i) {
+            mark_glyph(first + i, read_u16_be(data + index_map + 10u + i * 2u));
+        }
+        return true;
+    }
+    if (format == 4) {
+        const std::uint16_t segcount = static_cast<std::uint16_t>(read_u16_be(data + index_map + 6) >> 1);
+        const std::uint8_t* end_code = data + index_map + 14;
+        const std::uint8_t* start_code = data + index_map + 14 + segcount * 2 + 2;
+        const std::uint8_t* id_delta = data + index_map + 14 + segcount * 4 + 2;
+        const std::uint8_t* id_range_offset = data + index_map + 14 + segcount * 6 + 2;
+        for (std::uint16_t item = 0; item < segcount; ++item) {
+            const std::uint32_t start = read_u16_be(start_code + item * 2);
+            const std::uint32_t last = read_u16_be(end_code + item * 2);
+            if (start > last) {
+                continue;
+            }
+            const std::uint16_t offset = read_u16_be(id_range_offset + item * 2);
+            const auto delta = static_cast<std::int16_t>(read_u16_be(id_delta + item * 2));
+            for (std::uint32_t cp = start; cp <= last; ++cp) {
+                std::uint32_t glyph = 0u;
+                if (offset == 0) {
+                    glyph = static_cast<std::uint16_t>(static_cast<int>(cp) + static_cast<int>(delta));
+                }
+                else {
+                    glyph = read_u16_be(id_range_offset + item * 2 + offset + (cp - start) * 2);
+                }
+                mark_glyph(cp, glyph);
+            }
+        }
+        return true;
+    }
+    if (format == 12 ||
+        format == 13) {
+        const std::uint32_t ngroups = read_u32_be(data + index_map + 12);
+        for (std::uint32_t g = 0u; g < ngroups; ++g) {
+            const std::uint8_t* rec = data + index_map + 16 + g * 12;
+            const std::uint32_t start_char = read_u32_be(rec);
+            const std::uint32_t end_char = read_u32_be(rec + 4);
+            const std::uint32_t start_glyph = read_u32_be(rec + 8);
+            if (start_char > end_char) {
+                continue;
+            }
+            for (std::uint32_t cp = start_char; cp <= end_char; ++cp) {
+                const std::uint32_t glyph = (format == 12) ?
+                    (start_glyph + (cp - start_char)) : start_glyph;
+                mark_glyph(cp, glyph);
+                if (cp == 0xFFFFFFFFu) {
+                    break;
+                }
+            }
+        }
+        return true;
+    }
+
+    return false;
+}
+
 font::font(font_atlas* atlas, const font_cfg& cfg)
     : atlas_(atlas), 
       cfg_(cfg)
@@ -128,25 +286,15 @@ bool font::prepare()
     const bool has_blur = cfg_.glow_radius > 0u;
 
     glyph_lookup_.resize(unicode::codepoint_max);
+    for (const auto& d : fonts_) {
+        if (!mark_supported_from_cmap(d.font_info.get(), glyph_lookup_, d.ranges)) {
+            mark_supported_brute(d.font_info.get(), glyph_lookup_, d.ranges);
+        }
+    }
+
     if (has_blur) {
-        glyph_lookup_blurred_.resize(unicode::codepoint_max);
+        glyph_lookup_blurred_ = glyph_lookup_;
         build_weights();
-    }
-
-    for (std::uint32_t cp = 0x20; cp < unicode::codepoint_max; ++cp) {
-        if (cp >= 0xD800u && cp <= 0xDFFFu) {
-            continue;
-        }
-
-        if (get_font_data_for_char(cp) != nullptr) {
-            glyph_lookup_[cp].supported = true;
-        }
-    }
-
-    if (has_blur) {
-        for (std::size_t i = 0u; i < glyph_lookup_.size(); i++) {
-            glyph_lookup_blurred_[i].supported = glyph_lookup_[i].supported;
-        }
     }
 
     prepared_ = true;
