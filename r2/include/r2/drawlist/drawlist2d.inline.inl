@@ -938,6 +938,95 @@ inline void drawlist2d::add_text(const vec2& pos, color_u32 col, const String& t
 }
 
 template <float CharOffset, unicode::string_like String>
+inline float drawlist2d::add_text_wrapped(const vec2& pos, float max_width, color_u32 col, const String& text, bool blurred)
+{
+    assert(current_font_ != nullptr);
+
+    const float line_height = static_cast<float>(current_font_->cfg().size);
+    const std::uint32_t length = static_cast<std::uint32_t>(text.length());
+    if (length == 0u || max_width <= 0.f) {
+        add_text<CharOffset>(pos, col, text, blurred);
+        return pos.y + (length == 0u ? 0.f : line_height);
+    }
+
+    using char_t = unicode::get_char_t<String>;
+    struct slice_t {
+        const char_t* data;
+        std::uint32_t n;
+        [[nodiscard]] std::uint32_t length() const noexcept { return n; }
+        [[nodiscard]] bool empty() const noexcept { return n == 0u; }
+        [[nodiscard]] char_t operator[](std::uint32_t i) const noexcept { return data[i]; }
+    };
+    const auto emit = [&](std::uint32_t begin, std::uint32_t end, float y) {
+        if (end <= begin) {
+            return;
+        }
+        slice_t slice{ &text[begin], end - begin };
+        add_text<CharOffset>(vec2{ pos.x, y }, col, slice, blurred);
+    };
+
+    float y = pos.y;
+    std::uint32_t line_start = 0u;
+    std::uint32_t last_break = ~0u;
+    std::uint32_t i = 0u;
+    while (i < length) {
+        const std::uint32_t at = i;
+        const unicode::unicode_type cp = unicode::get_char_auto(text, length, i);
+        if (cp == unicode::codepoint_invalid) {
+            continue;
+        }
+        if (cp == U'\n') {
+            emit(line_start, at, y);
+            y += line_height;
+            line_start = i;
+            last_break = ~0u;
+            continue;
+        }
+        if (cp == U'\r') {
+            continue;
+        }
+        if (cp == U' ' || cp == U'\t') {
+            last_break = at;
+        }
+
+        const float width = get_text_width<CharOffset, String, std::uint32_t>(text, line_start, i);
+        if (width <= max_width || at == line_start) {
+            continue;
+        }
+
+        if (last_break != ~0u && last_break > line_start) {
+            emit(line_start, last_break, y);
+            y += line_height;
+            i = last_break;
+            (void)unicode::get_char_auto(text, length, i);
+            while (i < length) {
+                const std::uint32_t space_at = i;
+                const unicode::unicode_type space = unicode::get_char_auto(text, length, i);
+                if (space != U' ' && space != U'\t') {
+                    i = space_at;
+                    break;
+                }
+            }
+            line_start = i;
+            last_break = ~0u;
+            continue;
+        }
+
+        emit(line_start, at, y);
+        y += line_height;
+        i = at;
+        line_start = at;
+        last_break = ~0u;
+    }
+
+    if (line_start < length) {
+        emit(line_start, length, y);
+        y += line_height;
+    }
+    return y;
+}
+
+template <float CharOffset, unicode::string_like String>
 inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32 faded_col,
                                        float fade_start, float fade_end, const String& text, bool blurred)
 {
