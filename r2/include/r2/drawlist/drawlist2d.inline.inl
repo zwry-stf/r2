@@ -6,6 +6,82 @@
 
 r2_begin_
 
+inline void drawlist2d::emit_glyph_quad(float x0, float y0, float x1, float y1,
+                                        vec2 uv0, vec2 uv1, color_u32 c_left, color_u32 c_right)
+{
+    if (!text_clip_stack_.empty()) {
+        const rect& c = text_clip_stack_.back();
+        const float cl = static_cast<float>(c.left);
+        const float ct = static_cast<float>(c.top);
+        const float cr = static_cast<float>(c.right);
+        const float cb = static_cast<float>(c.bottom);
+        if (x1 <= cl || x0 >= cr || y1 <= ct || y0 >= cb) {
+            return;
+        }
+
+        const float ox0 = x0;
+        const float oy0 = y0;
+        const float ox1 = x1;
+        const float oy1 = y1;
+        const float ow = ox1 - ox0;
+        const float oh = oy1 - oy0;
+        const vec2 ouv0 = uv0;
+        const vec2 ouv1 = uv1;
+        const color left_col(c_left);
+        const color right_col(c_right);
+
+        if (ow > 1e-6f) {
+            if (x0 < cl) {
+                const float u = (cl - ox0) / ow;
+                uv0.x = ouv0.x + (ouv1.x - ouv0.x) * u;
+                c_left = left_col.interp(right_col, u);
+                x0 = cl;
+            }
+            if (x1 > cr) {
+                const float u = (cr - ox0) / ow;
+                uv1.x = ouv0.x + (ouv1.x - ouv0.x) * u;
+                c_right = left_col.interp(right_col, u);
+                x1 = cr;
+            }
+        }
+        if (oh > 1e-6f) {
+            if (y0 < ct) {
+                const float v = (ct - oy0) / oh;
+                uv0.y = ouv0.y + (ouv1.y - ouv0.y) * v;
+                y0 = ct;
+            }
+            if (y1 > cb) {
+                const float v = (cb - oy0) / oh;
+                uv1.y = ouv0.y + (ouv1.y - ouv0.y) * v;
+                y1 = cb;
+            }
+        }
+        if (x1 <= x0 || y1 <= y0) {
+            return;
+        }
+    }
+
+    if ((c_left & color::alpha_mask) == 0u &&
+        (c_right & color::alpha_mask) == 0u) {
+        return;
+    }
+
+    auto* idx = indices_.append(6u);
+    idx[0] = vertex_ptr_ + 0u;
+    idx[1] = vertex_ptr_ + 1u;
+    idx[2] = vertex_ptr_ + 2u;
+    idx[3] = vertex_ptr_ + 0u;
+    idx[4] = vertex_ptr_ + 2u;
+    idx[5] = vertex_ptr_ + 3u;
+
+    auto* vtx = vertices_.append(4u);
+    vtx[0] = vertex(vec2{ x0, y0 }, uv0, c_left);
+    vtx[1] = vertex(vec2{ x0, y1 }, vec2{ uv0.x, uv1.y }, c_left);
+    vtx[2] = vertex(vec2{ x1, y1 }, uv1, c_right);
+    vtx[3] = vertex(vec2{ x1, y0 }, vec2{ uv1.x, uv0.y }, c_right);
+    vertex_ptr_ += 4u;
+}
+
 inline void drawlist2d::prim_rect(const vec2& min, const vec2& max, color_u32 col)
 {
     auto* idx = indices_.append(6u);
@@ -839,6 +915,8 @@ inline void drawlist2d::add_text(const vec2& pos, color_u32 col, const String& t
             continue;
 
         if (glyph->visible) {
+            note_glyph(current_font_, static_cast<std::uint32_t>(cp), blurred);
+
             const float x0 = x + glyph->x0;
             const float x1 = x + glyph->x1;
             const float y0 = y + glyph->y0;
@@ -848,21 +926,7 @@ inline void drawlist2d::add_text(const vec2& pos, color_u32 col, const String& t
                 x1 >= header_.clip_rect.left &&
                 y0 <= header_.clip_rect.bottom &&
                 y1 >= header_.clip_rect.top) {
-                auto* idx = indices_.append(6u);
-                idx[0] = vertex_ptr_ + 0u;
-                idx[1] = vertex_ptr_ + 1u;
-                idx[2] = vertex_ptr_ + 2u;
-                idx[3] = vertex_ptr_ + 0u;
-                idx[4] = vertex_ptr_ + 2u;
-                idx[5] = vertex_ptr_ + 3u;
-
-                auto* vtx = vertices_.append(4u);
-                vtx[0] = vertex(vec2{ x0, y0 }, glyph->uv_min, col);
-                vtx[1] = vertex(vec2{ x0, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, col);
-                vtx[2] = vertex(vec2{ x1, y1 }, glyph->uv_max, col);
-                vtx[3] = vertex(vec2{ x1, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, col);
-
-                vertex_ptr_ += 4u;
+                emit_glyph_quad(x0, y0, x1, y1, glyph->uv_min, glyph->uv_max, col, col);
             }
         }
 
@@ -927,6 +991,8 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
             continue;
 
         if (glyph->visible) {
+            note_glyph(current_font_, static_cast<std::uint32_t>(cp), blurred);
+
             const float x0 = x + glyph->x0;
             const float x1 = x + glyph->x1;
             const float y0 = y + glyph->y0;
@@ -961,21 +1027,12 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                             mid_left_pos = x0 + (x1 - x0) * d;
 
                             if (draw_no_fade) {
-                                auto* idx = indices_.append(6u);
-                                idx[0] = vertex_ptr_ + 0u;
-                                idx[1] = vertex_ptr_ + 1u;
-                                idx[2] = vertex_ptr_ + 2u;
-                                idx[3] = vertex_ptr_ + 0u;
-                                idx[4] = vertex_ptr_ + 2u;
-                                idx[5] = vertex_ptr_ + 3u;
-
-                                auto* vtx = vertices_.append(4u);
-                                vtx[0] = vertex(vec2{ x0, y0 }, vec2{ uv_min.x, uv_min.y }, col);
-                                vtx[1] = vertex(vec2{ x0, y1 }, vec2{ uv_min.x, uv_max.y }, col);
-                                vtx[2] = vertex(vec2{ mid_left_pos, y1 }, vec2{ mid_left, uv_max.y }, col);
-                                vtx[3] = vertex(vec2{ mid_left_pos, y0 }, vec2{ mid_left, uv_min.y }, col);
-
-                                vertex_ptr_ += 4u;
+                                emit_glyph_quad(
+                                    x0, y0, mid_left_pos, y1,
+                                    vec2{ uv_min.x, uv_min.y },
+                                    vec2{ mid_left, uv_max.y },
+                                    col, col
+                                );
                             }
                         }
 
@@ -986,21 +1043,12 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                             mid_right = uv_min.x + (uv_max.x - uv_min.x) * d;
                             mid_right_pos = x0 + (x1 - x0) * d;
                             if (draw_if_faded) {
-                                auto* idx = indices_.append(6u);
-                                idx[0] = vertex_ptr_ + 0u;
-                                idx[1] = vertex_ptr_ + 1u;
-                                idx[2] = vertex_ptr_ + 2u;
-                                idx[3] = vertex_ptr_ + 0u;
-                                idx[4] = vertex_ptr_ + 2u;
-                                idx[5] = vertex_ptr_ + 3u;
-
-                                auto* vtx = vertices_.append(4u);
-                                vtx[0] = vertex(vec2{ mid_right_pos, y0 }, vec2{ mid_right, uv_min.y }, faded_col);
-                                vtx[1] = vertex(vec2{ mid_right_pos, y1 }, vec2{ mid_right, uv_max.y }, faded_col);
-                                vtx[2] = vertex(vec2{ x1, y1 }, vec2{ uv_max.x, uv_max.y }, faded_col);
-                                vtx[3] = vertex(vec2{ x1, y0 }, vec2{ uv_max.x, uv_min.y }, faded_col);
-
-                                vertex_ptr_ += 4u;
+                                emit_glyph_quad(
+                                    mid_right_pos, y0, x1, y1,
+                                    vec2{ mid_right, uv_min.y },
+                                    vec2{ uv_max.x, uv_max.y },
+                                    faded_col, faded_col
+                                );
                             }
                         }
 
@@ -1026,21 +1074,12 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                         const float mid_uv = uv_min.x + (uv_max.x - uv_min.x) * d;
 
                         if (draw_no_fade) {
-                            auto* idx = indices_.append(6u);
-                            idx[0] = vertex_ptr_ + 0u;
-                            idx[1] = vertex_ptr_ + 1u;
-                            idx[2] = vertex_ptr_ + 2u;
-                            idx[3] = vertex_ptr_ + 0u;
-                            idx[4] = vertex_ptr_ + 2u;
-                            idx[5] = vertex_ptr_ + 3u;
-
-                            auto* vtx = vertices_.append(4u);
-                            vtx[0] = vertex(vec2{ x0, y0 }, vec2{ uv_min.x, uv_min.y }, col);
-                            vtx[1] = vertex(vec2{ x0, y1 }, vec2{ uv_min.x, uv_max.y }, col);
-                            vtx[2] = vertex(vec2{ mid_pos, y1 }, vec2{ mid_uv, uv_max.y }, col);
-                            vtx[3] = vertex(vec2{ mid_pos, y0 }, vec2{ mid_uv, uv_min.y }, col);
-
-                            vertex_ptr_ += 4u;
+                            emit_glyph_quad(
+                                x0, y0, mid_pos, y1,
+                                vec2{ uv_min.x, uv_min.y },
+                                vec2{ mid_uv, uv_max.y },
+                                col, col
+                            );
                         }
 
                         mid_left_pos = mid_pos;
@@ -1051,22 +1090,12 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                     }
                 }
 
-                // middle/main quad
-                auto* idx = indices_.append(6u);
-                idx[0] = vertex_ptr_ + 0u;
-                idx[1] = vertex_ptr_ + 1u;
-                idx[2] = vertex_ptr_ + 2u;
-                idx[3] = vertex_ptr_ + 0u;
-                idx[4] = vertex_ptr_ + 2u;
-                idx[5] = vertex_ptr_ + 3u;
-
-                auto* vtx = vertices_.append(4u);
-                vtx[0] = vertex(vec2{ mid_left_pos,  y0 }, vec2{ mid_left,  uv_min.y }, c_left);
-                vtx[1] = vertex(vec2{ mid_left_pos,  y1 }, vec2{ mid_left,  uv_max.y }, c_left);
-                vtx[2] = vertex(vec2{ mid_right_pos, y1 }, vec2{ mid_right, uv_max.y }, c_right);
-                vtx[3] = vertex(vec2{ mid_right_pos, y0 }, vec2{ mid_right, uv_min.y }, c_right);
-
-                vertex_ptr_ += 4u;
+                emit_glyph_quad(
+                    mid_left_pos, y0, mid_right_pos, y1,
+                    vec2{ mid_left, uv_min.y },
+                    vec2{ mid_right, uv_max.y },
+                    c_left, c_right
+                );
             }
         }
 
@@ -1118,6 +1147,8 @@ inline void drawlist2d::add_text_outlined(const vec2& pos, color_u32 col, const 
             continue;
 
         if (glyph->visible) {
+            note_glyph(current_font_, static_cast<std::uint32_t>(cp), blurred);
+
             const float x0 = x + glyph->x0;
             const float x1 = x + glyph->x1;
             const float y0 = y + glyph->y0;
@@ -1129,97 +1160,26 @@ inline void drawlist2d::add_text_outlined(const vec2& pos, color_u32 col, const 
                 y1 + outline_width >= header_.clip_rect.top) {
 
                 if (draw_outline) {
-                    // left
-                    auto* idx = indices_.append(6u);
-                    idx[0] = vertex_ptr_ + 0u;
-                    idx[1] = vertex_ptr_ + 1u;
-                    idx[2] = vertex_ptr_ + 2u;
-                    idx[3] = vertex_ptr_ + 0u;
-                    idx[4] = vertex_ptr_ + 2u;
-                    idx[5] = vertex_ptr_ + 3u;
-
-                    auto* vtx = vertices_.append(4u);
-                    vtx[0] = vertex(vec2{ x0 - outline_width, y0 }, glyph->uv_min, outline_col);
-                    vtx[1] = vertex(vec2{ x0 - outline_width, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
-                    vtx[2] = vertex(vec2{ x1 - outline_width, y1 }, glyph->uv_max, outline_col);
-                    vtx[3] = vertex(vec2{ x1 - outline_width, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
-
-                    vertex_ptr_ += 4u;
-
-                    {
-                        // right
-                        auto* idx = indices_.append(6u);
-                        idx[0] = vertex_ptr_ + 0u;
-                        idx[1] = vertex_ptr_ + 1u;
-                        idx[2] = vertex_ptr_ + 2u;
-                        idx[3] = vertex_ptr_ + 0u;
-                        idx[4] = vertex_ptr_ + 2u;
-                        idx[5] = vertex_ptr_ + 3u;
-
-                        auto* vtx = vertices_.append(4u);
-                        vtx[0] = vertex(vec2{ x0 + outline_width, y0 }, glyph->uv_min, outline_col);
-                        vtx[1] = vertex(vec2{ x0 + outline_width, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
-                        vtx[2] = vertex(vec2{ x1 + outline_width, y1 }, glyph->uv_max, outline_col);
-                        vtx[3] = vertex(vec2{ x1 + outline_width, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
-
-                        vertex_ptr_ += 4u;
-                    }
-
-                    {
-                        // top
-                        auto* idx = indices_.append(6u);
-                        idx[0] = vertex_ptr_ + 0u;
-                        idx[1] = vertex_ptr_ + 1u;
-                        idx[2] = vertex_ptr_ + 2u;
-                        idx[3] = vertex_ptr_ + 0u;
-                        idx[4] = vertex_ptr_ + 2u;
-                        idx[5] = vertex_ptr_ + 3u;
-
-                        auto* vtx = vertices_.append(4u);
-                        vtx[0] = vertex(vec2{ x0, y0 - outline_width }, glyph->uv_min, outline_col);
-                        vtx[1] = vertex(vec2{ x0, y1 - outline_width }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
-                        vtx[2] = vertex(vec2{ x1, y1 - outline_width }, glyph->uv_max, outline_col);
-                        vtx[3] = vertex(vec2{ x1, y0 - outline_width }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
-
-                        vertex_ptr_ += 4u;
-                    }
-
-                    {
-                        // bottom
-                        auto* idx = indices_.append(6u);
-                        idx[0] = vertex_ptr_ + 0u;
-                        idx[1] = vertex_ptr_ + 1u;
-                        idx[2] = vertex_ptr_ + 2u;
-                        idx[3] = vertex_ptr_ + 0u;
-                        idx[4] = vertex_ptr_ + 2u;
-                        idx[5] = vertex_ptr_ + 3u;
-
-                        auto* vtx = vertices_.append(4u);
-                        vtx[0] = vertex(vec2{ x0, y0 + outline_width }, glyph->uv_min, outline_col);
-                        vtx[1] = vertex(vec2{ x0, y1 + outline_width }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, outline_col);
-                        vtx[2] = vertex(vec2{ x1, y1 + outline_width }, glyph->uv_max, outline_col);
-                        vtx[3] = vertex(vec2{ x1, y0 + outline_width }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, outline_col);
-
-                        vertex_ptr_ += 4u;
-                    }
+                    emit_glyph_quad(
+                        x0 - outline_width, y0, x1 - outline_width, y1,
+                        glyph->uv_min, glyph->uv_max, outline_col, outline_col
+                    );
+                    emit_glyph_quad(
+                        x0 + outline_width, y0, x1 + outline_width, y1,
+                        glyph->uv_min, glyph->uv_max, outline_col, outline_col
+                    );
+                    emit_glyph_quad(
+                        x0, y0 - outline_width, x1, y1 - outline_width,
+                        glyph->uv_min, glyph->uv_max, outline_col, outline_col
+                    );
+                    emit_glyph_quad(
+                        x0, y0 + outline_width, x1, y1 + outline_width,
+                        glyph->uv_min, glyph->uv_max, outline_col, outline_col
+                    );
                 }
 
                 if (draw_no_outline) {
-                    auto* idx = indices_.append(6u);
-                    idx[0] = vertex_ptr_ + 0u;
-                    idx[1] = vertex_ptr_ + 1u;
-                    idx[2] = vertex_ptr_ + 2u;
-                    idx[3] = vertex_ptr_ + 0u;
-                    idx[4] = vertex_ptr_ + 2u;
-                    idx[5] = vertex_ptr_ + 3u;
-
-                    auto* vtx = vertices_.append(4u);
-                    vtx[0] = vertex(vec2{ x0, y0 }, glyph->uv_min, col);
-                    vtx[1] = vertex(vec2{ x0, y1 }, vec2{ glyph->uv_min.x, glyph->uv_max.y }, col);
-                    vtx[2] = vertex(vec2{ x1, y1 }, glyph->uv_max, col);
-                    vtx[3] = vertex(vec2{ x1, y0 }, vec2{ glyph->uv_max.x, glyph->uv_min.y }, col);
-
-                    vertex_ptr_ += 4u;
+                    emit_glyph_quad(x0, y0, x1, y1, glyph->uv_min, glyph->uv_max, col, col);
                 }
             }
         }

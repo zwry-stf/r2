@@ -73,6 +73,7 @@ private:
     mutable std::vector<glyph_lookup_data> glyph_lookup_blurred_;
     std::chrono::steady_clock::time_point last_cleanup_;
     std::uint64_t frame_start_{ 0u };
+    std::uint32_t content_epoch_{ 1u };
 
     std::vector<float> kernel_weights_;
     std::vector<std::uint8_t> private_buffer_;
@@ -101,6 +102,9 @@ public:
     }
     [[nodiscard]] bool is_destroyed() const noexcept {
         return is_destroyed_;
+    }
+    [[nodiscard]] std::uint32_t content_epoch() const noexcept {
+        return content_epoch_;
     }
 
     void update_on_render();

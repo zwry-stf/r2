@@ -111,6 +111,8 @@ public:
     template <float CharOffset = 0.f, unicode::string_like String>
     void add_text_outlined(const vec2& pos, color_u32 col, const String& text, 
                            const color_u32 outline_col = r2::color::black(), float outline_width = 1.f, bool blurred = false);
+    void emit_glyph_quad(float x0, float y0, float x1, float y1,
+                         vec2 uv0, vec2 uv1, color_u32 c_left, color_u32 c_right);
 };
 
 r2_end_

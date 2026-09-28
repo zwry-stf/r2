@@ -5,9 +5,89 @@
 
 #include <vector>
 #include <cstdint>
+#include <cstring>
 
 
 r2_begin_
+
+struct retained_glyph {
+    font* font;
+    std::uint32_t codepoint;
+    bool blurred;
+};
+
+struct retained_key {
+    std::uint64_t a{ 0x6C62272E07BB0142ull };
+    std::uint64_t b{ 0x9E3779B97F4A7C15ull };
+
+    void mix(std::uint64_t v) noexcept {
+        a ^= v;
+        a *= 0x100000001B3ull;
+        b ^= v + 0x9E3779B97F4A7C15ull;
+        b *= 0xC2B2AE3D27D4EB4Full;
+    }
+    void mix_u32(std::uint32_t v) noexcept {
+        mix(v);
+    }
+    void mix_i32(std::int32_t v) noexcept {
+        mix(static_cast<std::uint32_t>(v));
+    }
+    void mix_f32(float v) noexcept {
+        static_assert(sizeof(float) == sizeof(std::uint32_t));
+        std::uint32_t bits = 0u;
+        std::memcpy(&bits, &v, sizeof(bits));
+        mix_u32(bits);
+    }
+    void mix_unit(float v) noexcept {
+        mix_f32(v);
+    }
+    void mix_px(float v) noexcept {
+        mix_f32(v);
+    }
+    void mix_color(const color& c) noexcept {
+        mix_u32(static_cast<color_u32>(c));
+    }
+    void mix_rect(const rectf& r) noexcept {
+        mix_px(r.x);
+        mix_px(r.y);
+        mix_px(r.w);
+        mix_px(r.h);
+    }
+    void mix_rect(const rect& r) noexcept {
+        mix_i32(r.left);
+        mix_i32(r.top);
+        mix_i32(r.right);
+        mix_i32(r.bottom);
+    }
+    void mix_ptr(const void* p) noexcept {
+        mix(static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(p)));
+    }
+    void mix_bytes(const void* data, std::size_t size) noexcept {
+        const auto* bytes = static_cast<const unsigned char*>(data);
+        std::uint64_t h = 14695981039346656037ull;
+        for (std::size_t i = 0; i < size; ++i) {
+            h ^= bytes[i];
+            h *= 1099511628211ull;
+        }
+        mix(h);
+        mix(static_cast<std::uint64_t>(size));
+    }
+    [[nodiscard]] bool operator==(const retained_key& o) const noexcept {
+        return a == o.a && b == o.b;
+    }
+};
+
+struct retained_mesh {
+    vector<vertex> vertices;
+    vector<index> indices;
+    vector<draw_cmd> commands;
+    vector<retained_glyph> glyphs;
+    retained_key key{};
+    font* end_font{ nullptr };
+    bool valid{ false };
+
+    void touch() const;
+};
 
 class drawlist_base {
 protected:
@@ -22,9 +102,24 @@ protected:
     cmd_header header_;
 
     vector<rect> clip_rect_stack_;
+    vector<rect> text_clip_stack_;
     vector<texture_handle> texture_stack_;
     vector<font*> font_stack_;
     font* current_font_{ nullptr };
+
+    struct capture_state {
+        std::uint32_t vtx_begin;
+        std::uint32_t idx_begin;
+        std::uint32_t cmd_begin;
+        std::uint32_t vertex_ptr_begin;
+        std::uint32_t clip_depth;
+        std::uint32_t texture_depth;
+        std::uint32_t font_depth;
+        std::uint32_t text_clip_depth;
+    };
+    capture_state capture_{};
+    std::uint32_t capture_depth_{ 0u };
+    vector<retained_glyph> capture_glyphs_;
 
     friend class renderer;
 
@@ -50,6 +145,25 @@ public:
     void set_current_font(font* font);
     void push_font(font* font);
     void pop_font();
+    void push_text_clip(const vec2& min, const vec2& max);
+    void push_text_clip_x(float min, float max);
+    void pop_text_clip();
+    [[nodiscard]] bool clip_against_text_clip(vec2& min, vec2& max) const noexcept;
+    [[nodiscard]] const rect* text_clip() const noexcept;
+    [[nodiscard]] font* current_font() const noexcept {
+        return current_font_;
+    }
+
+    /// retained
+    [[nodiscard]] bool is_capturing() const noexcept {
+        return capture_depth_ != 0u;
+    }
+    [[nodiscard]] bool replay(const retained_mesh& mesh);
+    void capture_begin();
+    void capture_end(retained_mesh& mesh, const retained_key& key);
+    template <typename Fn>
+    void draw_retained(retained_mesh& mesh, const retained_key& key, Fn&& fn);
+    void note_glyph(font* font, std::uint32_t codepoint, bool blurred);
 
     /// text
     // Calculates text width using the same glyph resolution logic as rendering.

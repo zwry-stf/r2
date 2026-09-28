@@ -138,6 +138,69 @@ inline void drawlist_base::pop_font()
     set_current_font(font_stack_.back());
 }
 
+inline void drawlist_base::push_text_clip(const vec2& min, const vec2& max)
+{
+    push_clip_rect(min, max, true);
+}
+
+inline void drawlist_base::push_text_clip_x(float min, float max)
+{
+    modify_clip_rect_x(min, max);
+}
+
+inline void drawlist_base::pop_text_clip()
+{
+    pop_clip_rect();
+}
+
+inline bool drawlist_base::clip_against_text_clip(vec2& min, vec2& max) const noexcept
+{
+    if (!text_clip_stack_.empty()) {
+        const rect& c = text_clip_stack_.back();
+        if (min.x < static_cast<float>(c.left))
+            min.x = static_cast<float>(c.left);
+        if (min.y < static_cast<float>(c.top))
+            min.y = static_cast<float>(c.top);
+        if (max.x > static_cast<float>(c.right))
+            max.x = static_cast<float>(c.right);
+        if (max.y > static_cast<float>(c.bottom))
+            max.y = static_cast<float>(c.bottom);
+    }
+    return min.x < max.x && min.y < max.y;
+}
+
+inline const rect* drawlist_base::text_clip() const noexcept
+{
+    if (text_clip_stack_.empty()) {
+        return nullptr;
+    }
+    return &text_clip_stack_.back();
+}
+
+inline void drawlist_base::note_glyph(font* font, std::uint32_t codepoint, bool blurred)
+{
+    if (capture_depth_ == 0u || font == nullptr) {
+        return;
+    }
+    capture_glyphs_.push_back(retained_glyph{ font, codepoint, blurred });
+}
+
+template <typename Fn>
+inline void drawlist_base::draw_retained(retained_mesh& mesh, const retained_key& key, Fn&& fn)
+{
+    if (capture_depth_ != 0u) {
+        fn();
+        return;
+    }
+    if (mesh.valid && mesh.key == key) {
+        (void)replay(mesh);
+        return;
+    }
+    capture_begin();
+    fn();
+    capture_end(mesh, key);
+}
+
 inline draw_cmd& drawlist_base::add_draw_cmd()
 {
     assert(cmds_.empty() ||

@@ -202,6 +202,7 @@ void font::update_on_render()
     const auto now = std::chrono::steady_clock::now();
     if (now - last_cleanup_ > k_cleanup_time) {
         constexpr std::uint64_t k_remove_age = 100000u;
+        bool removed = false;
 
         for (std::uint32_t idx = 0u; idx < glyphs_.size(); ++idx) {
             if (idx == fallback_glyph_) {
@@ -223,7 +224,12 @@ void font::update_on_render()
 
                 g.visible = false;
                 free_glyph_slots_.push_back(idx);
+                removed = true;
             }
+        }
+
+        if (removed) {
+            ++content_epoch_;
         }
 
         last_cleanup_ = now;
@@ -232,6 +238,8 @@ void font::update_on_render()
 
 void font::update_uvs()
 {
+    ++content_epoch_;
+
     const auto m = vec2(1.f) / vec2(
         static_cast<float>(atlas_->get_width()),
         static_cast<float>(atlas_->get_height())
@@ -472,6 +480,10 @@ void font::apply_glyph(const pending_glyph& pg, bool is_init_time)
 
     lookup.index = slot;
     lookup.loading = 0u;
+
+    if (!is_init_time) {
+        ++content_epoch_;
+    }
 }
 
 void font::build_weights()

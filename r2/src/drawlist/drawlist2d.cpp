@@ -38,8 +38,11 @@ void drawlist2d::reset_states()
     indices_.clear();
     cmds_.clear();
     clip_rect_stack_.clear();
+    text_clip_stack_.clear();
     texture_stack_.clear();
     font_stack_.clear();
+    capture_depth_ = 0u;
+    capture_glyphs_.clear();
 
     add_draw_cmd();
     push_clip_rect(
