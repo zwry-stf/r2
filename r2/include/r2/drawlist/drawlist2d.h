@@ -106,6 +106,8 @@ public:
     template <float CharOffset = 0.f, unicode::string_like String>
     void add_text(const vec2& pos, color_u32 col, const String& text, bool blurred = false);
     template <float CharOffset = 0.f, unicode::string_like String>
+    float add_text_wrapped(const vec2& pos, float max_width, color_u32 col, const String& text, bool blurred = false);
+    template <float CharOffset = 0.f, unicode::string_like String>
     void add_text_faded(const vec2& pos, color_u32 col, color_u32 faded_col, 
                         float fade_start, float fade_end, const String& text, bool blurred = false);
     template <float CharOffset = 0.f, unicode::string_like String>
