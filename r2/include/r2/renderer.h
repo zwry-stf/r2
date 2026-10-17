@@ -45,6 +45,7 @@ public:
 
     void pre_resize();
     [[nodiscard]] bool post_resize();
+    void set_frame_size(float width, float height);
 
     font* add_font(const font_cfg& cfg);
     void remove_font(font* font);

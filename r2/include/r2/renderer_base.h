@@ -22,7 +22,8 @@ protected:
     shared_data shared_data_;
 
 #if defined(_DEBUG)
-    std::thread::id render_thread_id_;
+    std::thread::id render_thread_id_{};
+    bool render_checks_stopped_{ false };
 #endif
 
     friend class font_atlas;
@@ -33,12 +34,16 @@ public:
 
 #if defined(_DEBUG)
     void assert_render_thread() const noexcept {
-        assert(!is_initialized_ ||
+        assert(render_checks_stopped_ || !is_initialized_ ||
             std::this_thread::get_id() == render_thread_id_);
     }
 
     void set_render_thread(const std::thread::id& id) noexcept {
         render_thread_id_ = id;
+    }
+
+    void stop_render_checks() noexcept {
+        render_checks_stopped_ = true;
     }
 #endif
 

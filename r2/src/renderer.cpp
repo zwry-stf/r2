@@ -156,6 +156,16 @@ bool renderer::post_resize()
     return true;
 }
 
+void renderer::set_frame_size(float width, float height)
+{
+    if (width < 1.f || height < 1.f || render_data_ == nullptr || render_data_->constant_buffer == nullptr) {
+        return;
+    }
+    display_size_ = vec2(width, height);
+    const vec4 cb_data(display_size_.x, display_size_.y, 0.f, 0.f);
+    render_data_->constant_buffer->update(&cb_data, sizeof(cb_data));
+}
+
 bool renderer::update_display_size()
 {
     display_size_ = r2::vec2(
