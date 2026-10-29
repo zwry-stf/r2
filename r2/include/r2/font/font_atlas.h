@@ -60,6 +60,7 @@ public:
     void write_data(std::uint32_t id, std::vector<std::uint32_t> data);
     void write_data(const atlas_rect& r, const std::uint32_t* data, std::size_t size);
     void write_data_init(std::uint32_t id, const std::uint8_t* data, std::size_t size);
+    void write_data_init(std::uint32_t id, const std::uint32_t* data, std::size_t size);
     [[nodiscard]] bool update_resize();
 
     void set_resize_callback(std::function<void()> cb) noexcept {

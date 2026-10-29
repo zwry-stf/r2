@@ -7,8 +7,12 @@
 r2_begin_
 
 inline void drawlist2d::emit_glyph_quad(float x0, float y0, float x1, float y1,
-                                        vec2 uv0, vec2 uv1, color_u32 c_left, color_u32 c_right)
+                                        vec2 uv0, vec2 uv1, color_u32 c_left, color_u32 c_right, bool colored)
 {
+    if (colored) {
+        c_left |= ~color::alpha_mask;
+        c_right |= ~color::alpha_mask;
+    }
     if (!text_clip_stack_.empty()) {
         const rect& c = text_clip_stack_.back();
         const float cl = static_cast<float>(c.left);
@@ -893,7 +897,7 @@ inline void drawlist2d::add_text(const vec2& pos, color_u32 col, const String& t
     float x = pos.x;
     float y = pos.y;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        unicode::unicode_type cp = current_font_->next_char(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -926,7 +930,7 @@ inline void drawlist2d::add_text(const vec2& pos, color_u32 col, const String& t
                 x1 >= header_.clip_rect.left &&
                 y0 <= header_.clip_rect.bottom &&
                 y1 >= header_.clip_rect.top) {
-                emit_glyph_quad(x0, y0, x1, y1, glyph->uv_min, glyph->uv_max, col, col);
+                emit_glyph_quad(x0, y0, x1, y1, glyph->uv_min, glyph->uv_max, col, col, glyph->colored);
             }
         }
 
@@ -971,7 +975,7 @@ inline float drawlist2d::add_text_wrapped(const vec2& pos, float max_width, colo
     std::uint32_t i = 0u;
     while (i < length) {
         const std::uint32_t at = i;
-        const unicode::unicode_type cp = unicode::get_char_auto(text, length, i);
+        const unicode::unicode_type cp = current_font_->next_char(text, length, i);
         if (cp == unicode::codepoint_invalid) {
             continue;
         }
@@ -998,10 +1002,10 @@ inline float drawlist2d::add_text_wrapped(const vec2& pos, float max_width, colo
             emit(line_start, last_break, y);
             y += line_height;
             i = last_break;
-            (void)unicode::get_char_auto(text, length, i);
+            (void)current_font_->next_char(text, length, i);
             while (i < length) {
                 const std::uint32_t space_at = i;
-                const unicode::unicode_type space = unicode::get_char_auto(text, length, i);
+                const unicode::unicode_type space = current_font_->next_char(text, length, i);
                 if (space != U' ' && space != U'\t') {
                     i = space_at;
                     break;
@@ -1058,7 +1062,7 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
     float x = pos.x;
     float y = pos.y;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        unicode::unicode_type cp = current_font_->next_char(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -1120,7 +1124,7 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                                     x0, y0, mid_left_pos, y1,
                                     vec2{ uv_min.x, uv_min.y },
                                     vec2{ mid_left, uv_max.y },
-                                    col, col
+                                    col, col, glyph->colored
                                 );
                             }
                         }
@@ -1136,7 +1140,7 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                                     mid_right_pos, y0, x1, y1,
                                     vec2{ mid_right, uv_min.y },
                                     vec2{ uv_max.x, uv_max.y },
-                                    faded_col, faded_col
+                                    faded_col, faded_col, glyph->colored
                                 );
                             }
                         }
@@ -1167,7 +1171,7 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                                 x0, y0, mid_pos, y1,
                                 vec2{ uv_min.x, uv_min.y },
                                 vec2{ mid_uv, uv_max.y },
-                                col, col
+                                col, col, glyph->colored
                             );
                         }
 
@@ -1183,7 +1187,7 @@ inline void drawlist2d::add_text_faded(const vec2& pos, color_u32 col, color_u32
                     mid_left_pos, y0, mid_right_pos, y1,
                     vec2{ mid_left, uv_min.y },
                     vec2{ mid_right, uv_max.y },
-                    c_left, c_right
+                    c_left, c_right, glyph->colored
                 );
             }
         }
@@ -1214,7 +1218,7 @@ inline void drawlist2d::add_text_outlined(const vec2& pos, color_u32 col, const 
     float x = pos.x;
     float y = pos.y;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        unicode::unicode_type cp = current_font_->next_char(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -1268,7 +1272,7 @@ inline void drawlist2d::add_text_outlined(const vec2& pos, color_u32 col, const 
                 }
 
                 if (draw_no_outline) {
-                    emit_glyph_quad(x0, y0, x1, y1, glyph->uv_min, glyph->uv_max, col, col);
+                    emit_glyph_quad(x0, y0, x1, y1, glyph->uv_min, glyph->uv_max, col, col, glyph->colored);
                 }
             }
         }

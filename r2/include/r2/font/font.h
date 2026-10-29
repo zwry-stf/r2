@@ -1,16 +1,25 @@
 #pragma once
 #include "../renderer_definitions.h"
+#include <r2/font/unicode.h>
+
+#include <array>
+#include <cmath>
+#include <span>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 #include <mutex>
 #include <chrono>
 
 
-struct stbtt_fontinfo;
+struct hb_buffer_t;
 r2_begin_
 
 struct font_glyph {
     std::uint32_t rect_id;
     bool visible;
     bool blurred;
+    bool colored{};
     wchar codepoint;
     float advance_x;
     float x0, y0, x1, y1;
@@ -28,6 +37,7 @@ struct pending_glyph {
     std::uint32_t bmp_w{};
     std::uint32_t bmp_h{};
     std::vector<std::uint8_t> bitmap;
+    std::vector<std::uint32_t> color_bitmap;
 };
 
 struct glyph_lookup_data {
@@ -43,24 +53,36 @@ struct font_range {
     wchar range_max;
 };
 
-struct font_data {
-    std::vector<std::uint8_t> owned_data;
-    const std::uint8_t* const data;
-    const std::size_t size{};
-    std::vector<font_range> ranges;
-    std::unique_ptr<stbtt_fontinfo> font_info;
-};
+struct font_data;
+struct shaped_run;
 
 struct glyph_queue {
     wchar codepoint;
     bool blurred{};
+    const shaped_run* run{};
 };
 
 class font {
 private:
     class font_atlas* const atlas_;
     const font_cfg cfg_;
-    std::vector<font_data> fonts_;
+    float center_y_{};
+    std::vector<std::unique_ptr<font_data>> fonts_;
+    std::vector<bool> color_characters_;
+    hb_buffer_t* shape_buffer_{};
+    std::uint32_t shaped_glyph_start_{};
+    std::vector<std::unique_ptr<shaped_run>> shaped_runs_;
+    std::unordered_map<std::u32string, wchar> shaped_runs_by_text_;
+
+    struct shape_result {
+        wchar codepoint{};
+        std::uint32_t count{ 1u };
+    };
+    struct shape_cache_entry {
+        std::u32string text;
+        shape_result result;
+    };
+    std::array<shape_cache_entry, 256> shape_cache_;
     bool is_destroyed_{ false };
     bool prepared_{ false };
 
@@ -93,10 +115,16 @@ public:
     ~font();
 
 public:
+    template <unicode::string_like String>
+    [[nodiscard]] unicode::unicode_type next_char(const String& text, std::uint32_t length, std::uint32_t& pos);
     [[nodiscard]] const font_glyph* find_glyph(wchar c);
     [[nodiscard]] const font_glyph* find_glyph_blurred(wchar c);
     [[nodiscard]] const font_glyph* find_glyph_no_fallback(wchar c);
 
+    [[nodiscard]] float baseline() const noexcept;
+    [[nodiscard]] float center_offset_y(float height) const noexcept {
+        return std::round(height * 0.5f - center_y_);
+    }
     [[nodiscard]] const font_cfg& cfg() const noexcept {
         return cfg_;
     }
@@ -115,32 +143,36 @@ public:
     void destroy();
 
     // Adds font data to the font instance.
-    // The order of added fonts matters. Only TTF format is supported.
+    // The order of added fonts matters. TrueType and OpenType fonts are supported.
     bool add_font(const std::uint8_t* data, std::size_t data_size);
     // Adds font data to the font instance.
-    // The order of added fonts matters. Only TTF format is supported.
+    // The order of added fonts matters. TrueType and OpenType fonts are supported.
     bool add_font(const std::uint8_t* data, std::size_t data_size, const std::vector<font_range>& ranges);
     // Adds font data to the font instance.
-    // The order of added fonts matters. Only TTF format is supported.
+    // The order of added fonts matters. TrueType and OpenType fonts are supported.
     bool add_font(const std::uint8_t* data, std::size_t data_size, std::vector<font_range>&& ranges);
 
     // Adds font data to the font instance.
-    // The order of added fonts matters. Only TTF format is supported.
+    // The order of added fonts matters. TrueType and OpenType fonts are supported.
     bool add_font(std::vector<std::uint8_t> data);
     // Adds font data to the font instance.
-    // The order of added fonts matters. Only TTF format is supported.
+    // The order of added fonts matters. TrueType and OpenType fonts are supported.
     bool add_font(std::vector<std::uint8_t> data, const std::vector<font_range>& ranges);
     // Adds font data to the font instance.
-    // The order of added fonts matters. Only TTF format is supported.
+    // The order of added fonts matters. TrueType and OpenType fonts are supported.
     bool add_font(std::vector<std::uint8_t> data, std::vector<font_range>&& ranges);
 
 private:
-    pending_glyph rasterize_glyph(wchar glyph, font_data* data = nullptr, bool blurred = false);
+    bool add_font_data(std::unique_ptr<font_data> data);
+    [[nodiscard]] shape_result shape_char(std::span<const char32_t> text);
+    void queue_glyph(wchar glyph, bool blurred);
+    pending_glyph rasterize_run(wchar glyph, const shaped_run& run, bool blurred);
+    pending_glyph rasterize_glyph(wchar glyph, bool blurred = false, const shaped_run* run = nullptr);
     void apply_glyph(const pending_glyph& pg, bool is_init_time);
     void build_weights();
     void blur_rect(std::uint32_t w, std::uint32_t h);
     void glow_rect(std::uint32_t w, std::uint32_t h);
-    stbtt_fontinfo* get_font_data_for_char(wchar c) const noexcept;
+    font_data* get_font_data_for_char(wchar c) const noexcept;
 };
 
 r2_end_

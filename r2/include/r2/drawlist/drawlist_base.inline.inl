@@ -254,7 +254,7 @@ inline float drawlist_base::get_text_width(const String& text, T offset, std::op
     float ret = 0.f;
     std::uint32_t s = offset;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        unicode::unicode_type cp = current_font_->next_char(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -292,7 +292,7 @@ inline vec2 drawlist_base::get_text_size(const String& text, T offset, std::opti
     vec2 ret;
     std::uint32_t s = offset;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        unicode::unicode_type cp = current_font_->next_char(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -329,7 +329,7 @@ inline bool drawlist_base::get_text_width_strict(const String& text, float& out,
     out = 0.f;
     std::uint32_t s = offset;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        unicode::unicode_type cp = current_font_->next_char(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -367,7 +367,7 @@ inline bool drawlist_base::get_text_size_strict(const String& text, vec2& out, T
     out = vec2(0.f);
     std::uint32_t s = offset;
     while (s < length) {
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        unicode::unicode_type cp = current_font_->next_char(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -405,7 +405,7 @@ inline std::uint32_t drawlist_base::get_char_at_pos(const String& text, float po
     float prev_width = 0.f;
     while (s < length) {
         const std::uint32_t start = s;
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        unicode::unicode_type cp = current_font_->next_char(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 
@@ -456,7 +456,7 @@ inline bool drawlist_base::get_char_at_pos_strict(const String& text, float pos,
     float prev_width = 0.f;
     while (s < length) {
         const std::uint32_t start = s;
-        unicode::unicode_type cp = unicode::get_char_auto(text, length, s);
+        unicode::unicode_type cp = current_font_->next_char(text, length, s);
         if (cp == unicode::codepoint_invalid)
             continue;
 

@@ -1,179 +1,82 @@
 #include <r2/font/font.h>
-#include <r2/font/unicode.h>
-#define STB_TRUETYPE_IMPLEMENTATION
-#include <stb_truetype.h>
 #include <r2/font/font_atlas.h>
+#include <r2/font/unicode.h>
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_TRUETYPE_TABLES_H
+#include <hb.h>
+#include <hb-ot.h>
+#pragma warning(push, 0)
+#define STB_IMAGE_RESIZE_STATIC
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include <stb_image_resize2.h>
+#pragma warning(pop)
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 
 r2_begin_
 
-[[nodiscard]] static std::uint16_t read_u16_be(const std::uint8_t* p) noexcept {
-    return static_cast<std::uint16_t>((p[0] << 8) | p[1]);
-}
+struct font_data {
+    std::vector<std::uint8_t> owned_data;
+    const std::uint8_t* data{};
+    std::size_t size{};
+    std::vector<font_range> ranges;
+    FT_Library library{};
+    FT_Face face{};
+    hb_font_t* shaping_font{};
+    std::vector<bool> color_glyphs;
+    std::uint32_t glyph_offset{};
+    float scale_x{ 1.f };
+    float scale_y{ 1.f };
+    float baseline{};
 
-[[nodiscard]] static std::uint32_t read_u32_be(const std::uint8_t* p) noexcept {
-    return (static_cast<std::uint32_t>(p[0]) << 24) |
-           (static_cast<std::uint32_t>(p[1]) << 16) |
-           (static_cast<std::uint32_t>(p[2]) << 8) |
-           static_cast<std::uint32_t>(p[3]);
-}
-
-[[nodiscard]] static bool ranges_cover_all(const std::vector<font_range>& ranges) noexcept {
-    for (const auto& r : ranges) {
-        if (r.range_min == 0 &&
-            r.range_max >= unicode::codepoint_max) {
-            return true;
+    ~font_data() {
+        if (shaping_font != nullptr) {
+            hb_font_destroy(shaping_font);
+        }
+        if (face != nullptr) {
+            FT_Done_Face(face);
+        }
+        if (library != nullptr) {
+            FT_Done_FreeType(library);
         }
     }
-    return false;
-}
+};
 
-[[nodiscard]] static bool codepoint_in_ranges(std::uint32_t cp, const std::vector<font_range>& ranges) noexcept {
-    const auto c = static_cast<wchar>(cp);
-    for (const auto& r : ranges) {
-        if (c >= r.range_min &&
-            c <= r.range_max) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static void mark_supported_codepoint(std::vector<glyph_lookup_data>& lookup, std::uint32_t cp,
-                                     bool check_ranges, const std::vector<font_range>& ranges) noexcept {
-    if (cp < 0x20u ||
-        cp >= lookup.size()) {
-        return;
-    }
-    if (cp >= 0xD800u &&
-        cp <= 0xDFFFu) {
-        return;
-    }
-    if (check_ranges &&
-        !codepoint_in_ranges(cp, ranges)) {
-        return;
-    }
-    lookup[cp].supported = 1u;
-}
-
-static void mark_supported_brute(const stbtt_fontinfo* info, std::vector<glyph_lookup_data>& lookup,
-                                 const std::vector<font_range>& ranges) {
-    const bool check_ranges = !ranges_cover_all(ranges);
-    for (std::uint32_t cp = 0x20u; cp < unicode::codepoint_max; ++cp) {
-        if (cp >= 0xD800u &&
-            cp <= 0xDFFFu) {
-            continue;
-        }
-        if (check_ranges &&
-            !codepoint_in_ranges(cp, ranges)) {
-            continue;
-        }
-        if (stbtt_FindGlyphIndex(info, static_cast<int>(cp)) != 0) {
-            lookup[cp].supported = 1u;
-        }
-    }
-}
-
-static bool mark_supported_from_cmap(const stbtt_fontinfo* info, std::vector<glyph_lookup_data>& lookup,
-                                     const std::vector<font_range>& ranges) {
-    if (info == nullptr ||
-        info->data == nullptr ||
-        info->index_map == 0) {
-        return false;
-    }
-
-    const auto* data = info->data;
-    const auto index_map = static_cast<std::uint32_t>(info->index_map);
-    const std::uint16_t format = read_u16_be(data + index_map);
-    const bool check_ranges = !ranges_cover_all(ranges);
-
-    auto mark_glyph = [&](std::uint32_t cp, std::uint32_t glyph) {
-        if (glyph != 0u) {
-            mark_supported_codepoint(lookup, cp, check_ranges, ranges);
-        }
+struct shaped_run {
+    struct glyph {
+        wchar codepoint;
+        float x;
+        float y;
     };
+    std::vector<glyph> glyphs;
+    float advance_x{};
+};
 
-    if (format == 0) {
-        const std::uint16_t bytes = read_u16_be(data + index_map + 2);
-        if (bytes <= 6) {
+inline static bool codepoint_in_ranges(wchar cp, const std::vector<font_range>& ranges) noexcept {
+    for (const auto& range : ranges) {
+        if (cp >= range.range_min && cp <= range.range_max) {
             return true;
         }
-        const std::uint32_t count = static_cast<std::uint32_t>(bytes - 6);
-        for (std::uint32_t cp = 0u; cp < count; ++cp) {
-            mark_glyph(cp, data[index_map + 6u + cp]);
-        }
-        return true;
     }
-    if (format == 6) {
-        const std::uint32_t first = read_u16_be(data + index_map + 6);
-        const std::uint32_t count = read_u16_be(data + index_map + 8);
-        for (std::uint32_t i = 0u; i < count; ++i) {
-            mark_glyph(first + i, read_u16_be(data + index_map + 10u + i * 2u));
-        }
-        return true;
-    }
-    if (format == 4) {
-        const std::uint16_t segcount = static_cast<std::uint16_t>(read_u16_be(data + index_map + 6) >> 1);
-        const std::uint8_t* end_code = data + index_map + 14;
-        const std::uint8_t* start_code = data + index_map + 14 + segcount * 2 + 2;
-        const std::uint8_t* id_delta = data + index_map + 14 + segcount * 4 + 2;
-        const std::uint8_t* id_range_offset = data + index_map + 14 + segcount * 6 + 2;
-        for (std::uint16_t item = 0; item < segcount; ++item) {
-            const std::uint32_t start = read_u16_be(start_code + item * 2);
-            const std::uint32_t last = read_u16_be(end_code + item * 2);
-            if (start > last) {
-                continue;
-            }
-            const std::uint16_t offset = read_u16_be(id_range_offset + item * 2);
-            const auto delta = static_cast<std::int16_t>(read_u16_be(id_delta + item * 2));
-            for (std::uint32_t cp = start; cp <= last; ++cp) {
-                std::uint32_t glyph = 0u;
-                if (offset == 0) {
-                    glyph = static_cast<std::uint16_t>(static_cast<int>(cp) + static_cast<int>(delta));
-                }
-                else {
-                    glyph = read_u16_be(id_range_offset + item * 2 + offset + (cp - start) * 2);
-                }
-                mark_glyph(cp, glyph);
-            }
-        }
-        return true;
-    }
-    if (format == 12 ||
-        format == 13) {
-        const std::uint32_t ngroups = read_u32_be(data + index_map + 12);
-        for (std::uint32_t g = 0u; g < ngroups; ++g) {
-            const std::uint8_t* rec = data + index_map + 16 + g * 12;
-            const std::uint32_t start_char = read_u32_be(rec);
-            const std::uint32_t end_char = read_u32_be(rec + 4);
-            const std::uint32_t start_glyph = read_u32_be(rec + 8);
-            if (start_char > end_char) {
-                continue;
-            }
-            for (std::uint32_t cp = start_char; cp <= end_char; ++cp) {
-                const std::uint32_t glyph = (format == 12) ?
-                    (start_glyph + (cp - start_char)) : start_glyph;
-                mark_glyph(cp, glyph);
-                if (cp == 0xFFFFFFFFu) {
-                    break;
-                }
-            }
-        }
-        return true;
-    }
-
     return false;
 }
 
 font::font(font_atlas* atlas, const font_cfg& cfg)
-    : atlas_(atlas), 
-      cfg_(cfg)
-{
-}
+    : atlas_(atlas),
+      cfg_(cfg),
+      shape_buffer_(hb_buffer_create()) { }
 
 font::~font() {
+    hb_buffer_destroy(shape_buffer_);
+}
+
+float font::baseline() const noexcept
+{
+    return fonts_.front()->baseline;
 }
 
 void font::update_on_render()
@@ -269,7 +172,7 @@ void font::update_worker()
     local_completed.reserve(local_requests.size());
 
     for (const auto& cp : local_requests) {
-        auto pg = rasterize_glyph(cp.codepoint, nullptr, cp.blurred);
+        auto pg = rasterize_glyph(cp.codepoint, cp.blurred, cp.run);
         local_completed.push_back(
             std::move(pg)
         );
@@ -293,14 +196,43 @@ bool font::prepare()
 
     const bool has_blur = cfg_.glow_radius > 0u;
 
-    glyph_lookup_.resize(unicode::codepoint_max);
-    for (const auto& d : fonts_) {
-        if (!mark_supported_from_cmap(d.font_info.get(), glyph_lookup_, d.ranges)) {
-            mark_supported_brute(d.font_info.get(), glyph_lookup_, d.ranges);
+    std::size_t lookup_size = unicode::codepoint_max + 1u;
+    for (auto& source : fonts_) {
+        if (source->shaping_font != nullptr) {
+            source->glyph_offset = static_cast<std::uint32_t>(lookup_size);
+            lookup_size += source->color_glyphs.size();
+        }
+    }
+    shaped_glyph_start_ = static_cast<std::uint32_t>(lookup_size);
+    const auto color_glyph_count = lookup_size - unicode::codepoint_max - 1u;
+    glyph_lookup_.reserve(lookup_size + color_glyph_count);
+    glyph_lookup_.resize(lookup_size);
+    if (lookup_size > unicode::codepoint_max + 1u) {
+        color_characters_.resize(unicode::codepoint_max + 1u);
+    }
+    for (auto& source : fonts_) {
+        FT_UInt glyph{};
+        auto cp = FT_Get_First_Char(source->face, &glyph);
+        while (glyph != 0u) {
+            if (cp >= 0x20u && cp <= unicode::codepoint_max &&
+                !(cp >= 0xD800u && cp <= 0xDFFFu) &&
+                codepoint_in_ranges(static_cast<wchar>(cp), source->ranges)) {
+                glyph_lookup_[cp].supported = 1u;
+                if (source->shaping_font != nullptr) {
+                    color_characters_[cp] = true;
+                }
+            }
+            cp = FT_Get_Next_Char(source->face, cp, &glyph);
+        }
+        for (std::uint32_t i = 0u; i < source->color_glyphs.size(); ++i) {
+            if (source->color_glyphs[i]) {
+                glyph_lookup_[source->glyph_offset + i].supported = 1u;
+            }
         }
     }
 
     if (has_blur) {
+        glyph_lookup_blurred_.reserve(glyph_lookup_.capacity());
         glyph_lookup_blurred_ = glyph_lookup_;
         build_weights();
     }
@@ -320,7 +252,7 @@ bool font::build(bool initial_build)
 
     constexpr wchar k_fallback_glyph = '?';
 
-    auto ret = rasterize_glyph(k_fallback_glyph, nullptr, false);
+    auto ret = rasterize_glyph(k_fallback_glyph);
     fallback_glyph_ = glyph_lookup_data::k_invalid_index;
     if (!ret.failed) {
         apply_glyph(ret, initial_build /* init time */);
@@ -377,24 +309,11 @@ bool font::add_font(const std::uint8_t* data, std::size_t data_size, const std::
 
 bool font::add_font(const std::uint8_t* data, std::size_t data_size, std::vector<font_range>&& ranges)
 {
-    fonts_.emplace_back(
-        std::vector<std::uint8_t>(),
-        data,
-        data_size,
-        std::move(ranges),
-        std::make_unique<stbtt_fontinfo>()
-    );
-
-    const int ok = stbtt_InitFont(
-        fonts_.back().font_info.get(),
-        data,
-        0
-    );
-    if (ok == 0) {
-        return false;
-    }
-
-    return true;
+    auto source = std::make_unique<font_data>();
+    source->data = data;
+    source->size = data_size;
+    source->ranges = std::move(ranges);
+    return add_font_data(std::move(source));
 }
 
 bool font::add_font(std::vector<std::uint8_t> data)
@@ -413,29 +332,185 @@ bool font::add_font(std::vector<std::uint8_t> data, const std::vector<font_range
 
 bool font::add_font(std::vector<std::uint8_t> data, std::vector<font_range>&& ranges)
 {
-    fonts_.emplace_back(
-        data,
-        nullptr, /* data */
-        0, /* size */
-        std::move(ranges),
-        std::make_unique<stbtt_fontinfo>()
-    );
+    auto source = std::make_unique<font_data>();
+    source->owned_data = std::move(data);
+    source->data = source->owned_data.data();
+    source->size = source->owned_data.size();
+    source->ranges = std::move(ranges);
+    return add_font_data(std::move(source));
+}
 
-    const int ok = stbtt_InitFont(
-        fonts_.back().font_info.get(),
-        fonts_.back().owned_data.data(),
-        0
-    );
-    if (ok == 0)
+bool font::add_font_data(std::unique_ptr<font_data> data)
+{
+    assert(!prepared_);
+    if (data->data == nullptr || data->size == 0u ||
+        data->size > static_cast<std::size_t>(std::numeric_limits<FT_Long>::max()) ||
+        FT_Init_FreeType(&data->library) != 0 ||
+        FT_New_Memory_Face(data->library, data->data, static_cast<FT_Long>(data->size), 0, &data->face) != 0 ||
+        FT_Select_Charmap(data->face, FT_ENCODING_UNICODE) != 0) {
         return false;
+    }
 
+    auto* face = data->face;
+    if (FT_IS_SCALABLE(face)) {
+        const auto em_size = static_cast<float>(cfg_.size) * face->units_per_EM /
+            static_cast<float>(face->ascender - face->descender);
+        if (FT_Set_Char_Size(face,
+            static_cast<FT_F26Dot6>(std::lround(em_size * cfg_.oversample_h * 64.f)),
+            static_cast<FT_F26Dot6>(std::lround(em_size * cfg_.oversample_v * 64.f)), 72u, 72u) != 0) {
+            return false;
+        }
+        data->scale_x = 1.f / cfg_.oversample_h;
+        data->scale_y = 1.f / cfg_.oversample_v;
+    }
+    else if (face->num_fixed_sizes > 0) {
+        auto strike = 0;
+        const auto target = static_cast<FT_Pos>(cfg_.size * cfg_.oversample_v * 64u);
+        for (auto i = 1; i < face->num_fixed_sizes; ++i) {
+            if (std::abs(face->available_sizes[i].y_ppem - target) <
+                std::abs(face->available_sizes[strike].y_ppem - target)) {
+                strike = i;
+            }
+        }
+        if (FT_Select_Size(face, strike) != 0) {
+            return false;
+        }
+        data->scale_y = static_cast<float>(cfg_.size) * 64.f /
+            static_cast<float>(face->size->metrics.height);
+        data->scale_x = data->scale_y;
+    }
+    else {
+        return false;
+    }
+
+    data->baseline = std::ceil(static_cast<float>(face->size->metrics.ascender) / 64.f * data->scale_y) + cfg_.offset_y;
+    if (fonts_.empty()) {
+        auto center_to_baseline = static_cast<float>(face->size->metrics.ascender + face->size->metrics.descender) /
+            128.f * data->scale_y;
+        const auto* os2 = static_cast<const TT_OS2*>(FT_Get_Sfnt_Table(face, FT_SFNT_OS2));
+        if (FT_IS_SCALABLE(face) && os2 != nullptr && os2->version >= 2u &&
+            os2->version != 0xFFFFu && os2->sCapHeight > 0) {
+            center_to_baseline = static_cast<float>(FT_MulFix(os2->sCapHeight, face->size->metrics.y_scale)) /
+                128.f * data->scale_y;
+        }
+        center_y_ = data->baseline - center_to_baseline;
+    }
+
+    if (FT_HAS_COLOR(face)) {
+        auto* blob = hb_blob_create(reinterpret_cast<const char*>(data->data),
+            static_cast<unsigned>(data->size), HB_MEMORY_MODE_READONLY, nullptr, nullptr);
+        auto* hb_face = hb_face_create(blob, 0u);
+        data->shaping_font = hb_font_create(hb_face);
+        hb_ot_font_set_funcs(data->shaping_font);
+        hb_font_set_ppem(data->shaping_font, face->size->metrics.x_ppem, face->size->metrics.y_ppem);
+        hb_font_make_immutable(data->shaping_font);
+        hb_face_destroy(hb_face);
+        hb_blob_destroy(blob);
+        data->color_glyphs.resize(static_cast<std::size_t>(face->num_glyphs));
+        for (std::uint32_t i = 0u; i < data->color_glyphs.size(); ++i) {
+            auto* png = hb_ot_color_glyph_reference_png(data->shaping_font, i);
+            data->color_glyphs[i] = hb_blob_get_length(png) != 0u;
+            hb_blob_destroy(png);
+        }
+    }
+
+    fonts_.push_back(std::move(data));
     return true;
+}
+
+font::shape_result font::shape_char(std::span<const char32_t> text)
+{
+    const std::u32string_view key(text.data(), text.size());
+    const auto hash = std::hash<std::u32string_view>{}(key);
+    auto& cached = shape_cache_[hash % shape_cache_.size()];
+    if (cached.text == key) {
+        return cached.result;
+    }
+
+    shape_result result{ text.front(), 1u };
+    for (const auto& source : fonts_) {
+        if (source->shaping_font == nullptr || !codepoint_in_ranges(text.front(), source->ranges)) {
+            continue;
+        }
+        hb_buffer_clear_contents(shape_buffer_);
+        hb_buffer_set_direction(shape_buffer_, HB_DIRECTION_LTR);
+        hb_buffer_set_script(shape_buffer_, HB_SCRIPT_COMMON);
+        hb_buffer_set_flags(shape_buffer_, HB_BUFFER_FLAG_REMOVE_DEFAULT_IGNORABLES);
+        for (std::uint32_t i = 0u; i < text.size(); ++i) {
+            hb_buffer_add(shape_buffer_, text[i], i);
+        }
+        hb_buffer_set_content_type(shape_buffer_, HB_BUFFER_CONTENT_TYPE_UNICODE);
+        hb_shape(source->shaping_font, shape_buffer_, nullptr, 0u);
+        unsigned count{};
+        const auto* glyphs = hb_buffer_get_glyph_infos(shape_buffer_, &count);
+        if (count == 0u || glyphs[0].cluster != 0u) {
+            continue;
+        }
+        auto cluster_end = 1u;
+        while (cluster_end < count && glyphs[cluster_end].cluster == 0u) {
+            ++cluster_end;
+        }
+        auto colored = true;
+        for (auto i = 0u; i < cluster_end; ++i) {
+            if (glyphs[i].codepoint >= source->color_glyphs.size() ||
+                !source->color_glyphs[glyphs[i].codepoint]) {
+                colored = false;
+                break;
+            }
+        }
+        if (!colored) {
+            continue;
+        }
+        result.count = cluster_end < count ? glyphs[cluster_end].cluster : static_cast<std::uint32_t>(text.size());
+        if (cluster_end == 1u) {
+            result.codepoint = static_cast<wchar>(source->glyph_offset + glyphs[0].codepoint);
+        }
+        else {
+            std::u32string cluster(text.data(), result.count);
+            const auto found = shaped_runs_by_text_.find(cluster);
+            if (found != shaped_runs_by_text_.end()) {
+                result.codepoint = found->second;
+            }
+            else {
+                auto run = std::make_unique<shaped_run>();
+                const auto* positions = hb_buffer_get_glyph_positions(shape_buffer_, nullptr);
+                const auto upem = static_cast<float>(hb_face_get_upem(hb_font_get_face(source->shaping_font)));
+                const auto sx = source->face->size->metrics.x_ppem * source->scale_x / upem;
+                const auto sy = source->face->size->metrics.y_ppem * source->scale_y / upem;
+                auto x = 0.f;
+                auto y = 0.f;
+                for (auto i = 0u; i < cluster_end; ++i) {
+                    run->glyphs.push_back(
+                        {
+                            static_cast<wchar>(source->glyph_offset + glyphs[i].codepoint),
+                            x + positions[i].x_offset * sx, y + positions[i].y_offset * sy
+                        }
+                    );
+                    x += positions[i].x_advance * sx;
+                    y += positions[i].y_advance * sy;
+                }
+                run->advance_x = x;
+                result.codepoint = static_cast<wchar>(glyph_lookup_.size());
+                glyph_lookup_data lookup{};
+                lookup.supported = 1u;
+                glyph_lookup_.push_back(lookup);
+                if (cfg_.glow_radius > 0u) {
+                    glyph_lookup_blurred_.push_back(lookup);
+                }
+                shaped_runs_by_text_.emplace(std::move(cluster), result.codepoint);
+                shaped_runs_.push_back(std::move(run));
+            }
+        }
+        break;
+    }
+    cached.text = key;
+    cached.result = result;
+    return result;
 }
 
 void font::apply_glyph(const pending_glyph& pg, bool is_init_time)
 {
     const std::size_t lookup_size = (pg.blurred ? glyph_lookup_blurred_.size() : glyph_lookup_.size());
-    assert(lookup_size == unicode::codepoint_max);
     if (static_cast<std::size_t>(pg.codepoint) >=
         lookup_size) {
         return;
@@ -454,18 +529,27 @@ void font::apply_glyph(const pending_glyph& pg, bool is_init_time)
     g.y1 = pg.y1;
     g.last_access = frame_start_;
     g.blurred = pg.blurred;
+    g.colored = !pg.color_bitmap.empty();
 
     if (pg.visible) {
         const auto rect_id = atlas_->register_rect(pg.bmp_w, pg.bmp_h);
         if (!rect_id) {
+            lookup.loading = 0u;
             return;
         }
 
         g.rect_id = *rect_id;
         atlas_->get_rect_uv(g.rect_id, g.uv_min, g.uv_max);
-        is_init_time ? 
-            atlas_->write_data_init(g.rect_id, pg.bitmap.data(), pg.bitmap.size()) :
-            atlas_->write_data(g.rect_id, pg.bitmap.data(), pg.bitmap.size());
+        if (g.colored) {
+            is_init_time ?
+                atlas_->write_data_init(g.rect_id, pg.color_bitmap.data(), pg.color_bitmap.size()) :
+                atlas_->write_data(g.rect_id, pg.color_bitmap.data(), pg.color_bitmap.size());
+        }
+        else {
+            is_init_time ?
+                atlas_->write_data_init(g.rect_id, pg.bitmap.data(), pg.bitmap.size()) :
+                atlas_->write_data(g.rect_id, pg.bitmap.data(), pg.bitmap.size());
+        }
     }
 
     std::uint32_t slot = 0u;
@@ -597,282 +681,241 @@ void font::glow_rect(std::uint32_t w, std::uint32_t h)
     }
 }
 
-stbtt_fontinfo* font::get_font_data_for_char(wchar c) const noexcept
+font_data* font::get_font_data_for_char(wchar c) const noexcept
 {
-    for (auto& d : fonts_) {
-        bool in_range = false;
-        for (auto& r : d.ranges) {
-            if (c >= r.range_min &&
-                c <= r.range_max) {
-                in_range = true;
-                break;
-            }
+    for (const auto& source : fonts_) {
+        if (source->shaping_font != nullptr && c >= source->glyph_offset &&
+            c - source->glyph_offset < source->color_glyphs.size()) {
+            return source.get();
         }
-        if (!in_range)
-            continue;
-
-        const int glyph_index = stbtt_FindGlyphIndex(
-            d.font_info.get(),
-            static_cast<int>(c)
-        );
-        if (glyph_index != 0) {
-            return d.font_info.get();
+        if (codepoint_in_ranges(c, source->ranges) && FT_Get_Char_Index(source->face, c) != 0u) {
+            return source.get();
         }
     }
-
     return nullptr;
 }
 
-inline int floor_div(int a, int b) {
-    if (a >= 0) 
-        return a / b;
-    return -(((-a) + b - 1) / b);
-}
-
-inline int ceil_div(int a, int b) {
-    if (a >= 0) 
-        return (a + b - 1) / b;
-    return -((-a) / b);
-}
-
-void box_downsample_u8(const std::uint8_t* src, int src_w, int src_h, int src_stride,
-                       std::uint8_t* dst, int dst_w, int dst_h, int dst_stride,
-                       int factor_x, int factor_y,
-                       int dx, int dy) {
-    const int denom = factor_x * factor_y;
-
-    for (int y = 0; y < dst_h; ++y) {
-        const int sy0 = dy + y * factor_y;
-
-        for (int x = 0; x < dst_w; ++x) {
-            const int sx0 = dx + x * factor_x;
-
-            std::uint32_t sum = 0;
-            for (int yy = 0; yy < factor_y; ++yy) {
-                const int sy = sy0 + yy;
-                if ((unsigned)sy >= (unsigned)src_h) continue;
-
-                const std::uint8_t* row = src + sy * src_stride;
-
-                for (int xx = 0; xx < factor_x; ++xx) {
-                    const int sx = sx0 + xx;
-                    if ((unsigned)sx >= (unsigned)src_w) continue;
-
-                    sum += row[sx];
-                }
-            }
-
-            dst[y * dst_stride + x] = static_cast<std::uint8_t>(sum / denom);
-        }
-    }
-}
-
-pending_glyph font::rasterize_glyph(wchar c, font_data* data, bool blurred)
+void font::queue_glyph(wchar glyph, bool blurred)
 {
+    const auto* run = glyph >= shaped_glyph_start_ ? shaped_runs_[glyph - shaped_glyph_start_].get() : nullptr;
+    std::lock_guard<std::mutex> lock(request_mutex_);
+    glyphs_to_rasterize_.emplace_back(glyph, blurred, run);
+}
+
+pending_glyph font::rasterize_run(wchar c, const shaped_run& run, bool blurred)
+{
+    pending_glyph result{};
+    result.codepoint = c;
+    result.blurred = blurred;
+    result.advance_x = run.advance_x;
+    std::vector<pending_glyph> glyphs;
+    glyphs.reserve(run.glyphs.size());
+    for (const auto& part : run.glyphs) {
+        auto glyph = rasterize_glyph(part.codepoint);
+        if (glyph.failed || glyph.color_bitmap.empty()) {
+            result.failed = true;
+            return result;
+        }
+        const auto x = std::round(part.x);
+        const auto y = std::round(part.y);
+        glyph.x0 += x;
+        glyph.x1 += x;
+        glyph.y0 -= y;
+        glyph.y1 -= y;
+        if (glyphs.empty()) {
+            result.x0 = glyph.x0;
+            result.y0 = glyph.y0;
+            result.x1 = glyph.x1;
+            result.y1 = glyph.y1;
+        }
+        else {
+            result.x0 = std::min(result.x0, glyph.x0);
+            result.y0 = std::min(result.y0, glyph.y0);
+            result.x1 = std::max(result.x1, glyph.x1);
+            result.y1 = std::max(result.y1, glyph.y1);
+        }
+        glyphs.push_back(std::move(glyph));
+    }
+    result.bmp_w = static_cast<std::uint32_t>(result.x1 - result.x0);
+    result.bmp_h = static_cast<std::uint32_t>(result.y1 - result.y0);
+    result.color_bitmap.resize(static_cast<std::size_t>(result.bmp_w) * result.bmp_h);
+    for (const auto& glyph : glyphs) {
+        const auto dx = static_cast<std::uint32_t>(glyph.x0 - result.x0);
+        const auto dy = static_cast<std::uint32_t>(glyph.y0 - result.y0);
+        for (auto y = 0u; y < glyph.bmp_h; ++y) {
+            for (auto x = 0u; x < glyph.bmp_w; ++x) {
+                const auto src = glyph.color_bitmap[y * glyph.bmp_w + x];
+                auto& dst = result.color_bitmap[(dy + y) * result.bmp_w + dx + x];
+                const auto sa = src >> 24u;
+                const auto da = dst >> 24u;
+                const auto alpha = sa + (da * (255u - sa) + 127u) / 255u;
+                auto pixel = alpha << 24u;
+                if (alpha > 0u) {
+                    for (auto shift = 0u; shift < 24u; shift += 8u) {
+                        const auto sc = (src >> shift) & 255u;
+                        const auto dc = (dst >> shift) & 255u;
+                        const auto value = (sc * sa + (dc * da * (255u - sa) + 127u) / 255u + alpha / 2u) / alpha;
+                        pixel |= value << shift;
+                    }
+                }
+                dst = pixel;
+            }
+        }
+    }
+    if (blurred) {
+        const auto padding = cfg_.glow_radius;
+        const auto width = result.bmp_w + padding * 2u;
+        const auto height = result.bmp_h + padding * 2u;
+        private_buffer_.assign(static_cast<std::size_t>(width) * height, 0u);
+        for (auto y = 0u; y < result.bmp_h; ++y) {
+            for (auto x = 0u; x < result.bmp_w; ++x) {
+                private_buffer_[(y + padding) * width + x + padding] =
+                    static_cast<std::uint8_t>(result.color_bitmap[y * result.bmp_w + x] >> 24u);
+            }
+        }
+        glow_rect(width, height);
+        private_buffer_.swap(result.bitmap);
+        result.color_bitmap.clear();
+        result.x0 -= padding;
+        result.y0 -= padding;
+        result.x1 += padding;
+        result.y1 += padding;
+        result.bmp_w = width;
+        result.bmp_h = height;
+    }
+    result.visible = true;
+    return result;
+}
+
+pending_glyph font::rasterize_glyph(wchar c, bool blurred, const shaped_run* run)
+{
+    if (run != nullptr) {
+        return rasterize_run(c, *run, blurred);
+    }
     assert(!blurred || cfg_.glow_radius > 0u);
-    assert(cfg_.oversample_h >= 1u);
-    assert(cfg_.oversample_v >= 1u);
 
-    pending_glyph e{};
-    e.failed = false;
-    e.codepoint = c;
-    e.blurred = blurred;
+    pending_glyph result{};
+    result.codepoint = c;
+    result.blurred = blurred;
+    auto* source = get_font_data_for_char(c);
+    if (source == nullptr) {
+        result.failed = true;
+        return result;
+    }
+    auto* face = source->face;
+    const auto glyph = c > unicode::codepoint_max ? c - source->glyph_offset : FT_Get_Char_Index(face, c);
+    if (FT_Load_Glyph(face, glyph, FT_LOAD_RENDER | FT_LOAD_COLOR | FT_LOAD_NO_HINTING | FT_LOAD_NO_SVG) != 0) {
+        result.failed = true;
+        return result;
+    }
 
-    stbtt_fontinfo* info = nullptr;
-    if (data != nullptr) {
-        info = data->font_info.get();
+    const auto* slot = face->glyph;
+    const auto& bitmap = slot->bitmap;
+    const auto sx = source->scale_x;
+    const auto sy = source->scale_y;
+    result.advance_x = static_cast<float>(slot->advance.x) / 64.f * sx;
+    if (bitmap.width == 0u || bitmap.rows == 0u) {
+        return result;
+    }
+    if (bitmap.pixel_mode != FT_PIXEL_MODE_GRAY && bitmap.pixel_mode != FT_PIXEL_MODE_MONO &&
+        bitmap.pixel_mode != FT_PIXEL_MODE_BGRA) {
+        result.failed = true;
+        return result;
+    }
+
+    const auto x0 = std::floor(slot->bitmap_left * sx);
+    const auto y0 = std::floor(-slot->bitmap_top * sy);
+    const auto x1 = std::ceil((slot->bitmap_left + static_cast<int>(bitmap.width)) * sx);
+    const auto y1 = std::ceil((static_cast<int>(bitmap.rows) - slot->bitmap_top) * sy);
+    const auto width = static_cast<int>(x1 - x0);
+    const auto height = static_cast<int>(y1 - y0);
+    const auto padding = blurred ? static_cast<int>(cfg_.glow_radius) : 0;
+    const auto out_width = width + padding * 2;
+    const auto out_height = height + padding * 2;
+    const auto colored = bitmap.pixel_mode == FT_PIXEL_MODE_BGRA && !blurred;
+    const auto channels = colored ? 4u : 1u;
+    private_buffer2_.resize(static_cast<std::size_t>(bitmap.width) * bitmap.rows * channels);
+    for (std::uint32_t y = 0u; y < bitmap.rows; ++y) {
+        const auto* row = bitmap.buffer + (bitmap.pitch >= 0 ? y : bitmap.rows - y - 1u) * std::abs(bitmap.pitch);
+        auto* dst = private_buffer2_.data() + static_cast<std::size_t>(y) * bitmap.width * channels;
+        if (bitmap.pixel_mode == FT_PIXEL_MODE_GRAY) {
+            std::copy_n(row, bitmap.width, dst);
+            continue;
+        }
+        for (std::uint32_t x = 0u; x < bitmap.width; ++x) {
+            if (colored) {
+                const auto alpha = row[x * 4u + 3u];
+                for (std::uint32_t channel = 0u; channel < 3u; ++channel) {
+                    dst[x * 4u + channel] = alpha == 0u ? 0u : static_cast<std::uint8_t>(
+                        std::min(255u, (row[x * 4u + 2u - channel] * 255u + alpha / 2u) / alpha)
+                    );
+                }
+                dst[x * 4u + 3u] = alpha;
+            }
+            else if (bitmap.pixel_mode == FT_PIXEL_MODE_BGRA) {
+                dst[x] = row[x * 4u + 3u];
+            }
+            else if (bitmap.pixel_mode == FT_PIXEL_MODE_MONO) {
+                dst[x] = (row[x / 8u] & (0x80u >> (x % 8u))) != 0u ? 255u : 0u;
+            }
+            else {
+                dst[x] = row[x];
+            }
+        }
+    }
+
+    std::uint8_t* pixels{};
+    if (colored) {
+        result.color_bitmap.resize(static_cast<std::size_t>(out_width) * out_height);
+        pixels = reinterpret_cast<std::uint8_t*>(result.color_bitmap.data());
     }
     else {
-        info = get_font_data_for_char(c);
+        private_buffer_.assign(static_cast<std::size_t>(out_width) * out_height, 0u);
+        pixels = private_buffer_.data() + padding * out_width + padding;
     }
-    if (info == nullptr) {
-        e.failed = true;
-        return e;
-    }
-
-    const int glyph_index = stbtt_FindGlyphIndex(
-        info, 
-        static_cast<int>(c)
+    STBIR_RESIZE resize{};
+    stbir_resize_init(
+        &resize,
+        private_buffer2_.data(),
+        static_cast<int>(bitmap.width),
+        static_cast<int>(bitmap.rows),
+        0,
+        pixels,
+        width,
+        height,
+        out_width * static_cast<int>(channels),
+        colored ? STBIR_RGBA : STBIR_1CHANNEL,
+        STBIR_TYPE_UINT8
     );
-    if (glyph_index == 0) {
-        e.failed = true;
-        return e;
-    }
-
-    const float scale = stbtt_ScaleForPixelHeight(
-        info, 
-        static_cast<float>(cfg_.size)
+    stbir_set_edgemodes(&resize, STBIR_EDGE_ZERO, STBIR_EDGE_ZERO);
+    stbir_set_input_subrect(
+        &resize,
+        (static_cast<double>(x0) / sx - slot->bitmap_left) / bitmap.width,
+        (static_cast<double>(y0) / sy + slot->bitmap_top) / bitmap.rows,
+        (static_cast<double>(x1) / sx - slot->bitmap_left) / bitmap.width,
+        (static_cast<double>(y1) / sy + slot->bitmap_top) / bitmap.rows
     );
-    const float scale_x = scale * static_cast<float>(cfg_.oversample_h);
-    const float scale_y = scale * static_cast<float>(cfg_.oversample_v);
-
-    int adv, lsb;
-    stbtt_GetGlyphHMetrics(
-        info, 
-        glyph_index, 
-        &adv, 
-        &lsb
-    );
-    e.advance_x = static_cast<float>(adv) * scale;
-
-    int unscaled_ascent, unscaled_descent, unscaled_line_gap;
-    stbtt_GetFontVMetrics(
-        info,
-        &unscaled_ascent,
-        &unscaled_descent,
-        &unscaled_line_gap
-    );
-    const float ascent_f = static_cast<float>(unscaled_ascent) * scale;
-    const float baseline_px = std::ceil(ascent_f);
-
-    int x0, y0, x1, y1;
-    stbtt_GetGlyphBitmapBoxSubpixel(
-        info,
-        glyph_index,
-        scale, scale,
-        0.f, 0.f, /* shift */
-        &x0, &y0, &x1, &y1
-    );
-
-    const int over_w = x1 - x0;
-    const int over_h = y1 - y0;
-    const int blur_size = blurred ?
-        static_cast<int>(cfg_.glow_radius) : 0;
-    int width = over_w + blur_size * 2;
-    int height = over_h + blur_size * 2;
-
-    if (width <= 0 || height <= 0) {
-        e.visible = false;
-        return e;
+    if (!colored) {
+        stbir_set_filters(&resize, STBIR_FILTER_BOX, STBIR_FILTER_BOX);
     }
-
-    e.x0 = static_cast<float>(x0);
-    e.x1 = static_cast<float>(x1);
-    e.y0 = static_cast<float>(y0) + baseline_px;
-    e.y1 = static_cast<float>(y1) + baseline_px;
-
-    if (cfg_.oversample_h == 1u && cfg_.oversample_v == 1u) {
-        private_buffer_.assign(
-            static_cast<std::size_t>(width) * static_cast<std::size_t>(height),
-            0u
-        );
-
-        std::uint8_t* const pixel_data = private_buffer_.data() + blur_size * width + blur_size;
-
-        stbtt_MakeGlyphBitmapSubpixel(
-            info,
-            pixel_data,
-            width - blur_size * 2, height - blur_size * 2,
-            width * sizeof(std::uint8_t), /* stride */
-            scale, scale,
-            0.f, 0.f, /* shift */
-            glyph_index
-        );
+    if (!stbir_resize_extended(&resize)) {
+        result.failed = true;
+        return result;
     }
-    else {
-        const int oh = static_cast<int>(cfg_.oversample_h);
-        const int ov = static_cast<int>(cfg_.oversample_v);
-
-        int x0o, y0o, x1o, y1o;
-        stbtt_GetGlyphBitmapBoxSubpixel(
-            info, glyph_index,
-            scale_x, scale_y,
-            0.f, 0.f,
-            &x0o, &y0o, &x1o, &y1o
-        );
-
-        const int src_w = x1o - x0o;
-        const int src_h = y1o - y0o;
-
-        if (src_w <= 0 || src_h <= 0) {
-            e.visible = false;
-            return e;
-        }
-
-        private_buffer2_.assign(
-            static_cast<std::size_t>(src_w) * static_cast<std::size_t>(src_h),
-            0u
-        );
-
-        stbtt_MakeGlyphBitmapSubpixel(
-            info,
-            private_buffer2_.data(),
-            src_w, src_h,
-            src_w * static_cast<int>(sizeof(std::uint8_t)),
-            scale_x, scale_y,
-            0.f, 0.f,
-            glyph_index
-        );
-
-        const int x0b = floor_div(x0o, oh);
-        const int y0b = floor_div(y0o, ov);
-        const int x1b = ceil_div(x1o, oh);
-        const int y1b = ceil_div(y1o, ov);
-
-        const int over_w2 = x1b - x0b;
-        const int over_h2 = y1b - y0b;
-
-        const int width2 = over_w2 + blur_size * 2;
-        const int height2 = over_h2 + blur_size * 2;
-
-        if (width2 <= 0 || height2 <= 0) {
-            e.visible = false;
-            return e;
-        }
-
-        x0 = x0b; y0 = y0b; x1 = x1b; y1 = y1b;
-
-        e.x0 = static_cast<float>(x0);
-        e.x1 = static_cast<float>(x1);
-        e.y0 = static_cast<float>(y0) + baseline_px;
-        e.y1 = static_cast<float>(y1) + baseline_px;
-
-        private_buffer_.assign(
-            static_cast<std::size_t>(width2) * static_cast<std::size_t>(height2), 
-            0u
-        );
-        std::uint8_t* const pixel_data = private_buffer_.data() + blur_size * width2 + blur_size;
-
-        const int dx = (x0b * oh) - x0o;
-        const int dy = (y0b * ov) - y0o;
-
-        box_downsample_u8(
-            private_buffer2_.data(), src_w, src_h, src_w,
-            pixel_data, over_w2, over_h2, width2,
-            oh, ov,
-            dx, dy
-        );
-
-        width = width2;
-        height = height2;
-    }
-
     if (blurred) {
-        assert(cfg_.glow_strength > 0.f);
-        glow_rect(
-            width, height
-        );
+        glow_rect(static_cast<std::uint32_t>(out_width), static_cast<std::uint32_t>(out_height));
     }
-
-    e.x0 += static_cast<float>(cfg_.offset_x);
-    e.x1 += static_cast<float>(cfg_.offset_x);
-    e.y0 += static_cast<float>(cfg_.offset_y);
-    e.y1 += static_cast<float>(cfg_.offset_y);
-
-    if (blurred) {
-        e.x0 -= static_cast<float>(blur_size);
-        e.y0 -= static_cast<float>(blur_size);
-        e.x1 += static_cast<float>(blur_size);
-        e.y1 += static_cast<float>(blur_size);
+    result.x0 = x0 + cfg_.offset_x - padding;
+    result.y0 = source->baseline + y0 - padding;
+    result.x1 = result.x0 + out_width;
+    result.y1 = result.y0 + out_height;
+    result.bmp_w = static_cast<std::uint32_t>(out_width);
+    result.bmp_h = static_cast<std::uint32_t>(out_height);
+    result.visible = true;
+    if (!colored) {
+        private_buffer_.swap(result.bitmap);
     }
-
-    e.bmp_w = static_cast<std::uint32_t>(width);
-    e.bmp_h = static_cast<std::uint32_t>(height);
-    private_buffer_.swap(e.bitmap);
-
-    e.visible = true;
-
-    return e;
+    return result;
 }
 
 r2_end_

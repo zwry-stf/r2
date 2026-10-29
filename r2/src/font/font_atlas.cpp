@@ -3,6 +3,7 @@
 #include <r2/renderer_base.h>
 #include <r2/render_data.h>
 
+#include <algorithm>
 #include <cstring>
 
 
@@ -572,6 +573,23 @@ void font_atlas::write_data_init(std::uint32_t id, const std::uint8_t* data, std
             constexpr std::uint8_t white = 0xffu;
             dst_row[x] = white | (white << 8) | (white << 16) | (byte << 24);
         }
+    }
+}
+
+void font_atlas::write_data_init(std::uint32_t id, const std::uint32_t* data, std::size_t size)
+{
+#if defined(_DEBUG)
+    renderer_->assert_render_thread();
+#endif
+    const auto rect = get_rect(id);
+    assert(rect.width * rect.height == size);
+    (void)size;
+    for (std::uint32_t y = 0u; y < rect.height; ++y) {
+        std::copy_n(
+            data + y * rect.width,
+            rect.width,
+            data32_.data() + (rect.pos_y + y) * width_ + rect.pos_x
+        );
     }
 }
 

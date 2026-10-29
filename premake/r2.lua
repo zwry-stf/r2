@@ -2,6 +2,8 @@
 
 r2 = r2 or {}
 
+include("font_dependencies.lua")
+
 local function join(base, rel)
     if base == nil or base == "" then
         return rel
@@ -82,7 +84,7 @@ function r2.use(opts)
         end
     end
 
-    links { "r2", "backend" }
+    links { "r2", "backend", "r2_freetype", "r2_harfbuzz", "r2_png", "r2_zlib" }
     
     if backend == "d3d11" then
         links { "backend_d3d11", "d3d11", "d3dcompiler" }
@@ -99,6 +101,8 @@ function r2.add_projects(opts, groups)
 
     local build_root = opts.build_root or ("build/%{prj.name}")
     local int_root   = opts.int_root   or ("build/%{prj.name}/%{cfg.buildcfg}/%{cfg.platform}")
+
+    r2.add_font_projects(base, build_root, int_root, groups)
 
     -- backend
     project "backend"
@@ -212,7 +216,13 @@ function r2.add_projects(opts, groups)
             join(base, "r2/ext"),
         }
 
-        links { "backend" }
+        includedirs { path.join(base, "ext/freetype/include"), path.join(base, "ext/harfbuzz/src") }
+        for _, config in ipairs((groups or {}).release or { "Release*" }) do
+            filter("configurations:" .. config)
+                optimize "Speed"
+        end
+        filter {}
+        links { "backend", "r2_freetype", "r2_harfbuzz", "r2_png", "r2_zlib" }
         if backend == "d3d11" then links { "backend_d3d11" } end
         if backend == "opengl" then links { "backend_opengl" } end
 end
