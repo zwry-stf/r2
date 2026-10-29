@@ -1,0 +1,12 @@
+[submodule "ext/freetype"]
+	path = ext/freetype
+	url = https://github.com/freetype/freetype.git
+[submodule "ext/harfbuzz"]
+	path = ext/harfbuzz
+	url = https://github.com/harfbuzz/harfbuzz.git
+[submodule "ext/libpng"]
+	path = ext/libpng
+	url = https://github.com/pnggroup/libpng.git
+[submodule "ext/zlib"]
+	path = ext/zlib
+	url = https://github.com/madler/zlib.git
